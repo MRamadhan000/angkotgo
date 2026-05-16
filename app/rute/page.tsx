@@ -1007,6 +1007,32 @@ const fmtTime = (s: number) => {
   return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 };
 
+// Generate curved route waypoints following terrain
+const generateCurvedRoute = (from: [number, number], to: [number, number]): [number, number][] => {
+  const points: [number, number][] = [from];
+  const latDiff = to[0] - from[0];
+  const lngDiff = to[1] - from[1];
+  
+  // Create intermediate points for a natural curve
+  const segments = 8;
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    // Base position
+    const lat = from[0] + latDiff * t;
+    const lng = from[1] + lngDiff * t;
+    
+    // Add perpendicular offset for natural curve (like roads do)
+    const offsetAmount = Math.sin(t * Math.PI) * 0.004;
+    const angle = Math.atan2(latDiff, lngDiff);
+    const perpLat = lat + Math.cos(angle) * offsetAmount;
+    const perpLng = lng - Math.sin(angle) * offsetAmount;
+    
+    points.push([perpLat, perpLng]);
+  }
+  points.push(to);
+  return points;
+};
+
 function svgAngkot(a: DirectAngkot): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="46" viewBox="0 0 64 46">
     <rect x="2" y="0" width="60" height="24" rx="9" fill="${a.color}28" stroke="${a.color}99" stroke-width="1.5"/>
@@ -1193,7 +1219,7 @@ export default function AngkotGoPage() {
     clearExtras();
     setAngkots(city.angkots);
     userMkRef.current?.setLatLng(city.userPos);
-    routeRef.current = L.polyline([city.userPos, city.destPos], {
+    routeRef.current = L.polyline(generateCurvedRoute(city.userPos, city.destPos), {
       color: '#00e5ff', weight: 2.5, opacity: 0.55, dashArray: '8 12',
     }).addTo(mapRef.current);
     destMkRef.current = L.marker(city.destPos, { icon: makeDestIcon() }).addTo(mapRef.current);
@@ -1226,6 +1252,13 @@ export default function AngkotGoPage() {
     destMkRef.current?.remove(); destMkRef.current = null;
     routeRef.current?.remove();  routeRef.current = null;
     if (animRef.current) clearInterval(animRef.current);
+    // Draw route line in tracking mode
+    if (mapRef.current) {
+      const L = (window as any).L as typeof import('leaflet');
+      routeRef.current = L.polyline(generateCurvedRoute(MALANG.userPos, MALANG.destPos), {
+        color: '#00e5ff', weight: 2.5, opacity: 0.55, dashArray: '8 12',
+      }).addTo(mapRef.current);
+    }
     if (mapRef.current) {
       const L = (window as any).L as typeof import('leaflet');
       const ap = angkotMkRef.current.get(a.id)?.getLatLng();
