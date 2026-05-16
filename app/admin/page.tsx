@@ -1,20 +1,16 @@
 "use client";
 
-import { useState } from "react";
-
 import {
   Bus,
-  DollarSign,
   Route,
-  Plus,
-  Save,
-  Search,
+  Users,
+  CircleDollarSign,
   Bell,
   Menu,
+  Search,
+  TrendingUp,
+  ArrowUpRight,
   MapPinned,
-  ArrowRightLeft,
-  CircleDollarSign,
-  X,
 } from "lucide-react";
 
 import { Poppins } from "next/font/google";
@@ -25,9 +21,6 @@ const poppins = Poppins({
 });
 
 export default function AdminDashboardPage() {
-  const [tarif, setTarif] = useState("4000");
-  const [openModal, setOpenModal] = useState(false);
-
   return (
     <main
       className={`${poppins.className} min-h-screen bg-[#F5F9FF] text-slate-900`}
@@ -36,7 +29,7 @@ export default function AdminDashboardPage() {
       <nav className="w-full h-[85px] border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
           
-          {/* Logo */}
+          {/* LEFT */}
           <div className="flex items-center gap-3">
             <div className="bg-blue-600 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
               <Bus size={24} />
@@ -53,22 +46,31 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Menu */}
+          {/* MENU */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <button className="text-blue-600 font-semibold">
+            <a
+              href="/admin"
+              className="text-blue-600 font-semibold"
+            >
               Dashboard
-            </button>
+            </a>
 
-            <button className="text-slate-600 hover:text-blue-600 transition">
-              Manajemen Harga
-            </button>
-
-            <button className="text-slate-600 hover:text-blue-600 transition">
+            <a
+              href="/admin/rute"
+              className="text-slate-600 hover:text-blue-600 transition"
+            >
               Manajemen Rute
-            </button>
+            </a>
+
+            <a
+              href="/admin/driver"
+              className="text-slate-600 hover:text-blue-600 transition"
+            >
+              Manajemen Driver
+            </a>
           </div>
 
-          {/* Right */}
+          {/* RIGHT */}
           <div className="flex items-center gap-4">
             
             {/* Search */}
@@ -83,7 +85,7 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Notification */}
-            <button className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
+            <button className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
               <Bell size={20} />
             </button>
 
@@ -98,152 +100,51 @@ export default function AdminDashboardPage() {
       {/* ================= CONTENT ================= */}
       <section className="max-w-7xl mx-auto px-6 py-10">
         
-        {/* Header */}
-        <div>
-          <h2 className="text-4xl font-bold">
-            Dashboard Admin
-          </h2>
+        {/* HEADER */}
+        <div className="flex items-center justify-between flex-wrap gap-5">
+          
+          <div>
+            <h2 className="text-4xl font-bold">
+              Dashboard Admin
+            </h2>
 
-          <p className="text-slate-500 mt-2 text-lg">
-            Kelola tarif angkot dan manajemen trayek secara real-time
-          </p>
+            <p className="text-slate-500 mt-2 text-lg">
+              Monitoring sistem angkot Kota Malang secara real-time
+            </p>
+          </div>
+
+          {/* Badge */}
+          <div className="bg-blue-600 text-white px-6 py-4 rounded-3xl shadow-lg shadow-blue-200 flex items-center gap-3">
+            <TrendingUp size={22} />
+
+            <div>
+              <p className="text-sm text-blue-100">
+                Sistem Aktif
+              </p>
+
+              <h4 className="font-bold">
+                Monitoring Online
+              </h4>
+            </div>
+          </div>
         </div>
 
         {/* ================= STATS ================= */}
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 mt-10">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 mt-10">
           
-          {/* Tarif */}
-          <div className="bg-white rounded-[30px] p-6 border border-slate-100 shadow-sm">
+          {/* Total Route */}
+          <div className="bg-white rounded-[32px] p-7 border border-slate-100 shadow-sm hover:-translate-y-1 transition">
+            
             <div className="flex items-center justify-between">
               
               <div>
                 <p className="text-slate-500">
-                  Tarif Angkot
+                  Total Rute
                 </p>
 
-                <h3 className="text-3xl font-bold mt-2 text-blue-600">
-                  Rp 4K
-                </h3>
-              </div>
-
-              <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl">
-                <DollarSign size={28} />
-              </div>
-            </div>
-          </div>
-
-          {/* Total Jalur */}
-          <div className="bg-white rounded-[30px] p-6 border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between">
-              
-              <div>
-                <p className="text-slate-500">
-                  Total Jalur
-                </p>
-
-                <h3 className="text-3xl font-bold mt-2 text-orange-600">
+                <h3 className="text-4xl font-bold mt-3 text-orange-600">
                   12
                 </h3>
-              </div>
-
-              <div className="bg-orange-100 text-orange-600 p-4 rounded-2xl">
-                <Route size={28} />
-              </div>
-            </div>
-          </div>
-
-          {/* Trayek Aktif */}
-          <div className="bg-white rounded-[30px] p-6 border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between">
-              
-              <div>
-                <p className="text-slate-500">
-                  Trayek Populer
-                </p>
-
-                <h3 className="text-3xl font-bold mt-2 text-red-600">
-                  AG
-                </h3>
-              </div>
-
-              <div className="bg-red-100 text-red-600 p-4 rounded-2xl">
-                <MapPinned size={28} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ================= MANAGEMENT SECTION ================= */}
-        <div className="grid xl:grid-cols-2 gap-8 mt-10">
-          
-          {/* ================= MANAJEMEN HARGA ================= */}
-          <section className="bg-white rounded-[36px] border border-slate-100 p-8 shadow-sm">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              
-              <div>
-                <h3 className="text-3xl font-bold">
-                  Manajemen Harga
-                </h3>
-
-                <p className="text-slate-500 mt-2">
-                  Input dan update tarif angkot
-                </p>
-              </div>
-
-              <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl">
-                <CircleDollarSign size={30} />
-              </div>
-            </div>
-
-            {/* Form */}
-            <div className="mt-10 space-y-6">
-              
-              {/* Tarif */}
-              <div>
-                <label className="text-sm font-semibold text-slate-600">
-                  Tarif Angkot
-                </label>
-
-                <div className="mt-3 relative">
-                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">
-                    Rp
-                  </span>
-
-                  <input
-                    type="number"
-                    value={tarif}
-                    onChange={(e) =>
-                      setTarif(e.target.value)
-                    }
-                    className="w-full border border-slate-200 rounded-2xl pl-14 pr-5 py-4 outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Button */}
-              <button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 transition text-white py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-lg shadow-blue-200">
-                <Save size={20} />
-                Simpan Tarif
-              </button>
-            </div>
-          </section>
-
-          {/* ================= MANAJEMEN RUTE ================= */}
-          <section className="bg-white rounded-[36px] border border-slate-100 p-8 shadow-sm">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              
-              <div>
-                <h3 className="text-3xl font-bold">
-                  Manajemen Rute
-                </h3>
-
-                <p className="text-slate-500 mt-2">
-                  Tambahkan trayek dan jalur angkot
-                </p>
               </div>
 
               <div className="bg-orange-100 text-orange-600 p-4 rounded-2xl">
@@ -251,247 +152,287 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Content */}
-            <div className="mt-10">
-              
-              <div className="bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-[30px] p-8">
-                
-                <h4 className="text-2xl font-bold">
-                  Tambah Jalur Baru
-                </h4>
+            <div className="mt-6 flex items-center gap-2 text-sm text-green-600 font-medium">
+              <ArrowUpRight size={16} />
+              +2 jalur baru bulan ini
+            </div>
+          </div>
 
-                <p className="text-slate-500 mt-2">
-                  Klik tombol di bawah untuk menambahkan trayek baru
+          {/* Total Driver */}
+          <div className="bg-white rounded-[32px] p-7 border border-slate-100 shadow-sm hover:-translate-y-1 transition">
+            
+            <div className="flex items-center justify-between">
+              
+              <div>
+                <p className="text-slate-500">
+                  Total Driver
                 </p>
 
-                <button
-                  onClick={() => setOpenModal(true)}
-                  className="mt-8 w-full bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-lg shadow-orange-200"
-                >
-                  <Plus size={20} />
-                  Tambahkan Rute
-                </button>
+                <h3 className="text-4xl font-bold mt-3 text-blue-600">
+                  84
+                </h3>
+              </div>
+
+              <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl">
+                <Users size={30} />
               </div>
             </div>
-          </section>
-        </div>
 
-        {/* ================= TABLE ROUTES ================= */}
-        <section className="mt-10 bg-white rounded-[36px] border border-slate-100 p-8 shadow-sm">
-          
-          {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            
-            <div>
-              <h3 className="text-3xl font-bold">
-                Daftar Jalur Angkot
-              </h3>
-
-              <p className="text-slate-500 mt-2">
-                Monitoring jalur dan trayek aktif
-              </p>
+            <div className="mt-6 flex items-center gap-2 text-sm text-green-600 font-medium">
+              <ArrowUpRight size={16} />
+              72 driver aktif hari ini
             </div>
-
-            <button
-              onClick={() => setOpenModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-3 rounded-2xl font-semibold flex items-center gap-3 shadow-lg shadow-blue-200"
-            >
-              <Plus size={20} />
-              Tambah Jalur
-            </button>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto mt-8">
-            <table className="w-full min-w-[700px]">
+          {/* Tarif */}
+          <div className="bg-white rounded-[32px] p-7 border border-slate-100 shadow-sm hover:-translate-y-1 transition">
+            
+            <div className="flex items-center justify-between">
               
-              <thead>
-                <tr className="text-left border-b border-slate-200">
-                  <th className="pb-5 text-slate-500 font-semibold">
-                    Jalur
-                  </th>
+              <div>
+                <p className="text-slate-500">
+                  Tarif Angkot
+                </p>
 
-                  <th className="pb-5 text-slate-500 font-semibold">
-                    Trayek
-                  </th>
+                <h3 className="text-4xl font-bold mt-3 text-green-600">
+                  Rp5K
+                </h3>
+              </div>
 
-                  <th className="pb-5 text-slate-500 font-semibold">
-                    Start
-                  </th>
+              <div className="bg-green-100 text-green-600 p-4 rounded-2xl">
+                <CircleDollarSign size={30} />
+              </div>
+            </div>
 
-                  <th className="pb-5 text-slate-500 font-semibold">
-                    End
-                  </th>
+            <div className="mt-6 text-sm text-slate-500">
+              Tarif aktif saat ini
+            </div>
+          </div>
 
-                  <th className="pb-5 text-slate-500 font-semibold">
-                    Status
-                  </th>
-                </tr>
-              </thead>
+          {/* Trayek Aktif */}
+          <div className="bg-white rounded-[32px] p-7 border border-slate-100 shadow-sm hover:-translate-y-1 transition">
+            
+            <div className="flex items-center justify-between">
+              
+              <div>
+                <p className="text-slate-500">
+                  Trayek Populer
+                </p>
 
-              <tbody className="divide-y divide-slate-100">
+                <h3 className="text-4xl font-bold mt-3 text-red-600">
+                  AG
+                </h3>
+              </div>
+
+              <div className="bg-red-100 text-red-600 p-4 rounded-2xl">
+                <MapPinned size={30} />
+              </div>
+            </div>
+
+            <div className="mt-6 text-sm text-slate-500">
+              Jalur paling aktif hari ini
+            </div>
+          </div>
+        </div>
+
+        {/* ================= MAIN SECTION ================= */}
+        <div className="grid xl:grid-cols-3 gap-8 mt-10">
+          
+          {/* ================= LEFT ================= */}
+          <div className="xl:col-span-2 space-y-8">
+            
+            {/* Overview */}
+            <section className="bg-white rounded-[36px] border border-slate-100 p-8 shadow-sm">
+              
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                
+                <div>
+                  <h3 className="text-3xl font-bold">
+                    Overview Sistem
+                  </h3>
+
+                  <p className="text-slate-500 mt-2">
+                    Ringkasan performa angkot Kota Malang
+                  </p>
+                </div>
+
+                <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl">
+                  <TrendingUp size={28} />
+                </div>
+              </div>
+
+              {/* Cards */}
+              <div className="grid md:grid-cols-3 gap-5 mt-8">
+                
+                <div className="bg-blue-50 rounded-3xl p-6">
+                  <p className="text-slate-500 text-sm">
+                    Driver Online
+                  </p>
+
+                  <h4 className="text-3xl font-bold mt-3 text-blue-600">
+                    72
+                  </h4>
+                </div>
+
+                <div className="bg-orange-50 rounded-3xl p-6">
+                  <p className="text-slate-500 text-sm">
+                    Angkot Beroperasi
+                  </p>
+
+                  <h4 className="text-3xl font-bold mt-3 text-orange-600">
+                    58
+                  </h4>
+                </div>
+
+                <div className="bg-green-50 rounded-3xl p-6">
+                  <p className="text-slate-500 text-sm">
+                    Penumpang Hari Ini
+                  </p>
+
+                  <h4 className="text-3xl font-bold mt-3 text-green-600">
+                    1.2K
+                  </h4>
+                </div>
+              </div>
+            </section>
+
+            {/* Activity */}
+            <section className="bg-white rounded-[36px] border border-slate-100 p-8 shadow-sm">
+              
+              <div className="flex items-center justify-between">
+                
+                <div>
+                  <h3 className="text-3xl font-bold">
+                    Aktivitas Terbaru
+                  </h3>
+
+                  <p className="text-slate-500 mt-2">
+                    Monitoring aktivitas driver dan rute
+                  </p>
+                </div>
+
+                <div className="bg-slate-100 p-4 rounded-2xl">
+                  <Bus size={28} />
+                </div>
+              </div>
+
+              <div className="mt-8 space-y-5">
                 
                 {[
-                  {
-                    jalur: "AG",
-                    trayek: "Arjosari - Gadang",
-                    start: "Arjosari",
-                    end: "Gadang",
-                    status: "Aktif",
-                  },
-                  {
-                    jalur: "AH",
-                    trayek: "Arjosari - Hamid Rusdi",
-                    start: "Arjosari",
-                    end: "Hamid Rusdi",
-                    status: "Aktif",
-                  },
-                  {
-                    jalur: "LDG",
-                    trayek: "Landungsari - Dinoyo - Gadang",
-                    start: "Landungsari",
-                    end: "Gadang",
-                    status: "Aktif",
-                  },
-                ].map((route, i) => (
-                  <tr key={i}>
-                    
-                    <td className="py-6 font-bold text-blue-600">
-                      {route.jalur}
-                    </td>
+                  "Driver AG-12 berhasil diverifikasi",
+                  "Rute baru AL berhasil ditambahkan",
+                  "Tarif angkot diperbarui menjadi Rp5.000",
+                  "Driver AH-07 diberhentikan",
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 bg-slate-50 rounded-2xl p-5"
+                  >
+                    <div className="w-3 h-3 rounded-full bg-blue-600" />
 
-                    <td className="py-6">
-                      {route.trayek}
-                    </td>
-
-                    <td className="py-6 text-slate-600">
-                      {route.start}
-                    </td>
-
-                    <td className="py-6 text-slate-600">
-                      {route.end}
-                    </td>
-
-                    <td className="py-6">
-                      <span className="bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm font-semibold">
-                        {route.status}
-                      </span>
-                    </td>
-                  </tr>
+                    <p className="font-medium">
+                      {item}
+                    </p>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </section>
           </div>
-        </section>
-      </section>
 
-      {/* ================= MODAL ================= */}
-      {openModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center px-6">
-          
-          <div className="w-full max-w-2xl bg-white rounded-[36px] p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+          {/* ================= RIGHT ================= */}
+          <div className="space-y-8">
             
-            {/* Close */}
-            <button
-              onClick={() => setOpenModal(false)}
-              className="absolute top-5 right-5 w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 transition flex items-center justify-center"
-            >
-              <X size={20} />
-            </button>
+            {/* Tarif */}
+            <section className="bg-white rounded-[36px] border border-slate-100 p-8 shadow-sm">
+              
+              <div className="flex items-center justify-between">
+                
+                <div>
+                  <h3 className="text-2xl font-bold">
+                    Setting Tarif
+                  </h3>
 
-            {/* Header */}
-            <div>
-              <h3 className="text-3xl font-bold">
-                Tambahkan Jalur Baru
+                  <p className="text-slate-500 mt-2">
+                    Atur tarif angkot aktif
+                  </p>
+                </div>
+
+                <div className="bg-green-100 text-green-600 p-4 rounded-2xl">
+                  <CircleDollarSign size={28} />
+                </div>
+              </div>
+
+              <div className="mt-8">
+                
+                <label className="text-sm font-semibold text-slate-600">
+                  Tarif Saat Ini
+                </label>
+
+                <div className="mt-3 relative">
+                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
+                    Rp
+                  </span>
+
+                  <input
+                    type="number"
+                    defaultValue="5000"
+                    className="w-full border border-slate-200 rounded-2xl pl-14 pr-5 py-4 outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <button className="w-full mt-6 bg-blue-600 hover:bg-blue-700 transition text-white py-4 rounded-2xl font-semibold shadow-lg shadow-blue-200">
+                  Simpan Tarif
+                </button>
+              </div>
+            </section>
+
+            {/* Quick Navigation */}
+            <section className="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[36px] p-8 shadow-xl shadow-blue-200">
+              
+              <h3 className="text-2xl font-bold">
+                Quick Access
               </h3>
 
-              <p className="text-slate-500 mt-2">
-                Input data trayek dan jalur angkot
+              <p className="text-blue-100 mt-2">
+                Kelola sistem lebih cepat
               </p>
-            </div>
 
-            {/* Form */}
-            <div className="mt-10 space-y-6">
-              
-              {/* Jenis Jalur */}
-              <div>
-                <label className="text-sm font-semibold text-slate-600">
-                  Jenis Jalur
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Contoh: AG"
-                  className="mt-3 w-full border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Trayek */}
-              <div>
-                <label className="text-sm font-semibold text-slate-600">
-                  Trayek
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Contoh: Arjosari - Gadang"
-                  className="mt-3 w-full border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Start & End */}
-              <div className="grid md:grid-cols-2 gap-5">
+              <div className="mt-8 space-y-4">
                 
-                {/* Start */}
-                <div>
-                  <label className="text-sm font-semibold text-slate-600">
-                    Start Point
-                  </label>
+                <a
+                  href="/rute"
+                  className="flex items-center justify-between bg-white/10 hover:bg-white/20 transition rounded-2xl px-5 py-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <Route size={22} />
 
-                  <div className="relative mt-3">
-                    <MapPinned
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-
-                    <input
-                      type="text"
-                      placeholder="Arjosari"
-                      className="w-full border border-slate-200 rounded-2xl pl-12 pr-5 py-4 outline-none focus:border-blue-500"
-                    />
+                    <span className="font-semibold">
+                      Manajemen Rute
+                    </span>
                   </div>
-                </div>
 
-                {/* End */}
-                <div>
-                  <label className="text-sm font-semibold text-slate-600">
-                    End Point
-                  </label>
+                  <ArrowUpRight size={20} />
+                </a>
 
-                  <div className="relative mt-3">
-                    <ArrowRightLeft
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
+                <a
+                  href="/driver"
+                  className="flex items-center justify-between bg-white/10 hover:bg-white/20 transition rounded-2xl px-5 py-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <Users size={22} />
 
-                    <input
-                      type="text"
-                      placeholder="Gadang"
-                      className="w-full border border-slate-200 rounded-2xl pl-12 pr-5 py-4 outline-none focus:border-blue-500"
-                    />
+                    <span className="font-semibold">
+                      Manajemen Driver
+                    </span>
                   </div>
-                </div>
+
+                  <ArrowUpRight size={20} />
+                </a>
               </div>
-
-              {/* Button */}
-              <button className="w-full mt-4 bg-orange-500 hover:bg-orange-600 transition text-white py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-lg shadow-orange-200">
-                <Plus size={20} />
-                Simpan Jalur
-              </button>
-            </div>
+            </section>
           </div>
         </div>
-      )}
+      </section>
     </main>
   );
 }

@@ -13,6 +13,8 @@ import {
 
 import "leaflet/dist/leaflet.css";
 
+
+import Link from "next/link";
 import {
   Bus,
   Users,
@@ -112,7 +114,7 @@ export default function DriverAvailabilityPage() {
       className={`${poppins.className} min-h-screen bg-[#F5F9FF] text-slate-900`}
     >
       {/* ================= NAVBAR ================= */}
-      <nav className="w-full h-[85px] border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-[999]">
+    <nav className="w-full h-[85px] border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
           
           {/* Logo */}
@@ -132,25 +134,41 @@ export default function DriverAvailabilityPage() {
             </div>
           </div>
 
-          {/* Menu */}
+          {/* Navigation */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <button className="text-slate-600 hover:text-blue-600 transition">
+            <Link href="/driver" className="text-slate-600 hover:text-blue-600 transition">
               Dashboard
-            </button>
+            </Link>
 
-            <button className="text-blue-600 font-semibold">
-              Status Ketersediaan
-            </button>
-
-            <button className="text-slate-600 hover:text-blue-600 transition">
+            <Link href="/driver/profile" className="text-slate-600 hover:text-blue-600 transition">
               Profile
-            </button>
+            </Link>
           </div>
 
-          {/* Mobile */}
-          <button className="md:hidden">
-            <Menu size={28} />
-          </button>
+          {/* Right */}
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-3 bg-slate-100 rounded-2xl px-3 py-2">
+              <img
+                src="https://i.pravatar.cc/100?img=12"
+                alt="profile"
+                className="w-10 h-10 rounded-xl object-cover"
+              />
+
+              <div>
+                <h4 className="font-semibold text-sm">
+                  Budi Santoso
+                </h4>
+
+                <p className="text-xs text-slate-500">
+                  Driver AG
+                </p>
+              </div>
+            </div>
+
+            <button className="md:hidden">
+              <Menu size={28} />
+            </button>
+          </div>
         </div>
       </nav>
 

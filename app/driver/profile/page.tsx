@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+
+import Link from "next/link";
 import {
   Bus,
   Camera,
@@ -51,13 +53,9 @@ export default function DriverProfilePage() {
 
           {/* Navigation */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <button className="text-slate-600 hover:text-blue-600 transition">
+            <Link href="/driver" className="text-slate-600 hover:text-blue-600 transition">
               Dashboard
-            </button>
-
-            <button className="text-slate-600 hover:text-blue-600 transition">
-              Status Angkot
-            </button>
+            </Link>
 
             <button className="text-blue-600 font-semibold">
               Profile
