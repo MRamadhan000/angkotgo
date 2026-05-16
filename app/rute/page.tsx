@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { IoLocationSharp, IoSearch } from 'react-icons/io5';
+import { MdArrowForward } from 'react-icons/md';
 
 type Phase = 'idle' | 'results' | 'tracking';
 type Tab   = 'tercepat' | 'semua';
@@ -34,7 +36,7 @@ const MALANG: CityData = {
   angkots: [
     {
       type: 'direct', id: 'AL', name: 'Arjosari – Landungsari',
-      color: '#00e5ff', eta: 3, distance: 850, price: 5000,
+      color: '#3b82f6', eta: 3, distance: 850, price: 5000,
       capacity: 5, maxCapacity: 12,
       pos: [-7.986, 112.618], plate: 'N 1111 AL', driver: 'Pak Budi',
     },
@@ -65,16 +67,16 @@ const GLOBAL_CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:       #06090f;
-    --panel:    #0d1220;
-    --surface:  rgba(255,255,255,0.04);
-    --surface2: rgba(255,255,255,0.07);
-    --border:   rgba(255,255,255,0.07);
-    --border2:  rgba(255,255,255,0.12);
-    --text:     rgba(255,255,255,0.92);
-    --text2:    rgba(255,255,255,0.60);
-    --text3:    rgba(255,255,255,0.35);
-    --cyan:     #00e5ff;
+    --bg:       #ffffff;
+    --panel:    #ffffff;
+    --surface:  rgba(59,130,246,0.08);
+    --surface2: rgba(59,130,246,0.12);
+    --border:   rgba(59,130,246,0.15);
+    --border2:  rgba(59,130,246,0.25);
+    --text:     #1f2937;
+    --text2:    #6b7280;
+    --text3:    #9ca3af;
+    --cyan:     #3b82f6;
     --purple:   #a855f7;
     --green:    #22d36b;
     --orange:   #ff7a2f;
@@ -101,7 +103,7 @@ const GLOBAL_CSS = `
     z-index: 0;
   }
   .leaflet-tile-pane {
-    filter: brightness(0.26) saturate(0.35) hue-rotate(195deg);
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
   }
   .leaflet-control-attribution,
   .leaflet-control-zoom { display: none !important; }
@@ -122,6 +124,7 @@ const GLOBAL_CSS = `
     touch-action: none;
     user-select: none;
     transition: transform 0.2s ease-out;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
   }
 
   .ag-sheet-handle {
@@ -159,44 +162,69 @@ const GLOBAL_CSS = `
   .ag-search {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border-radius: 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    transition: border-color 0.2s;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1.5px solid #e0e7ff;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
   }
   .ag-search:focus-within {
-    border-color: rgba(0,229,255,0.3);
+    border-color: #3b82f6;
+    box-shadow: 0 6px 24px rgba(59, 130, 246, 0.18);
   }
-  .ag-search-icon { font-size: 15px; color: var(--text3); flex-shrink: 0; }
+  .ag-search-icon { font-size: 18px; color: #3b82f6; flex-shrink: 0; }
   .ag-search input {
     flex: 1;
     background: transparent;
     border: none;
     outline: none;
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 500;
-    color: var(--text);
+    color: #1f2937;
     font-family: var(--font-ui);
     min-width: 0;
   }
-  .ag-search input::placeholder { color: var(--text3); }
+  .ag-search input::placeholder { color: #d1d5db; }
   .ag-search-btn {
     flex-shrink: 0;
-    padding: 7px 14px;
-    border-radius: 10px;
-    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    font-size: 13px;
     font-weight: 700;
     font-family: var(--font-ui);
     color: #fff;
-    background: linear-gradient(135deg, #00c8e0, #9333ea);
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
     border: none;
     cursor: pointer;
-    transition: opacity 0.18s;
+    transition: all 0.2s;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
-  .ag-search-btn:hover { opacity: 0.82; }
+  .ag-search-btn:hover { 
+    opacity: 0.9;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+  }
+  .ag-search-btn:active { transform: translateY(0); }
+
+  /* ── Desktop Search Bar Constraints ── */
+  @media (min-width: 769px) {
+    .ag-search {
+      max-width: 50vw !important;
+      left: 50% !important;
+      right: auto !important;
+      transform: translateX(-50%) !important;
+    }
+    .ag-search-btn {
+      padding: 10px 18px;
+      gap: 8px;
+      font-size: 14px;
+    }
+  }
 
   /* ── Content area ── */
   .ag-content {
@@ -255,16 +283,16 @@ const GLOBAL_CSS = `
   .ag-back-btn {
     font-size: 11px;
     font-weight: 600;
-    color: var(--text3);
+    color: #ff4d6d;
     background: none;
-    border: 1px solid var(--border);
+    border: 1px solid #ffcdd2;
     border-radius: 8px;
     padding: 5px 10px;
     cursor: pointer;
     font-family: var(--font-ui);
     transition: color 0.15s, border-color 0.15s;
   }
-  .ag-back-btn:hover { color: var(--text2); border-color: var(--border2); }
+  .ag-back-btn:hover { color: #ff3860; border-color: #ff6b9d; }
 
   /* ── Tabs ── */
   .ag-tabs {
@@ -351,21 +379,21 @@ const GLOBAL_CSS = `
     font-weight: 700;
     font-family: var(--font-ui);
     letter-spacing: 0.05em;
-    background: rgba(0,229,255,0.08);
-    border: 1px solid rgba(0,229,255,0.22);
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.22);
     color: var(--cyan);
     cursor: pointer;
     transition: background 0.18s, opacity 0.18s;
   }
-  .ag-book-btn:hover:not(:disabled) { background: rgba(0,229,255,0.14); }
+  .ag-book-btn:hover:not(:disabled) { background: rgba(59,130,246,0.14); }
   .ag-book-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
   /* ── Transit card ── */
   .ag-transit {
     border-radius: 16px;
     padding: 13px 14px;
-    background: linear-gradient(135deg, rgba(168,85,247,0.06), rgba(0,229,255,0.05));
-    border: 1px solid rgba(168,85,247,0.18);
+    background: linear-gradient(135deg, rgba(168,85,247,0.06), rgba(59,130,246,0.08));
+    border: 1px solid rgba(59,130,246,0.18);
   }
   .ag-transit-label {
     font-size: 10px;
@@ -498,7 +526,7 @@ const GLOBAL_CSS = `
   .ag-progress-fill {
     height: 100%;
     border-radius: 5px;
-    background: linear-gradient(90deg, #00e5ff, #a855f7);
+    background: linear-gradient(90deg, #3b82f6, #a855f7);
     transition: width 1s linear;
   }
 
@@ -534,15 +562,15 @@ const GLOBAL_CSS = `
     gap: 14px;
     padding: 13px 16px;
     border-radius: 16px;
-    background: rgba(6,9,15,0.97);
-    border: 1px solid rgba(0,229,255,0.28);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    background: rgba(255,255,255,0.95);
+    border: 1px solid rgba(59,130,246,0.28);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
   }
   .ag-notif-icon {
     width: 40px; height: 40px; border-radius: 11px;
     display: flex; align-items: center; justify-content: center; font-size: 18px;
-    background: rgba(0,229,255,0.12);
-    border: 1px solid rgba(0,229,255,0.25);
+    background: rgba(59,130,246,0.12);
+    border: 1px solid rgba(59,130,246,0.25);
     flex-shrink: 0;
   }
   .ag-notif-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
@@ -637,7 +665,7 @@ const GLOBAL_CSS = `
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(255, 255, 255, 0.9);
       border: 1px solid var(--border2);
       border-radius: 10px;
       cursor: pointer;
@@ -646,7 +674,7 @@ const GLOBAL_CSS = `
     }
 
     .ag-hamburger:hover {
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(255, 255, 255, 1);
     }
 
     .ag-hamburger-line {
@@ -660,7 +688,7 @@ const GLOBAL_CSS = `
     .ag-hamburger-line span {
       width: 100%;
       height: 2px;
-      background: var(--cyan);
+      background: #3b82f6;
       border-radius: 1px;
       transition: all 0.3s ease;
     }
@@ -697,21 +725,21 @@ const GLOBAL_CSS = `
 
     .ag-search {
       margin: 0 16px;
-      padding: 8px 12px;
-      font-size: 12px;
-    }
-
-    .ag-search-icon {
+      padding: 10px 14px;
       font-size: 13px;
     }
 
+    .ag-search-icon {
+      font-size: 16px;
+    }
+
     .ag-search input {
-      font-size: 12px;
+      font-size: 13px;
     }
 
     .ag-search-btn {
-      font-size: 10px;
-      padding: 6px 12px;
+      font-size: 12px;
+      padding: 7px 12px;
     }
 
     .ag-divider {
@@ -1383,14 +1411,17 @@ export default function AngkotGoPage() {
 
       {/* Fixed Search Bar */}
       <div className="ag-search" style={{ position: 'fixed', top: 16, left: 16, right: 16, zIndex: 30 }}>
-        <span className="ag-search-icon">📍</span>
+        <IoLocationSharp className="ag-search-icon" />
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && doSearch()}
           placeholder="Mau ke mana hari ini?"
         />
-        <button className="ag-search-btn" onClick={doSearch}>Cari →</button>
+        <button className="ag-search-btn" onClick={doSearch}>
+          <IoSearch style={{ fontSize: 16 }} />
+          Cari
+        </button>
       </div>
 
       {/* Bottom Sheet */}
