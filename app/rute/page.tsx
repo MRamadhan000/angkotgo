@@ -1033,6 +1033,25 @@ const generateCurvedRoute = (from: [number, number], to: [number, number]): [num
   return points;
 };
 
+// Get position along curved route by progress percentage
+const getPositionOnRoute = (from: [number, number], to: [number, number], progress: number): [number, number] => {
+  const waypoints = generateCurvedRoute(from, to);
+  const index = (progress / 100) * (waypoints.length - 1);
+  const currentIndex = Math.floor(index);
+  const nextIndex = Math.ceil(index);
+  const t = index - currentIndex;
+  
+  if (nextIndex >= waypoints.length) return waypoints[waypoints.length - 1];
+  
+  const current = waypoints[currentIndex];
+  const next = waypoints[nextIndex];
+  
+  return [
+    current[0] + (next[0] - current[0]) * t,
+    current[1] + (next[1] - current[1]) * t,
+  ];
+};
+
 function svgAngkot(a: DirectAngkot): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="46" viewBox="0 0 64 46">
     <rect x="2" y="0" width="60" height="24" rx="9" fill="${a.color}28" stroke="${a.color}99" stroke-width="1.5"/>
@@ -1277,6 +1296,17 @@ export default function AngkotGoPage() {
       setEta(prev => {
         const next = prev - 1;
         if (next <= 0) { clearInterval(etaTimerRef.current!); return 0; }
+        
+        // Update angkot position along route
+        if (mapRef.current && angkotMkRef.current.has(bookedRef.current!.id)) {
+          const currentProgress = etaMaxRef.current > 0
+            ? Math.round((1 - next / etaMaxRef.current) * 100)
+            : 0;
+          const newPos = getPositionOnRoute(MALANG.userPos, MALANG.destPos, currentProgress);
+          const mk = angkotMkRef.current.get(bookedRef.current!.id);
+          if (mk) mk.setLatLng(newPos);
+        }
+        
         if (!notifShownRef.current && next <= 30 && bookedRef.current) {
           notifShownRef.current = true;
           setNotif({ title: `${bookedRef.current.id} sudah sangat dekat!`, sub: `${bookedRef.current.plate} — bersiap naik ya 🎉` });
