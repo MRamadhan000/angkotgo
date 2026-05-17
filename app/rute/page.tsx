@@ -150,24 +150,42 @@ function svgDest(): string {
   </svg>`;
 }
 
-function SeatBar({ filled, total, color }: { filled: number; total: number; color: string }) {
+function SeatBar({
+  filled,
+  total,
+}: {
+  filled: number;
+  total: number;
+}) {
   const left = total - filled;
+  const isFull = left <= 0;
+
   return (
     <div className="mb-3">
-      <div className="flex gap-1 mb-2.5">
-        {Array.from({ length: total }).map((_, i) => (
-          <div key={i} className="rounded" style={{
-            width: '16px',
-            height: '7px',
-            background: i < filled ? '#d1d5db' : color,
-            opacity: i < filled ? 0.6 : 1,
-            boxShadow: i >= filled ? `0 0 6px ${color}66` : undefined,
-            transition: 'all 0.2s',
-          }} />
-        ))}
-      </div>
-      <div className="text-[10px] md:text-sm text-gray-500 font-medium">
-        <strong>{filled}</strong> terisi, <strong>{left}</strong> tersedia dari <strong>{total}</strong> kursi
+      <div className="flex items-center gap-2">
+        
+        {/* Status Dot */}
+        <div
+          className={`w-2.5 h-2.5 rounded-full ${
+            isFull
+              ? "bg-rose-500 animate-pulse"
+              : "bg-emerald-500"
+          }`}
+        />
+
+        {/* Label */}
+        <span
+          className={`text-[10px] md:text-sm font-medium px-2 py-1 rounded-full border ${
+            isFull
+              ? "bg-rose-50 text-rose-600 border-rose-200"
+              : "bg-emerald-50 text-emerald-600 border-emerald-200"
+          }`}
+        >
+          {isFull
+            ? "Kapasitas Penuh"
+            : `Kursi Tersedia`}
+        </span>
+
       </div>
     </div>
   );
