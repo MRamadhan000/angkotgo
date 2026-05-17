@@ -328,65 +328,93 @@ const GLOBAL_CSS = `
 
   /* ── Direct card ── */
   .ag-card {
-    border-radius: 16px;
-    padding: 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    transition: background 0.18s, border-color 0.18s;
+    border-radius: 18px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(255, 255, 255, 0.02));
+    border: 1.5px solid #e5e7eb;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: default;
   }
-  .ag-card:hover { background: var(--surface2); border-color: var(--border2); }
+  .ag-card:hover { 
+    border-color: #3b82f6;
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12);
+    transform: translateY(-2px);
+  }
   .ag-card-head {
     display: flex;
     align-items: flex-start;
-    gap: 11px;
-    margin-bottom: 11px;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
   }
   .ag-card-badge {
-    width: 42px; height: 42px; border-radius: 12px;
+    width: 56px; height: 56px; border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 800;
+    font-size: 18px; font-weight: 900;
     font-family: var(--font-mono);
     flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
   }
   .ag-card-info { flex: 1; min-width: 0; }
   .ag-card-name {
-    font-size: 13px; font-weight: 700; color: var(--text);
+    font-size: 15px; font-weight: 800; color: #1f2937;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
   }
   .ag-card-meta {
-    font-size: 10.5px; color: var(--text3);
-    font-family: var(--font-mono);
+    font-size: 12px; color: #6b7280;
+    font-family: var(--font-ui);
+    line-height: 1.5;
   }
-  .ag-card-price-block { text-align: right; flex-shrink: 0; }
-  .ag-card-price { font-size: 13px; font-weight: 700; color: var(--text); }
-  .ag-card-eta { font-size: 11px; font-weight: 700; margin-top: 3px; }
-  .ag-card-dist { font-size: 10.5px; color: var(--text3); margin-top: 1px; }
+  .ag-card-price-block { 
+    display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; 
+  }
+  .ag-card-price { 
+    font-size: 16px; font-weight: 800; color: #3b82f6;
+    letter-spacing: -0.3px;
+  }
+  .ag-card-eta { 
+    font-size: 13px; font-weight: 600; margin-top: 4px; color: #6b7280;
+  }
+  .ag-card-dist { 
+    font-size: 12px; color: #9ca3af; margin-top: 2px;
+  }
 
   /* ── Seat bar ── */
-  .ag-seats { margin-bottom: 11px; }
-  .ag-seats-row { display: flex; gap: 3px; margin-bottom: 4px; }
-  .ag-seat { width: 13px; height: 5px; border-radius: 3px; }
-  .ag-seats-label { font-size: 10px; color: var(--text3); }
+  .ag-seats { margin-bottom: 14px; }
+  .ag-seats-row { display: flex; gap: 4px; margin-bottom: 8px; }
+  .ag-seat { width: 14px; height: 6px; border-radius: 3px; transition: all 0.2s; }
+  .ag-seats-label { font-size: 11px; color: #6b7280; font-weight: 500; }
 
   /* ── Book btn ── */
   .ag-book-btn {
     width: 100%;
-    padding: 10px 0;
-    border-radius: 11px;
-    font-size: 12px;
+    padding: 12px 0;
+    border-radius: 14px;
+    font-size: 14px;
     font-weight: 700;
     font-family: var(--font-ui);
-    letter-spacing: 0.05em;
-    background: rgba(59,130,246,0.08);
-    border: 1px solid rgba(59,130,246,0.22);
-    color: var(--cyan);
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border: none;
+    color: #fff;
     cursor: pointer;
-    transition: background 0.18s, opacity 0.18s;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
   }
-  .ag-book-btn:hover:not(:disabled) { background: rgba(59,130,246,0.14); }
-  .ag-book-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .ag-book-btn:hover:not(:disabled) { 
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+  }
+  .ag-book-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  .ag-book-btn:disabled { 
+    opacity: 0.5; 
+    cursor: not-allowed;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.1);
+  }
 
   /* ── Transit card ── */
   .ag-transit {
@@ -583,12 +611,13 @@ const GLOBAL_CSS = `
   /* ── Pill badge ── */
   .ag-pill {
     display: inline-block;
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 6px;
-    margin-left: 5px;
+    padding: 3px 9px;
+    border-radius: 7px;
+    margin-left: 7px;
     vertical-align: middle;
+    letter-spacing: 0.03em;
   }
 
   @keyframes blink {
@@ -1110,17 +1139,14 @@ function SeatBar({ filled, total, color }: { filled: number; total: number; colo
       <div className="ag-seats-row">
         {Array.from({ length: total }).map((_, i) => (
           <div key={i} className="ag-seat" style={{
-            background: i < filled ? 'rgba(255,255,255,0.1)' : color,
-            boxShadow: i >= filled ? `0 0 4px ${color}44` : undefined,
+            background: i < filled ? '#d1d5db' : color,
+            opacity: i < filled ? 0.6 : 1,
+            boxShadow: i >= filled ? `0 0 6px ${color}66` : undefined,
           }} />
         ))}
       </div>
       <div className="ag-seats-label">
-        {filled} terisi / {total} kursi &nbsp;—&nbsp;
-        {left > 0
-          ? <span style={{ color }}>{left} tersedia</span>
-          : <span style={{ color: 'var(--red)' }}>Penuh!</span>
-        }
+        <strong>{filled}</strong> terisi, <strong>{left}</strong> tersedia dari <strong>{total}</strong> kursi
       </div>
     </div>
   );
@@ -1131,20 +1157,22 @@ function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) 
   return (
     <div className="ag-card">
       <div className="ag-card-head">
-        <div className="ag-card-badge" style={{ background: `${a.color}18`, border: `1px solid ${a.color}44`, color: a.color }}>
-          {a.id}
-        </div>
-        <div className="ag-card-info">
-          <div className="ag-card-name">
-            {a.name}
-            {left === 0 && <span className="ag-pill" style={{ background: 'rgba(255,77,109,0.15)', color: 'var(--red)' }}>PENUH</span>}
-            {left >= 8 && <span className="ag-pill" style={{ background: 'rgba(0,229,255,0.12)', color: 'var(--cyan)' }}>BANYAK</span>}
+        <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
+          <div className="ag-card-badge" style={{ background: `${a.color}18`, border: `1px solid ${a.color}44`, color: a.color }}>
+            {a.id}
           </div>
-          <div className="ag-card-meta">🚗 {a.plate} · 👤 {a.driver}</div>
+          <div className="ag-card-info">
+            <div className="ag-card-name">
+              {a.name}
+              {left === 0 && <span className="ag-pill" style={{ background: '#fee2e2', color: '#991b1b' }}>PENUH</span>}
+              {left >= 8 && <span className="ag-pill" style={{ background: '#dbeafe', color: '#1e40af' }}>TERSEDIA</span>}
+            </div>
+            <div className="ag-card-meta">🚗 {a.plate} · 👤 {a.driver}</div>
+          </div>
         </div>
         <div className="ag-card-price-block">
           <div className="ag-card-price">{fmtRp(a.price)}</div>
-          <div className="ag-card-eta" style={{ color: a.color }}>⏱ {a.eta} mnt</div>
+          <div className="ag-card-eta">⏱ {a.eta} min</div>
           <div className="ag-card-dist">📍 {a.distance}m</div>
         </div>
       </div>
@@ -1154,7 +1182,7 @@ function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) 
         disabled={left === 0}
         onClick={() => onBook(a)}
       >
-        {left > 0 ? 'Pesan Sekarang →' : 'Penuh'}
+        {left > 0 ? '🚀 Pesan Sekarang' : '🚫 Penuh'}
       </button>
     </div>
   );
