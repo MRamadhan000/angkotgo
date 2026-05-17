@@ -194,49 +194,61 @@ function SeatBar({
 function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) => void }) {
   const left = a.maxCapacity - a.capacity;
   return (
-    <div className="rounded-2xl p-3 md:p-5 bg-linear-to-br from-white to-blue-50 border border-gray-200 transition-all duration-300 cursor-default shadow-sm md:shadow-md hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
-      <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 to-transparent pointer-events-none" />
-      <div className="flex gap-2.5 mb-2 md:gap-4 md:mb-4 items-start justify-between">
-        <div className="flex gap-2.5 md:gap-4 flex-1 min-w-0">
-          <div 
-            className="w-12 md:w-16 h-12 md:h-16 rounded-3 flex items-center justify-center shrink-0 shadow-sm md:shadow-md font-black text-sm md:text-xl relative z-10"
-            style={{ background: `${a.color}18`, border: `1px solid ${a.color}44`, color: a.color }}
-          >
-            {a.id}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs md:text-base font-black text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis mb-0.5 md:mb-1">
-              {a.name}
-              {left === 0 && <span className="inline-block text-[9px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1.5 align-middle" style={{ background: '#fee2e2', color: '#991b1b' }}>PENUH</span>}
-              {left >= 8 && <span className="inline-block text-[9px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1.5 align-middle" style={{ background: '#dbeafe', color: '#1e40af' }}>TERSEDIA</span>}
-            </div>
-            <div className="flex gap-2 items-center flex-wrap text-[10px] md:text-sm text-gray-500 mt-1 md:mt-2">
-              <span className="flex items-center gap-1">
-                <MdDirectionsCar size={12} className="md:w-5 md:h-5" /> {a.plate}
-              </span>
-              <span className="flex items-center gap-1">
-                <MdPersonOutline size={12} className="md:w-5 md:h-5" /> {a.driver}
-              </span>
-            </div>
-          </div>
+    <div className="rounded-2xl p-3 md:p-4 bg-white border border-gray-200 transition-all duration-300 cursor-default shadow-sm hover:border-blue-400 hover:shadow-lg relative overflow-hidden group">
+      <div className="absolute inset-0 bg-linear-to-br from-blue-50/50 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      
+      {/* Top Header */}
+      <div className="flex gap-3 md:gap-4 mb-3 relative z-10">
+        <div 
+          className="w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center shrink-0 shadow-sm border font-black text-sm md:text-lg"
+          style={{ background: `${a.color}15`, borderColor: `${a.color}30`, color: a.color }}
+        >
+          {a.id}
         </div>
-        <div className="flex flex-col items-end shrink-0">
-          <div className="text-sm md:text-lg font-black text-blue-500">{fmtRp(a.price)}</div>
-          <div className="flex items-center gap-1 font-semibold text-[10px] md:text-sm text-gray-500 mt-0.5 md:mt-1.5">
-            <MdSchedule size={12} className="md:w-4 md:h-4" /> {a.eta} min
+        
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <div className="text-xs md:text-base font-bold text-gray-900 truncate mb-1">
+            {a.name}
           </div>
-          <div className="flex items-center gap-1 text-[10px] md:text-sm text-gray-400 mt-0.5 md:mt-1">
-            <MdLocationOn size={12} className="md:w-4 md:h-4" /> {a.distance}m
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-medium text-gray-500">
+            <span className="flex items-center gap-1 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+              <MdDirectionsCar size={14} className="text-gray-400" /> {a.plate}
+            </span>
+            <span className="flex items-center gap-1 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+              <MdPersonOutline size={14} className="text-gray-400" /> {a.driver}
+            </span>
           </div>
         </div>
       </div>
-      <SeatBar filled={a.capacity} total={a.maxCapacity} color={a.color} />
+
+      {/* Info Grid */}
+      <div className="grid grid-cols-3 gap-2 mb-3 bg-gray-50 p-2 md:p-3 rounded-xl border border-gray-100">
+        <div className="flex flex-col items-center justify-center text-center border-r border-gray-200">
+          <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase mb-0.5">Tarif</span>
+          <span className="text-xs md:text-sm font-black text-blue-600">{fmtRp(a.price)}</span>
+        </div>
+        <div className="flex flex-col items-center justify-center text-center border-r border-gray-200">
+          <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase mb-0.5">ETA</span>
+          <span className="text-xs md:text-sm font-bold text-gray-700 flex items-center gap-1">
+            <MdSchedule className="text-blue-400" /> {a.eta} mnt
+          </span>
+        </div>
+        <div className="flex flex-col items-center justify-center text-center">
+          <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase mb-0.5">Jarak</span>
+          <span className="text-xs md:text-sm font-bold text-gray-700 flex items-center gap-1">
+            <MdLocationOn className="text-rose-400" /> {a.distance}m
+          </span>
+        </div>
+      </div>
+
+      <SeatBar filled={a.capacity} total={a.maxCapacity} />
+      
       <button
-        className="w-full py-2.5 md:py-3.5 px-0 rounded-xl text-xs md:text-base font-bold text-white bg-linear-to-r from-blue-500 to-blue-600 border-none cursor-pointer transition-all duration-300 shadow-md relative overflow-hidden flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-sm hover:enabled:-translate-y-0.75 hover:enabled:shadow-lg"
+        className="w-full py-2.5 md:py-3 px-4 rounded-xl text-xs md:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 border-none cursor-pointer transition-all duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:-translate-y-0.5 hover:enabled:shadow-lg"
         disabled={left === 0}
         onClick={() => onBook(a)}
       >
-        {left > 0 ? <><MdCheckCircle className="shrink-0" /> Pesan Sekarang</> : <><MdError className="shrink-0" /> Penuh</>}
+        {left > 0 ? <><MdCheckCircle size={16} /> Pesan Angkot</> : <><MdError size={16} /> Penuh</>}
       </button>
     </div>
   );
@@ -244,23 +256,42 @@ function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) 
 
 function TransitCard({ a }: { a: TransitAngkot }) {
   return (
-    <div className="rounded-2xl p-3 md:p-4 bg-linear-to-br from-purple-50/50 to-blue-50/30 border border-purple-200/25 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-purple-300/35">
-      <div className="flex items-center gap-1 mb-2 text-[10px] md:text-sm font-bold text-purple-500 uppercase tracking-wider">
-        <FaExchangeAlt size={10} className="md:w-3.5 md:h-3.5" /> Rute Transit · Ganti
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1 flex-wrap">
-          <span className="px-2 py-1 rounded font-bold text-[10px] md:text-sm bg-blue-100/80 text-gray-600 shadow-sm">{a.legs[0]}</span>
-          <span className="text-[10px] md:text-sm text-gray-400">→</span>
-          <span className="px-2 py-1 rounded font-bold text-[10px] md:text-sm bg-purple-100/60 border border-purple-300/35 text-purple-500">Transit</span>
-          <span className="text-[10px] md:text-sm text-gray-400">→</span>
-          <span className="px-2 py-1 rounded font-bold text-[10px] md:text-sm bg-blue-100/80 text-gray-600 shadow-sm">{a.legs[1]}</span>
+    <div className="rounded-2xl p-3 md:p-4 bg-white border border-purple-200 transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-purple-300 relative overflow-hidden group">
+      <div className="absolute inset-0 bg-linear-to-br from-purple-50/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      
+      <div className="flex items-center gap-3 mb-3 relative z-10">
+        <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 shrink-0 shadow-sm">
+          <FaExchangeAlt size={16} />
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-xs md:text-base font-bold text-gray-900">{fmtRp(a.price)}</div>
-          <div className="flex items-center gap-1 font-bold text-[10px] md:text-sm text-purple-500 mt-0.5 justify-end">
-            <MdSchedule size={10} className="md:w-3.5 md:h-3.5" /> {a.eta} mnt
+        <div>
+          <div className="text-[10px] md:text-xs font-bold text-purple-500 uppercase tracking-widest mb-0.5">Rute Transit</div>
+          <div className="text-xs md:text-sm font-bold text-gray-900">Perlu 1x Ganti Angkot</div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between p-3 bg-purple-50/60 rounded-xl border border-purple-100 mb-3">
+        <div className="flex flex-col gap-2 w-full">
+          <div className="flex items-center gap-2">
+            <span className="w-10 text-center py-1 rounded bg-blue-100 text-blue-700 font-black text-[10px] md:text-xs">{a.legs[0]}</span>
+            <span className="text-[10px] md:text-xs font-medium text-gray-600">Naik angkot pertama</span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="w-10 text-center py-1 rounded bg-purple-200 text-purple-700 font-black text-[10px] md:text-xs">{a.legs[1]}</span>
+            <span className="text-[10px] md:text-xs font-medium text-gray-600">Lanjut transit ke tujuan</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2 md:p-3 rounded-xl border border-gray-100">
+        <div className="flex flex-col items-center justify-center text-center border-r border-gray-200">
+          <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase mb-0.5">Total Tarif</span>
+          <span className="text-xs md:text-sm font-black text-purple-600">{fmtRp(a.price)}</span>
+        </div>
+        <div className="flex flex-col items-center justify-center text-center">
+          <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase mb-0.5">Total ETA</span>
+          <span className="text-xs md:text-sm font-bold text-gray-700 flex items-center gap-1">
+            <MdSchedule className="text-purple-400" /> {a.eta} mnt
+          </span>
         </div>
       </div>
     </div>
