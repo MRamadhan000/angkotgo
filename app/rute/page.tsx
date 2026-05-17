@@ -140,6 +140,7 @@ const GLOBAL_CSS = `
     justify-content: center;
     flex-shrink: 0;
     cursor: grab;
+    gap: 8px;
   }
 
   .ag-sheet-handle::before {
@@ -152,6 +153,11 @@ const GLOBAL_CSS = `
 
   .ag-sheet-handle:active {
     cursor: grabbing;
+  }
+
+  .ag-sheet {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    opacity: 1;
   }
 
   .ag-sheet-content {
@@ -851,7 +857,7 @@ const GLOBAL_CSS = `
       flex-direction: column;
     }
 
-    /* Keep bottom sheet for mobile */
+    /* Keep bottom sheet for mobile with smooth dragging */
     .ag-sheet {
       position: fixed !important;
       bottom: 0 !important;
@@ -868,11 +874,20 @@ const GLOBAL_CSS = `
       border-bottom: none !important;
       box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.12) !important;
       transform: translateY(0) !important;
+      will-change: transform;
+      touch-action: none;
     }
 
     .ag-sheet-handle {
       display: flex !important;
       height: 24px;
+      cursor: grab;
+      touch-action: none;
+      gap: 8px;
+    }
+
+    .ag-sheet-handle:active {
+      cursor: grabbing;
     }
 
     .ag-sidebar.mobile-open {
@@ -1625,25 +1640,33 @@ export default function AngkotGoPage() {
 
   const handleSheetDragStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     dragStartRef.current = { y: e.clientY, height: sheetHeight };
-  }, [sheetHeight]);
-
-  const handleSheetDragMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragStartRef.current) return;
-    const delta = e.clientY - dragStartRef.current.y;
-    const newHeight = dragStartRef.current.height - (delta / window.innerHeight) * 100;
-    const clamped = Math.max(25, Math.min(88, newHeight));
-    setSheetHeight(clamped);
-  }, []);
-
-  const handleSheetDragEnd = useCallback(() => {
-    dragStartRef.current = null;
-    // Snap to 40% if between 25-55%, otherwise to min/max
-    if (sheetHeight > 25 && sheetHeight < 55) {
-      setSheetHeight(40);
-    } else if (sheetHeight >= 55) {
-      setSheetHeight(88);
-    }
-  }, [sheetHeight]);
+    const onMove = (moveEvent: PointerEvent) => {
+      if (!dragStartRef.current) return;
+      const delta = moveEvent.clientY - dragStartRef.current.y;
+      const newHeight = dragStartRef.current.height - (delta / window.innerHeight) * 100;
+      setSheetHeight(newHeight);
+    };
+    const onEnd = () => {
+      dragStartRef.current = null;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onEnd);
+      // If dragged down far enough (below -20%), dismiss the sheet
+      if (sheetHeight < -20) {
+        cancelBooking();
+        return;
+      }
+      // Snap to nearest point: 30% (hidden), 50% (mid), 88% (full)
+      if (sheetHeight < 40) {
+        setSheetHeight(30);
+      } else if (sheetHeight < 70) {
+        setSheetHeight(50);
+      } else {
+        setSheetHeight(88);
+      }
+    };
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onEnd);
+  }, [sheetHeight, cancelBooking]);
 
   useEffect(() => () => {
     if (animRef.current)    clearInterval(animRef.current);
@@ -1688,16 +1711,20 @@ export default function AngkotGoPage() {
       <div
         ref={sheetRef}
         className="ag-sheet fade-slide"
-        style={{ height: `${sheetHeight}vh`, transform: `translateY(${100 - sheetHeight}vh)` }}
+        style={{
+          height: `${Math.max(20, sheetHeight)}vh`,
+          transform: `translateY(${Math.max(0, 100 - sheetHeight)}vh)`,
+          opacity: sheetHeight > -10 ? 1 : Math.max(0, 1 + (sheetHeight + 10) / 10),
+        }}
       >
         {/* Drag Handle */}
         <div
           className="ag-sheet-handle"
           onPointerDown={handleSheetDragStart}
-          onPointerMove={handleSheetDragMove}
-          onPointerUp={handleSheetDragEnd}
-          onPointerCancel={handleSheetDragEnd}
-        />
+          style={{ cursor: 'grab' }}
+        >
+          <span style={{ fontSize: 18, color: 'var(--border2)', lineHeight: 1, letterSpacing: '-2px', fontWeight: 700 }}>⋮</span>
+        </div>
 
         {/* Sheet Content */}
         <div className="ag-sheet-content">
