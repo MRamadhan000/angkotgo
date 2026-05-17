@@ -61,1233 +61,6 @@ const MALANG: CityData = {
   ],
 };
 
-const GLOBAL_CSS = `
-  @import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg:       #ffffff;
-    --panel:    #ffffff;
-    --surface:  rgba(59,130,246,0.08);
-    --surface2: rgba(59,130,246,0.12);
-    --border:   rgba(59,130,246,0.15);
-    --border2:  rgba(59,130,246,0.25);
-    --text:     #1f2937;
-    --text2:    #6b7280;
-    --text3:    #9ca3af;
-    --cyan:     #3b82f6;
-    --purple:   #a855f7;
-    --green:    #22d36b;
-    --orange:   #ff7a2f;
-    --red:      #ff4d6d;
-    --sidebar-w: 360px;
-    --font-ui:  'Plus Jakarta Sans', sans-serif;
-    --font-mono:'IBM Plex Mono', monospace;
-    --shadow-sm: 0 2px 8px rgba(59, 130, 246, 0.08);
-    --shadow-md: 0 8px 16px rgba(59, 130, 246, 0.12);
-    --shadow-lg: 0 16px 32px rgba(59, 130, 246, 0.15);
-    --shadow-xl: 0 24px 48px rgba(59, 130, 246, 0.2);
-  }
-
-  .ag-root {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: var(--bg);
-    font-family: var(--font-ui);
-    color: var(--text);
-  }
-
-  /* ── Map ── */
-  .ag-map {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-  }
-  .leaflet-tile-pane {
-    filter: brightness(1) saturate(1) hue-rotate(0deg);
-  }
-  .leaflet-control-attribution,
-  .leaflet-control-zoom { display: none !important; }
-
-  /* ── Bottom Sheet ── */
-  .ag-sheet {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 20;
-    background: var(--panel);
-    border-top: 1px solid var(--border2);
-    border-radius: 28px 28px 0 0;
-    max-height: 88vh;
-    display: flex;
-    flex-direction: column;
-    touch-action: none;
-    user-select: none;
-    transition: transform 0.2s ease-out;
-    box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.12);
-    backdrop-filter: blur(20px);
-  }
-
-  .ag-sheet-handle {
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    cursor: grab;
-    gap: 8px;
-  }
-
-  .ag-sheet-handle::before {
-    content: '';
-    width: 40px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--border2);
-  }
-
-  .ag-sheet-handle:active {
-    cursor: grabbing;
-  }
-
-  .ag-sheet {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    opacity: 1;
-  }
-
-  .ag-sheet-content {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .ag-sheet-content::-webkit-scrollbar { width: 3px; }
-  .ag-sheet-content::-webkit-scrollbar-track { background: transparent; }
-  .ag-sheet-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
-
-  /* ── Search box in sheet ── */
-  .ag-search {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    border-radius: 16px;
-    background: #ffffff;
-    border: 1.5px solid #e5e7eb;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-md);
-    backdrop-filter: blur(10px);
-  }
-  .ag-search:focus-within {
-    border-color: #3b82f6;
-    box-shadow: var(--shadow-lg), 0 0 20px rgba(59, 130, 246, 0.25);
-    transform: translateY(-2px);
-  }
-  .ag-search-icon { font-size: 18px; color: #3b82f6; flex-shrink: 0; }
-  .ag-search input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-size: 14px;
-    font-weight: 500;
-    color: #1f2937;
-    font-family: var(--font-ui);
-    min-width: 0;
-  }
-  .ag-search input::placeholder { color: #d1d5db; }
-  .ag-search-btn {
-    flex-shrink: 0;
-    padding: 10px 16px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 700;
-    font-family: var(--font-ui);
-    color: #fff;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: var(--shadow-md);
-  }
-  .ag-search-btn:hover { 
-    opacity: 1;
-    box-shadow: var(--shadow-lg), 0 0 20px rgba(59, 130, 246, 0.4);
-    transform: translateY(-2px);
-  }
-  .ag-search-btn:active { transform: translateY(0); }
-
-  /* ── Desktop Search Bar Constraints ── */
-  @media (min-width: 769px) {
-    .ag-search {
-      position: fixed !important;
-      top: 16px !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
-      max-width: 50vw !important;
-      z-index: 100 !important;
-      margin: 0 !important;
-      right: auto !important;
-      bottom: auto !important;
-    }
-    .ag-search-btn {
-      padding: 10px 18px;
-      gap: 8px;
-      font-size: 14px;
-    }
-
-    /* Desktop: Sidebar instead of bottom sheet */
-    .ag-sheet {
-      position: fixed !important;
-      right: 0 !important;
-      top: 0 !important;
-      bottom: 0 !important;
-      left: auto !important;
-      width: 450px !important;
-      height: 100vh !important;
-      max-height: 100vh !important;
-      border-radius: 0 !important;
-      border: none !important;
-      border-left: 1px solid var(--border2) !important;
-      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15) !important;
-      transform: none !important;
-    }
-
-    .ag-sheet-handle {
-      display: none !important;
-    }
-
-    .ag-content {
-      padding: 20px 20px 20px;
-    }
-
-    .ag-list {
-      gap: 12px;
-    }
-
-    .ag-card {
-      border-radius: 14px;
-      padding: 14px;
-    }
-
-    .ag-card-badge {
-      width: 48px;
-      height: 48px;
-      font-size: 14px;
-    }
-
-    .ag-card-name {
-      font-size: 13px;
-    }
-
-    .ag-card-price {
-      font-size: 14px;
-    }
-
-    .ag-book-btn {
-      padding: 10px 0;
-      font-size: 12px;
-    }
-
-    .ag-transit {
-      border-radius: 12px;
-      padding: 12px 14px;
-    }
-
-    .ag-stats {
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .ag-stat {
-      border-radius: 10px;
-      padding: 10px 12px;
-    }
-
-    .ag-progress-wrap {
-      margin-bottom: 12px;
-    }
-
-    .ag-info-row {
-      padding: 9px 12px;
-      font-size: 11px;
-    }
-
-    .ag-idle {
-      padding: 40px 28px 28px;
-    }
-
-    .ag-results-header {
-      padding: 8px 0 10px;
-    }
-
-    .ag-tabs {
-      padding: 0 0 10px;
-    }
-  }
-
-  /* ── Content area ── */
-  .ag-content {
-    display: flex;
-    flex-direction: column;
-    padding: 0 20px 20px;
-  }
-
-  /* ── Idle hint ── */
-  .ag-idle {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 28px 28px;
-    text-align: center;
-    gap: 8px;
-  }
-  .ag-idle-icon {
-    font-size: 36px;
-    margin-bottom: 6px;
-    opacity: 0.5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .ag-idle p {
-    font-size: 13px;
-    color: var(--text3);
-    line-height: 1.75;
-  }
-  .ag-idle strong { color: var(--text2); font-weight: 600; }
-
-  /* ── Results header ── */
-  .ag-results-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 0 12px;
-    flex-shrink: 0;
-  }
-  .ag-live-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--cyan);
-    animation: blink 1.6s ease-in-out infinite;
-    flex-shrink: 0;
-    box-shadow: 0 0 6px rgba(59,130,246,0.6);
-  }
-  .ag-results-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    color: var(--text2);
-  }
-  .ag-back-btn {
-    font-size: 11px;
-    font-weight: 600;
-    color: #ff4d6d;
-    background: none;
-    border: 1.5px solid #ffcdd2;
-    border-radius: 8px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-family: var(--font-ui);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .ag-back-btn:hover { 
-    color: #ff3860;
-    border-color: #ff6b9d;
-    background: rgba(255,77,109,0.08);
-    box-shadow: var(--shadow-sm);
-  }
-
-  /* ── Tabs ── */
-  .ag-tabs {
-    display: flex;
-    gap: 6px;
-    padding: 0 0 12px;
-    flex-shrink: 0;
-  }
-  .ag-tab {
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: var(--font-ui);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1.5px solid var(--border);
-    background: transparent;
-    color: var(--text3);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .ag-tab:hover {
-    border-color: var(--border2);
-    color: var(--text2);
-  }
-  .ag-tab.active {
-    background: linear-gradient(135deg, var(--surface2) 0%, rgba(59,130,246,0.08) 100%);
-    border-color: #3b82f6;
-    color: var(--text);
-    box-shadow: var(--shadow-sm);
-  }
-
-  /* ── Card list ── */
-  .ag-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  /* ── Direct card ── */
-  .ag-card {
-    border-radius: 16px;
-    padding: 18px;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
-    border: 1.5px solid #e5e7eb;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: default;
-    box-shadow: var(--shadow-md);
-    position: relative;
-    overflow: hidden;
-  }
-  .ag-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), transparent);
-    pointer-events: none;
-  }
-  .ag-card:hover { 
-    border-color: #3b82f6;
-    box-shadow: var(--shadow-xl);
-    transform: translateY(-4px);
-  }
-  .ag-card-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-  .ag-card-badge {
-    width: 56px; height: 56px; border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: 900;
-    font-family: var(--font-mono);
-    flex-shrink: 0;
-    box-shadow: var(--shadow-md);
-    position: relative;
-    z-index: 1;
-  }
-  .ag-card-info { flex: 1; min-width: 0; }
-  .ag-card-name {
-    font-size: 15px; font-weight: 800; color: #1f2937;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-bottom: 6px;
-    letter-spacing: -0.3px;
-  }
-  .ag-card-meta {
-    font-size: 12px; color: #6b7280;
-    font-family: var(--font-ui);
-    line-height: 1.5;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .ag-card-price-block { 
-    display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0;
-  }
-  .ag-card-price { 
-    font-size: 16px; font-weight: 800; color: #3b82f6;
-    letter-spacing: -0.3px;
-  }
-  .ag-card-eta { 
-    font-size: 13px; font-weight: 600; margin-top: 4px; color: #6b7280;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .ag-card-dist { 
-    font-size: 12px; color: #9ca3af; margin-top: 2px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  /* ── Seat bar ── */
-  .ag-seats { margin-bottom: 14px; }
-  .ag-seats-row { display: flex; gap: 5px; margin-bottom: 10px; }
-  .ag-seat { width: 16px; height: 7px; border-radius: 4px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-  .ag-seats-label { font-size: 11px; color: #6b7280; font-weight: 500; }
-
-  /* ── Book btn ── */
-  .ag-book-btn {
-    width: 100%;
-    padding: 14px 0;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 700;
-    font-family: var(--font-ui);
-    letter-spacing: 0.02em;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    border: none;
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-md);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .ag-book-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-  }
-  .ag-book-btn:hover:not(:disabled) {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-lg), 0 8px 20px rgba(59, 130, 246, 0.4);
-  }
-  .ag-book-btn:hover:not(:disabled)::before {
-    left: 100%;
-  }
-  .ag-book-btn:active:not(:disabled) {
-    transform: translateY(-1px);
-  }
-  .ag-book-btn:disabled { 
-    opacity: 0.5; 
-    cursor: not-allowed;
-    box-shadow: var(--shadow-sm);
-  }
-
-  /* ── Transit card ── */
-  .ag-transit {
-    border-radius: 14px;
-    padding: 14px 16px;
-    background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(59,130,246,0.06));
-    border: 1.5px solid rgba(168,85,247,0.25);
-    box-shadow: var(--shadow-sm);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .ag-transit:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
-    border-color: rgba(168,85,247,0.35);
-  }
-  .ag-transit-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--purple);
-    margin-bottom: 9px;
-  }
-  .ag-transit-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .ag-transit-legs {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .ag-leg-chip {
-    padding: 5px 11px;
-    border-radius: 8px;
-    font-size: 11.5px;
-    font-weight: 700;
-    font-family: var(--font-mono);
-    background: var(--surface2);
-    color: var(--text2);
-    box-shadow: var(--shadow-sm);
-  }
-  .ag-leg-transit {
-    padding: 5px 11px;
-    border-radius: 8px;
-    font-size: 10px;
-    font-weight: 700;
-    background: rgba(168,85,247,0.15);
-    border: 1.5px solid rgba(168,85,247,0.35);
-    color: var(--purple);
-  }
-  .ag-leg-arrow { font-size: 13px; color: var(--text3); }
-
-  /* ── Tracking panel ── */
-  .ag-tracking {
-    display: flex;
-    flex-direction: column;
-  }
-  .ag-tracking-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 0 14px;
-    flex-shrink: 0;
-    border-bottom: 1.5px solid var(--border);
-    margin-bottom: 14px;
-  }
-  .ag-tracking-title-row {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-  }
-  .ag-tracking-badge {
-    width: 44px; height: 44px; border-radius: 13px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 800;
-    font-family: var(--font-mono);
-    flex-shrink: 0;
-    box-shadow: var(--shadow-sm);
-  }
-  .ag-tracking-name { font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.2; }
-  .ag-tracking-sub { font-size: 10.5px; color: var(--text3); font-family: var(--font-mono); margin-top: 3px; }
-  .ag-cancel-btn {
-    width: 30px; height: 30px; border-radius: 9px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; background: rgba(255,77,109,0.12);
-    border: 1.5px solid rgba(255,77,109,0.3); color: var(--red);
-    cursor: pointer; flex-shrink: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .ag-cancel-btn:hover { 
-    background: rgba(255,77,109,0.2);
-    border-color: rgba(255,77,109,0.4);
-    box-shadow: var(--shadow-sm);
-    transform: translateY(-1px);
-  }
-
-  /* ── Stats grid ── */
-  .ag-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    padding: 0;
-    flex-shrink: 0;
-    margin-bottom: 14px;
-  }
-  .ag-stat {
-    border-radius: 12px;
-    padding: 12px 14px;
-    background: linear-gradient(135deg, var(--surface) 0%, rgba(59,130,246,0.04) 100%);
-    border: 1.5px solid var(--border);
-    box-shadow: var(--shadow-sm);
-    transition: all 0.3s ease;
-  }
-  .ag-stat:hover {
-    border-color: var(--border2);
-    box-shadow: var(--shadow-md);
-  }
-  .ag-stat-label {
-    font-size: 9.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text3);
-    margin-bottom: 5px;
-  }
-  .ag-stat-val { font-size: 18px; font-weight: 700; font-family: var(--font-mono); }
-  .ag-stat-sm  { font-size: 13px; font-weight: 700; }
-  .ag-stat-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 7px;
-    font-size: 10px;
-    font-weight: 700;
-  }
-
-  /* ── Progress bar ── */
-  .ag-progress-wrap {
-    padding: 0;
-    flex-shrink: 0;
-    margin-bottom: 14px;
-  }
-  .ag-progress-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10.5px;
-    color: var(--text3);
-    margin-bottom: 8px;
-  }
-  .ag-progress-track {
-    height: 6px;
-    border-radius: 6px;
-    background: var(--surface2);
-    overflow: hidden;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-  .ag-progress-fill {
-    height: 100%;
-    border-radius: 6px;
-    background: linear-gradient(90deg, #3b82f6, #a855f7);
-    transition: width 1s linear;
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
-  }
-
-  /* ── Tracking footer note ── */
-  .ag-tracking-note {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding-bottom: 20px;
-  }
-  .ag-info-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 11px 14px;
-    border-radius: 11px;
-    background: linear-gradient(135deg, var(--surface) 0%, rgba(59,130,246,0.04) 100%);
-    border: 1.5px solid var(--border);
-    font-size: 12px;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.3s ease;
-  }
-  .ag-info-row:hover {
-    border-color: var(--border2);
-    box-shadow: var(--shadow-md);
-  }
-  .ag-info-key { color: var(--text3); }
-  .ag-info-val { font-weight: 600; color: var(--text2); font-family: var(--font-mono); font-size: 11.5px; }
-
-  /* ── Notification ── */
-  .ag-notif {
-    position: fixed;
-    top: 14px;
-    left: 16px;
-    right: 16px;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.98);
-    border: 1.5px solid rgba(59,130,246,0.35);
-    box-shadow: var(--shadow-lg), 0 12px 40px rgba(59,130,246,0.2);
-    backdrop-filter: blur(12px);
-  }
-  .ag-notif-icon {
-    width: 40px; height: 40px; border-radius: 11px;
-    display: flex; align-items: center; justify-content: center; 
-    font-size: 18px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(168, 85, 247, 0.1));
-    border: 1.5px solid rgba(59,130,246,0.3);
-    flex-shrink: 0;
-  }
-  .ag-notif-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
-  .ag-notif-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
-  .ag-notif-close {
-    background: none; border: none; color: var(--text3);
-    cursor: pointer; padding: 4px; flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-  .ag-notif-close:hover {
-    color: var(--text);
-  }
-
-  /* ── Pill badge ── */
-  .ag-pill {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 9px;
-    border-radius: 7px;
-    margin-left: 7px;
-    vertical-align: middle;
-    letter-spacing: 0.03em;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.2; }
-  }
-  @keyframes notifIn {
-    from { opacity: 0; transform: translateY(-12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes notifOut {
-    from { opacity: 1; transform: translateY(0); }
-    to   { opacity: 0; transform: translateY(-12px); }
-  }
-  .notif-in  { animation: notifIn  0.35s cubic-bezier(0.16,1,0.3,1) forwards; }
-  .notif-out { animation: notifOut 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
-  @keyframes fadeSlide {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .fade-slide { animation: fadeSlide 0.35s cubic-bezier(0.16,1,0.3,1) forwards; }
-
-  /* ── Mobile Responsive ── */
-  @media (max-width: 768px) {
-    :root {
-      --sidebar-w: 100vw;
-    }
-
-    .ag-root {
-      flex-direction: column;
-    }
-
-    /* Keep bottom sheet for mobile with smooth dragging */
-    .ag-sheet {
-      position: fixed !important;
-      bottom: 0 !important;
-      top: auto !important;
-      right: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      height: auto !important;
-      max-height: 88vh !important;
-      border-radius: 28px 28px 0 0 !important;
-      border-top: 1px solid var(--border2) !important;
-      border-left: none !important;
-      border-right: none !important;
-      border-bottom: none !important;
-      box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.12) !important;
-      transform: translateY(0) !important;
-      will-change: transform;
-      touch-action: none;
-    }
-
-    .ag-sheet-handle {
-      display: flex !important;
-      height: 24px;
-      cursor: grab;
-      touch-action: none;
-      gap: 8px;
-    }
-
-    .ag-sheet-handle:active {
-      cursor: grabbing;
-    }
-
-    .ag-sidebar.mobile-open {
-      transform: translateX(0);
-    }
-
-    .ag-sidebar-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 25;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    .ag-sidebar-overlay.mobile-open {
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    .ag-hamburger {
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      z-index: 35;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.95);
-      border: 1.5px solid var(--border2);
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      padding: 0;
-      box-shadow: var(--shadow-md);
-    }
-
-    .ag-hamburger:hover {
-      background: rgba(255, 255, 255, 1);
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-2px);
-    }
-
-    .ag-hamburger-line {
-      width: 20px;
-      height: 14px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    .ag-hamburger-line span {
-      width: 100%;
-      height: 2px;
-      background: #3b82f6;
-      border-radius: 1px;
-      transition: all 0.3s ease;
-    }
-
-    .ag-hamburger.open span:nth-child(1) {
-      transform: rotate(45deg) translate(8px, 8px);
-    }
-
-    .ag-hamburger.open span:nth-child(2) {
-      opacity: 0;
-    }
-
-    .ag-hamburger.open span:nth-child(3) {
-      transform: rotate(-45deg) translate(7px, -7px);
-    }
-
-    .ag-logo {
-      padding: 20px 16px 0;
-    }
-
-    .ag-logo-icon {
-      width: 32px;
-      height: 32px;
-      font-size: 16px;
-    }
-
-    .ag-logo-title {
-      font-size: 16px;
-    }
-
-    .ag-logo-sub {
-      font-size: 9px;
-    }
-
-    .ag-search {
-      margin: 0 16px;
-      padding: 10px 14px;
-      font-size: 13px;
-    }
-
-    .ag-search-icon {
-      font-size: 16px;
-    }
-
-    .ag-search input {
-      font-size: 13px;
-    }
-
-    .ag-search-btn {
-      font-size: 12px;
-      padding: 7px 12px;
-    }
-
-    .ag-divider {
-      margin: 12px 16px;
-    }
-
-    .ag-idle {
-      padding: 20px 20px;
-    }
-
-    .ag-idle-icon {
-      font-size: 28px;
-      margin-bottom: 4px;
-    }
-
-    .ag-idle p {
-      font-size: 12px;
-    }
-
-    .ag-content {
-      padding: 0 20px 20px !important;
-    }
-
-    .ag-results-header {
-      padding: 12px 16px 8px;
-    }
-
-    .ag-results-label {
-      font-size: 10px;
-    }
-
-    .ag-back-btn {
-      font-size: 10px;
-      padding: 4px 8px;
-    }
-
-    .ag-tabs {
-      gap: 4px;
-      padding: 0 16px 8px;
-    }
-
-    .ag-tab {
-      padding: 5px 12px;
-      font-size: 11px;
-    }
-
-    .ag-list {
-      padding: 0 16px 16px;
-      gap: 8px;
-    }
-
-    .ag-card {
-      border-radius: 12px;
-      padding: 12px;
-    }
-
-    .ag-card-head {
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .ag-card-badge {
-      width: 36px;
-      height: 36px;
-      font-size: 10px;
-    }
-
-    .ag-card-name {
-      font-size: 12px;
-      margin-bottom: 2px;
-    }
-
-    .ag-card-meta {
-      font-size: 9px;
-    }
-
-    .ag-card-price {
-      font-size: 12px;
-    }
-
-    .ag-card-eta,
-    .ag-card-dist {
-      font-size: 10px;
-    }
-
-    .ag-seats {
-      margin-bottom: 8px;
-    }
-
-    .ag-seats-row {
-      margin-bottom: 3px;
-    }
-
-    .ag-seat {
-      width: 11px;
-      height: 4px;
-    }
-
-    .ag-seats-label {
-      font-size: 9px;
-    }
-
-    .ag-book-btn {
-      padding: 8px 0;
-      font-size: 11px;
-    }
-
-    .ag-transit {
-      border-radius: 12px;
-      padding: 11px 12px;
-    }
-
-    .ag-transit-label {
-      font-size: 9px;
-      margin-bottom: 7px;
-    }
-
-    .ag-transit-row {
-      gap: 8px;
-    }
-
-    .ag-leg-chip,
-    .ag-leg-transit {
-      font-size: 10px;
-      padding: 3px 7px;
-    }
-
-    .ag-tracking-head {
-      padding: 12px 16px 10px;
-    }
-
-    .ag-tracking-title-row {
-      gap: 8px;
-    }
-
-    .ag-tracking-badge {
-      width: 36px;
-      height: 36px;
-      font-size: 11px;
-    }
-
-    .ag-tracking-name {
-      font-size: 12px;
-    }
-
-    .ag-tracking-sub {
-      font-size: 9px;
-      margin-top: 2px;
-    }
-
-    .ag-cancel-btn {
-      width: 28px;
-      height: 28px;
-      font-size: 12px;
-    }
-
-    .ag-stats {
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 6px;
-      padding: 12px 16px;
-    }
-
-    .ag-stat {
-      border-radius: 10px;
-      padding: 8px 10px;
-    }
-
-    .ag-stat-label {
-      font-size: 8px;
-      margin-bottom: 4px;
-    }
-
-    .ag-stat-val {
-      font-size: 15px;
-    }
-
-    .ag-stat-sm {
-      font-size: 11px;
-    }
-
-    .ag-stat-badge {
-      font-size: 9px;
-      padding: 2px 6px;
-    }
-
-    .ag-progress-wrap {
-      padding: 0 16px 12px;
-    }
-
-    .ag-progress-row {
-      font-size: 9px;
-      margin-bottom: 5px;
-    }
-
-    .ag-progress-track {
-      height: 4px;
-    }
-
-    .ag-tracking-note {
-      padding: 0 16px;
-      gap: 6px;
-    }
-
-    .ag-info-row {
-      padding: 8px 10px;
-      border-radius: 9px;
-      font-size: 11px;
-    }
-
-    .ag-info-val {
-      font-size: 10px;
-    }
-
-    .ag-notif {
-      left: 12px;
-      right: 12px;
-      top: 70px;
-      z-index: 40;
-      gap: 10px;
-      padding: 11px 13px;
-      border-radius: 12px;
-      font-size: 11px;
-    }
-
-    .ag-notif-icon {
-      width: 32px;
-      height: 32px;
-      font-size: 14px;
-    }
-
-    .ag-notif-title {
-      font-size: 11px;
-    }
-
-    .ag-notif-sub {
-      font-size: 10px;
-      margin-top: 2px;
-    }
-
-    .ag-notif-close {
-      font-size: 13px;
-    }
-
-    .ag-pill {
-      font-size: 8px;
-      padding: 1px 5px;
-      margin-left: 3px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .ag-logo-title {
-      font-size: 14px;
-    }
-
-    .ag-logo-sub {
-      font-size: 8px;
-    }
-
-    .ag-card-head {
-      flex-wrap: wrap;
-    }
-
-    .ag-card-price-block {
-      width: 100%;
-      text-align: left;
-      padding-top: 4px;
-      border-top: 1px solid var(--border);
-    }
-
-    .ag-stats {
-      grid-template-columns: 1fr;
-      gap: 8px;
-    }
-
-    .ag-transit-row {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .ag-transit-legs {
-      width: 100%;
-      flex-wrap: wrap;
-    }
-
-    .ag-transit-legs > * {
-      flex-shrink: 0;
-    }
-  }
-`;
-
 const fmtEta  = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 const fmtRp   = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
 const fmtTime = (s: number) => {
@@ -1302,15 +75,12 @@ const generateCurvedRoute = (from: [number, number], to: [number, number]): [num
   const latDiff = to[0] - from[0];
   const lngDiff = to[1] - from[1];
   
-  // Create intermediate points for a natural curve
   const segments = 8;
   for (let i = 1; i < segments; i++) {
     const t = i / segments;
-    // Base position
     const lat = from[0] + latDiff * t;
     const lng = from[1] + lngDiff * t;
     
-    // Add perpendicular offset for natural curve (like roads do)
     const offsetAmount = Math.sin(t * Math.PI) * 0.004;
     const angle = Math.atan2(latDiff, lngDiff);
     const perpLat = lat + Math.cos(angle) * offsetAmount;
@@ -1322,7 +92,6 @@ const generateCurvedRoute = (from: [number, number], to: [number, number]): [num
   return points;
 };
 
-// Get position along curved route by progress percentage
 const getPositionOnRoute = (from: [number, number], to: [number, number], progress: number): [number, number] => {
   const waypoints = generateCurvedRoute(from, to);
   const index = (progress / 100) * (waypoints.length - 1);
@@ -1367,17 +136,20 @@ function svgDest(): string {
 function SeatBar({ filled, total, color }: { filled: number; total: number; color: string }) {
   const left = total - filled;
   return (
-    <div className="ag-seats">
-      <div className="ag-seats-row">
+    <div className="mb-3">
+      <div className="flex gap-1 mb-2.5">
         {Array.from({ length: total }).map((_, i) => (
-          <div key={i} className="ag-seat" style={{
+          <div key={i} className="rounded" style={{
+            width: '16px',
+            height: '7px',
             background: i < filled ? '#d1d5db' : color,
             opacity: i < filled ? 0.6 : 1,
             boxShadow: i >= filled ? `0 0 6px ${color}66` : undefined,
+            transition: 'all 0.2s',
           }} />
         ))}
       </div>
-      <div className="ag-seats-label">
+      <div className="text-xs text-gray-500 font-medium">
         <strong>{filled}</strong> terisi, <strong>{left}</strong> tersedia dari <strong>{total}</strong> kursi
       </div>
     </div>
@@ -1387,45 +159,49 @@ function SeatBar({ filled, total, color }: { filled: number; total: number; colo
 function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) => void }) {
   const left = a.maxCapacity - a.capacity;
   return (
-    <div className="ag-card">
-      <div className="ag-card-head">
-        <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
-          <div className="ag-card-badge" style={{ background: `${a.color}18`, border: `1px solid ${a.color}44`, color: a.color }}>
+    <div className="rounded-2xl p-4 md:p-3 bg-linear-to-br from-white to-blue-50 border border-gray-200 transition-all duration-300 cursor-default shadow-md md:shadow-sm hover:border-blue-500 hover:shadow-2xl hover:md:shadow-lg hover:-translate-y-1 md:hover:-translate-y-0.5 relative overflow-hidden">
+      <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 to-transparent pointer-events-none" />
+      <div className="flex gap-3 mb-3 md:gap-3 md:mb-3 items-start justify-between">
+        <div className="flex gap-3 flex-1 min-w-0">
+          <div 
+            className="w-14 md:w-12 h-14 md:h-12 rounded-3 md:rounded-3 flex items-center justify-center shrink-0 shadow-md md:shadow-sm font-black text-lg md:text-sm relative z-10"
+            style={{ background: `${a.color}18`, border: `1px solid ${a.color}44`, color: a.color }}
+          >
             {a.id}
           </div>
-          <div className="ag-card-info">
-            <div className="ag-card-name">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm md:text-xs font-black text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis mb-1 md:mb-0.5">
               {a.name}
-              {left === 0 && <span className="ag-pill" style={{ background: '#fee2e2', color: '#991b1b' }}>PENUH</span>}
-              {left >= 8 && <span className="ag-pill" style={{ background: '#dbeafe', color: '#1e40af' }}>TERSEDIA</span>}
+              {left === 0 && <span className="inline-block text-xs font-bold px-2 py-0.75 rounded ml-1" style={{ background: '#fee2e2', color: '#991b1b' }}>PENUH</span>}
+              {left >= 8 && <span className="inline-block text-xs font-bold px-2 py-0.75 rounded ml-1" style={{ background: '#dbeafe', color: '#1e40af' }}>TERSEDIA</span>}
             </div>
-            <div className="ag-card-meta" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div className="flex gap-2 items-center flex-wrap text-xs text-gray-500 mt-1.5">
+              <span className="flex items-center gap-1">
                 <MdDirectionsCar size={14} /> {a.plate}
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className="flex items-center gap-1">
                 <MdPersonOutline size={14} /> {a.driver}
               </span>
             </div>
           </div>
         </div>
-        <div className="ag-card-price-block">
-          <div className="ag-card-price">{fmtRp(a.price)}</div>
-          <div className="ag-card-eta" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div className="flex flex-col items-end shrink-0">
+          <div className="text-base font-black text-blue-500">{fmtRp(a.price)}</div>
+          <div className="flex items-center gap-1 font-semibold text-xs text-gray-500 mt-1">
             <MdSchedule size={14} /> {a.eta} min
           </div>
-          <div className="ag-card-dist" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
             <MdLocationOn size={14} /> {a.distance}m
           </div>
         </div>
       </div>
       <SeatBar filled={a.capacity} total={a.maxCapacity} color={a.color} />
       <button
-        className="ag-book-btn"
+        className="w-full py-3 px-0 rounded-xl text-sm font-bold text-white bg-linear-to-r from-blue-500 to-blue-600 border-none cursor-pointer transition-all duration-300 shadow-md relative overflow-hidden flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-sm hover:enabled:-translate-y-0.75 hover:enabled:shadow-lg"
         disabled={left === 0}
         onClick={() => onBook(a)}
       >
-        {left > 0 ? <><MdCheckCircle style={{ marginRight: 6 }} /> Pesan Sekarang</> : <><MdError style={{ marginRight: 6 }} /> Penuh</>}
+        {left > 0 ? <><MdCheckCircle className="shrink-0" /> Pesan Sekarang</> : <><MdError className="shrink-0" /> Penuh</>}
       </button>
     </div>
   );
@@ -1433,21 +209,21 @@ function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) 
 
 function TransitCard({ a }: { a: TransitAngkot }) {
   return (
-    <div className="ag-transit">
-      <div className="ag-transit-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div className="rounded-2xl p-3.5 bg-linear-to-br from-purple-50/50 to-blue-50/30 border border-purple-200/25 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-purple-300/35">
+      <div className="flex items-center gap-1.5 mb-2.5 text-xs font-bold text-purple-500 uppercase tracking-wider">
         <FaExchangeAlt size={12} /> Rute Transit · Ganti di Pertigaan
       </div>
-      <div className="ag-transit-row">
-        <div className="ag-transit-legs">
-          <span className="ag-leg-chip">{a.legs[0]}</span>
-          <span className="ag-leg-arrow">→</span>
-          <span className="ag-leg-transit">Transit</span>
-          <span className="ag-leg-arrow">→</span>
-          <span className="ag-leg-chip">{a.legs[1]}</span>
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="px-2.75 py-1.25 rounded-2 font-bold text-xs bg-blue-100/80 text-gray-600 shadow-sm">{a.legs[0]}</span>
+          <span className="text-xs text-gray-400">→</span>
+          <span className="px-2.75 py-1.25 rounded-2 font-bold text-xs bg-purple-100/60 border border-purple-300/35 text-purple-500">Transit</span>
+          <span className="text-xs text-gray-400">→</span>
+          <span className="px-2.75 py-1.25 rounded-2 font-bold text-xs bg-blue-100/80 text-gray-600 shadow-sm">{a.legs[1]}</span>
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{fmtRp(a.price)}</div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--purple)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+        <div className="text-right shrink-0">
+          <div className="text-sm font-bold text-gray-900">{fmtRp(a.price)}</div>
+          <div className="flex items-center gap-1 font-bold text-xs text-purple-500 mt-0.5 justify-end">
             <MdSchedule size={12} /> {a.eta} mnt
           </div>
         </div>
@@ -1478,18 +254,20 @@ export default function AngkotGoPage() {
   const [notif, setNotif]       = useState<{ title: string; sub: string } | null>(null);
   const [notifVis, setNotifVis] = useState(false);
   const [leafletReady, setLeafletReady] = useState(false);
-  const [sheetHeight, setSheetHeight] = useState(40); // 40% of viewport
+  const [sheetHeight, setSheetHeight] = useState(40);
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ y: number; height: number } | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
-    if (!document.getElementById('angkotgo-styles')) {
-      const style = document.createElement('style');
-      style.id = 'angkotgo-styles';
-      style.textContent = GLOBAL_CSS;
-      document.head.appendChild(style);
-    }
+    const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Load Leaflet library
+  useEffect(() => {
     if ((window as any).L) { setLeafletReady(true); return; }
     const existing = document.getElementById('leaflet-script');
     if (existing) { existing.addEventListener('load', () => setLeafletReady(true)); return; }
@@ -1501,6 +279,7 @@ export default function AngkotGoPage() {
     document.head.appendChild(script);
   }, []);
 
+  // Initialize map
   useEffect(() => {
     if (!leafletReady || !mapDivRef.current || mapRef.current) return;
     const L = (window as any).L as typeof import('leaflet');
@@ -1520,6 +299,7 @@ export default function AngkotGoPage() {
     const L = (window as any).L as typeof import('leaflet');
     return L.divIcon({ html: svgAngkot(a), className: '', iconSize: [64, 46], iconAnchor: [32, 46] });
   }, []);
+  
   const makeDestIcon = useCallback(() => {
     const L = (window as any).L as typeof import('leaflet');
     return L.divIcon({ html: svgDest(), className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
@@ -1574,7 +354,7 @@ export default function AngkotGoPage() {
     destMkRef.current?.remove(); destMkRef.current = null;
     routeRef.current?.remove();  routeRef.current = null;
     if (animRef.current) clearInterval(animRef.current);
-    // Draw route line in tracking mode
+    
     if (mapRef.current) {
       const L = (window as any).L as typeof import('leaflet');
       routeRef.current = L.polyline(generateCurvedRoute(MALANG.userPos, MALANG.destPos), {
@@ -1600,7 +380,6 @@ export default function AngkotGoPage() {
         const next = prev - 1;
         if (next <= 0) { clearInterval(etaTimerRef.current!); return 0; }
         
-        // Update angkot position along route
         if (mapRef.current && angkotMkRef.current.has(bookedRef.current!.id)) {
           const currentProgress = etaMaxRef.current > 0
             ? Math.round((1 - next / etaMaxRef.current) * 100)
@@ -1639,6 +418,9 @@ export default function AngkotGoPage() {
   }, []);
 
   const handleSheetDragStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Only allow drag on mobile
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
+    
     dragStartRef.current = { y: e.clientY, height: sheetHeight };
     const onMove = (moveEvent: PointerEvent) => {
       if (!dragStartRef.current) return;
@@ -1650,12 +432,10 @@ export default function AngkotGoPage() {
       dragStartRef.current = null;
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onEnd);
-      // If dragged down far enough (below -20%), dismiss the sheet
       if (sheetHeight < -20) {
         cancelBooking();
         return;
       }
-      // Snap to nearest point: 30% (hidden), 50% (mid), 88% (full)
       if (sheetHeight < 40) {
         setSheetHeight(30);
       } else if (sheetHeight < 70) {
@@ -1668,11 +448,6 @@ export default function AngkotGoPage() {
     document.addEventListener('pointerup', onEnd);
   }, [sheetHeight, cancelBooking]);
 
-  useEffect(() => () => {
-    if (animRef.current)    clearInterval(animRef.current);
-    if (etaTimerRef.current) clearInterval(etaTimerRef.current);
-  }, []);
-
   const listItems = tab === 'tercepat'
     ? [...angkots].sort((a, b) => a.eta - b.eta).slice(0, 3)
     : angkots;
@@ -1682,89 +457,110 @@ export default function AngkotGoPage() {
     : 0;
 
   const statusLabel = eta > 30
-    ? { text: 'Berjalan',  bg: 'rgba(34,211,107,0.14)',  fg: 'var(--green)'  }
+    ? { text: 'Berjalan',  bg: 'rgba(34,211,107,0.14)',  fg: '#22d36b'  }
     : eta > 0
-    ? { text: 'Mendekat',  bg: 'rgba(255,122,47,0.14)',  fg: 'var(--orange)' }
-    : { text: 'Tiba!',     bg: 'rgba(0,229,255,0.14)',   fg: 'var(--cyan)'   };
+    ? { text: 'Mendekat',  bg: 'rgba(255,122,47,0.14)',  fg: '#ff7a2f' }
+    : { text: 'Tiba!',     bg: 'rgba(0,229,255,0.14)',   fg: '#3b82f6'   };
 
   return (
-    <div className="ag-root">
+    <div className="relative w-screen h-screen overflow-hidden bg-white text-gray-900">
       {/* Map */}
-      <div ref={mapDivRef} className="ag-map" />
+      <div ref={mapDivRef} className="absolute inset-0 z-0" />
 
       {/* Fixed Search Bar */}
-      <div className="ag-search" style={{ position: 'fixed', top: 16, left: 16, right: 16, zIndex: 30 }}>
-        <IoLocationSharp className="ag-search-icon" />
+      <div className="fixed top-4 left-4 right-4 z-30 md:left-1/2 md:right-auto md:top-6 md:w-[400px] md:-translate-x-1/2 flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-gray-200 transition-all duration-300 shadow-md focus-within:border-blue-500 focus-within:shadow-lg focus-within:-translate-y-0.5">
+        <IoLocationSharp className="text-lg text-blue-500 shrink-0" />
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && doSearch()}
           placeholder="Mau ke mana hari ini?"
+          className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-gray-900 placeholder-gray-300 min-w-0"
         />
-        <button className="ag-search-btn" onClick={doSearch}>
-          <IoSearch style={{ fontSize: 16 }} />
+        <button 
+          className="shrink-0 px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-linear-to-r from-blue-500 to-blue-600 border-none cursor-pointer transition-all duration-300 shadow-md flex items-center gap-1.5 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 whitespace-nowrap"
+          onClick={doSearch}
+        >
+          <IoSearch className="text-base" />
           Cari
         </button>
       </div>
 
-      {/* Bottom Sheet */}
+      {/* Bottom Sheet / Sidebar */}
       <div
         ref={sheetRef}
-        className="ag-sheet fade-slide"
-        style={{
+        className="fixed bottom-0 left-0 right-0 z-20 md:fixed md:top-0 md:bottom-0 md:right-0 md:left-auto md:w-[400px] md:h-screen bg-white border-t border-gray-200 md:border-t-0 md:border-l rounded-t-7xl md:rounded-none flex flex-col touch-none user-select-none transition-all duration-300 shadow-2xl md:shadow-lg md:backdrop-blur-3xl"
+        style={isDesktop ? {
+          height: '100vh',
+          transform: 'none',
+          maxHeight: 'none',
+          opacity: 1,
+        } : {
           height: `${Math.max(20, sheetHeight)}vh`,
           transform: `translateY(${Math.max(0, 100 - sheetHeight)}vh)`,
           opacity: sheetHeight > -10 ? 1 : Math.max(0, 1 + (sheetHeight + 10) / 10),
+          maxHeight: '88vh',
+          willChange: 'transform',
         }}
       >
         {/* Drag Handle */}
         <div
-          className="ag-sheet-handle"
+          className="h-6 flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing gap-2 md:hidden"
           onPointerDown={handleSheetDragStart}
-          style={{ cursor: 'grab' }}
         >
-          <span style={{ fontSize: 18, color: 'var(--border2)', lineHeight: 1, letterSpacing: '-2px', fontWeight: 700 }}>⋮</span>
+          <span className="text-lg text-gray-300 leading-none font-bold">⋮</span>
         </div>
 
         {/* Sheet Content */}
-        <div className="ag-sheet-content">
-          {/* ── Idle ── */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden md:px-6 md:pt-6 md:pb-8">
+          {/* Idle State */}
           {phase === 'idle' && (
-            <div className="ag-content">
-              <div className="ag-idle">
-                <div className="ag-idle-icon"><FaMap size={36} color="var(--cyan)" /></div>
-                <p>
+            <div className="flex flex-col p-0">
+              <div className="flex-1 flex flex-col items-center justify-center p-5 text-center gap-2">
+                <div className="flex items-center justify-center text-3xl mb-1.5 opacity-50">
+                  <FaMap className="text-blue-500" size={36} />
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
                   Lokasi kamu sudah terdeteksi ✦<br />
-                  <strong>Ketik tujuan</strong> untuk mencari angkot terdekat
+                  <strong className="text-gray-600">Ketik tujuan</strong> untuk mencari angkot terdekat
                 </p>
               </div>
             </div>
           )}
 
-          {/* ── Results ── */}
+          {/* Results State */}
           {phase === 'results' && (
-            <div className="ag-content">
-              <div className="ag-results-header">
-                <div className="ag-results-label">
-                  <span className="ag-live-dot" />
+            <div className="flex flex-col p-0">
+              <div className="flex items-center justify-between p-4 shrink-0">
+                <div className="flex items-center gap-2 text-xs font-bold text-gray-600 uppercase tracking-wider">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 animate-pulse" style={{ boxShadow: '0 0 6px rgba(59,130,246,0.6)' }} />
                   {listItems.length} Rute Tersedia
                 </div>
-                <button className="ag-back-btn" onClick={cancelBooking}>← Batal</button>
+                <button 
+                  className="text-xs font-semibold text-rose-500 bg-transparent border border-rose-200 rounded-lg px-3 py-1.5 cursor-pointer transition-all duration-300 hover:text-rose-600 hover:border-pink-400 hover:bg-rose-50/50 hover:shadow-sm"
+                  onClick={cancelBooking}
+                >
+                  ← Batal
+                </button>
               </div>
 
-              <div className="ag-tabs">
+              <div className="flex gap-1.5 p-4 shrink-0">
                 {(['tercepat', 'semua'] as Tab[]).map(t => (
                   <button
                     key={t}
-                    className={`ag-tab${tab === t ? ' active' : ''}`}
+                    className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all duration-300 border inline-flex items-center gap-1.5 ${
+                      tab === t 
+                        ? 'bg-linear-to-br from-blue-50/50 to-transparent border-blue-500 text-gray-900 shadow-sm' 
+                        : 'border-gray-200 bg-transparent text-gray-400 hover:border-gray-300 hover:text-gray-600'
+                    }`}
                     onClick={() => setTab(t)}
                   >
-                    {t === 'tercepat' ? <><MdFlashOn size={12} style={{ marginRight: 6 }} /> Tercepat</> : 'Semua Rute'}
+                    {t === 'tercepat' ? <><MdFlashOn className="text-sm" /> Tercepat</> : 'Semua Rute'}
                   </button>
                 ))}
               </div>
 
-              <div className="ag-list">
+              <div className="flex flex-col gap-2.5 p-4">
                 {listItems.map((a, i) =>
                   a.type === 'direct'
                     ? <DirectCard key={i} a={a} onBook={bookAngkot} />
@@ -1774,71 +570,86 @@ export default function AngkotGoPage() {
             </div>
           )}
 
-          {/* ── Tracking ── */}
+          {/* Tracking State */}
           {phase === 'tracking' && booked && (
-            <div className="ag-content">
+            <div className="flex flex-col p-0">
               {/* Header */}
-              <div className="ag-tracking-head">
-                <div className="ag-tracking-title-row">
-                  <div className="ag-tracking-badge" style={{ background: `${booked.color}18`, border: `1px solid ${booked.color}44`, color: booked.color }}>
+              <div className="flex items-center justify-between p-4 shrink-0 border-b border-gray-200 mb-3">
+                <div className="flex items-center gap-2.75">
+                  <div 
+                    className="w-11 h-11 rounded-3 flex items-center justify-center shrink-0 shadow-sm font-black text-xs"
+                    style={{ background: `${booked.color}18`, border: `1px solid ${booked.color}44`, color: booked.color }}
+                  >
                     {booked.id}
                   </div>
                   <div>
-                    <div className="ag-tracking-name">{booked.name}</div>
-                    <div className="ag-tracking-sub">{booked.plate} · {booked.driver}</div>
+                    <div className="text-xs font-bold text-gray-900 leading-tight">{booked.name}</div>
+                    <div className="text-xs text-gray-400 mt-0.75 font-mono">{booked.plate} · {booked.driver}</div>
                   </div>
                 </div>
-                <button className="ag-cancel-btn" onClick={cancelBooking} title="Batalkan"><FaTimes size={14} /></button>
+                <button 
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs bg-rose-100/50 border border-rose-300/30 text-rose-500 cursor-pointer shrink-0 transition-all duration-300 hover:bg-rose-200/50 hover:border-rose-400/40 hover:shadow-sm"
+                  onClick={cancelBooking}
+                  title="Batalkan"
+                >
+                  <FaTimes size={14} />
+                </button>
               </div>
 
-              {/* Stats */}
-              <div className="ag-stats">
-                <div className="ag-stat">
-                  <div className="ag-stat-label">ETA</div>
-                  <div className="ag-stat-val" style={{ color: 'var(--cyan)' }}>{fmtEta(eta)}</div>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-2.5 p-4 mb-3 shrink-0">
+                <div className="rounded-2xl p-3 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">ETA</div>
+                  <div className="text-2xl font-black font-mono text-blue-500">{fmtEta(eta)}</div>
                 </div>
-                <div className="ag-stat">
-                  <div className="ag-stat-label">Tiba Pukul</div>
-                  <div className="ag-stat-sm" style={{ color: 'var(--text)', marginTop: 4 }}>{fmtTime(eta)}</div>
+                <div className="rounded-2xl p-3 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Tiba Pukul</div>
+                  <div className="text-xs font-bold text-gray-900 mt-1">{fmtTime(eta)}</div>
                 </div>
-                <div className="ag-stat">
-                  <div className="ag-stat-label">Status</div>
-                  <div style={{ marginTop: 4 }}>
-                    <span className="ag-stat-badge" style={{ background: statusLabel.bg, color: statusLabel.fg }}>
+                <div className="rounded-2xl p-3 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</div>
+                  <div className="mt-1">
+                    <span 
+                      className="inline-block px-2 py-1 rounded-lg text-xs font-bold"
+                      style={{ background: statusLabel.bg, color: statusLabel.fg }}
+                    >
                       {statusLabel.text}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Progress */}
-              <div className="ag-progress-wrap">
-                <div className="ag-progress-row">
+              {/* Progress Bar */}
+              <div className="p-4 mb-3 shrink-0">
+                <div className="flex justify-between text-xs text-gray-400 mb-2">
                   <span>Perjalanan</span>
                   <span>{progress}%</span>
                 </div>
-                <div className="ag-progress-track">
-                  <div className="ag-progress-fill" style={{ width: `${progress}%` }} />
+                <div className="h-1.5 rounded-full bg-blue-100/80 overflow-hidden shadow-inner">
+                  <div 
+                    className="h-full rounded-full bg-linear-to-r from-blue-500 to-purple-500 transition-all duration-1000"
+                    style={{ width: `${progress}%`, boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)' }}
+                  />
                 </div>
               </div>
 
-              {/* Info rows */}
-              <div className="ag-tracking-note">
-                <div className="ag-info-row">
-                  <span className="ag-info-key">Harga</span>
-                  <span className="ag-info-val">{fmtRp(booked.price)}</span>
+              {/* Info Rows */}
+              <div className="flex flex-col gap-2 p-4">
+                <div className="flex items-center justify-between p-2.75 rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-xs shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <span className="text-gray-400">Harga</span>
+                  <span className="font-bold text-gray-600 font-mono text-xs">{fmtRp(booked.price)}</span>
                 </div>
-                <div className="ag-info-row">
-                  <span className="ag-info-key">Jarak</span>
-                  <span className="ag-info-val">{booked.distance} m</span>
+                <div className="flex items-center justify-between p-2.75 rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-xs shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <span className="text-gray-400">Jarak</span>
+                  <span className="font-bold text-gray-600 font-mono text-xs">{booked.distance} m</span>
                 </div>
-                <div className="ag-info-row">
-                  <span className="ag-info-key">Pengemudi</span>
-                  <span className="ag-info-val">{booked.driver}</span>
+                <div className="flex items-center justify-between p-2.75 rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-xs shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <span className="text-gray-400">Pengemudi</span>
+                  <span className="font-bold text-gray-600 font-mono text-xs">{booked.driver}</span>
                 </div>
-                <div className="ag-info-row">
-                  <span className="ag-info-key">Plat</span>
-                  <span className="ag-info-val">{booked.plate}</span>
+                <div className="flex items-center justify-between p-2.75 rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-xs shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md mb-5">
+                  <span className="text-gray-400">Plat</span>
+                  <span className="font-bold text-gray-600 font-mono text-xs">{booked.plate}</span>
                 </div>
               </div>
             </div>
@@ -1848,15 +659,27 @@ export default function AngkotGoPage() {
 
       {/* Notification */}
       {notif && (
-        <div className={`ag-notif ${notifVis ? 'notif-in' : 'notif-out'}`}>
-          <div className="ag-notif-icon"><FaBus size={18} color="var(--cyan)" /></div>
-          <div style={{ flex: 1 }}>
-            <div className="ag-notif-title">{notif.title}</div>
-            <div className="ag-notif-sub">{notif.sub}</div>
+        <div className={`fixed top-3.5 left-4 right-4 z-50 flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/98 border border-blue-200/35 shadow-2xl backdrop-blur-3xl transition-all duration-300 ${
+          notifVis ? 'animate-in fade-in slide-in-from-top-3' : 'animate-out fade-out slide-out-to-top-3'
+        }`}>
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg bg-linear-to-br from-blue-50/80 to-purple-50/50 border border-blue-300/30 shrink-0">
+            <FaBus size={18} className="text-blue-500" />
           </div>
-          <button className="ag-notif-close" onClick={() => setNotifVis(false)}><FaTimes size={16} /></button>
+          <div className="flex-1">
+            <div className="text-xs font-bold text-gray-900">{notif.title}</div>
+            <div className="text-xs text-gray-400 mt-0.75">{notif.sub}</div>
+          </div>
+          <button 
+            className="bg-transparent border-none text-gray-400 cursor-pointer p-1 shrink-0 flex items-center justify-center transition-all duration-200 hover:text-gray-900"
+            onClick={() => setNotifVis(false)}
+          >
+            <FaTimes size={16} />
+          </button>
         </div>
       )}
     </div>
   );
 }
+
+
+
