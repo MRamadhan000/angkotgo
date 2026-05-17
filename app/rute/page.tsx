@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { IoLocationSharp, IoSearch } from 'react-icons/io5';
-import { MdArrowForward } from 'react-icons/md';
+import { MdArrowForward, MdDirectionsCar, MdPersonOutline, MdSchedule, MdLocationOn, MdCheckCircle, MdError, MdFlashOn } from 'react-icons/md';
+import { FaMap, FaTimes, FaExchangeAlt, FaBus } from 'react-icons/fa';
 
 type Phase = 'idle' | 'results' | 'tracking';
 type Tab   = 'tercepat' | 'semua';
@@ -84,6 +85,10 @@ const GLOBAL_CSS = `
     --sidebar-w: 360px;
     --font-ui:  'Plus Jakarta Sans', sans-serif;
     --font-mono:'IBM Plex Mono', monospace;
+    --shadow-sm: 0 2px 8px rgba(59, 130, 246, 0.08);
+    --shadow-md: 0 8px 16px rgba(59, 130, 246, 0.12);
+    --shadow-lg: 0 16px 32px rgba(59, 130, 246, 0.15);
+    --shadow-xl: 0 24px 48px rgba(59, 130, 246, 0.2);
   }
 
   .ag-root {
@@ -117,14 +122,15 @@ const GLOBAL_CSS = `
     z-index: 20;
     background: var(--panel);
     border-top: 1px solid var(--border2);
-    border-radius: 24px 24px 0 0;
+    border-radius: 28px 28px 0 0;
     max-height: 88vh;
     display: flex;
     flex-direction: column;
     touch-action: none;
     user-select: none;
     transition: transform 0.2s ease-out;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(20px);
   }
 
   .ag-sheet-handle {
@@ -163,16 +169,18 @@ const GLOBAL_CSS = `
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 16px;
-    border-radius: 18px;
+    padding: 14px 18px;
+    border-radius: 16px;
     background: #ffffff;
-    border: 1.5px solid #e0e7ff;
-    transition: all 0.2s;
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
+    border: 1.5px solid #e5e7eb;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(10px);
   }
   .ag-search:focus-within {
     border-color: #3b82f6;
-    box-shadow: 0 6px 24px rgba(59, 130, 246, 0.18);
+    box-shadow: var(--shadow-lg), 0 0 20px rgba(59, 130, 246, 0.25);
+    transform: translateY(-2px);
   }
   .ag-search-icon { font-size: 18px; color: #3b82f6; flex-shrink: 0; }
   .ag-search input {
@@ -189,7 +197,7 @@ const GLOBAL_CSS = `
   .ag-search input::placeholder { color: #d1d5db; }
   .ag-search-btn {
     flex-shrink: 0;
-    padding: 8px 14px;
+    padding: 10px 16px;
     border-radius: 12px;
     font-size: 13px;
     font-weight: 700;
@@ -198,31 +206,126 @@ const GLOBAL_CSS = `
     background: linear-gradient(135deg, #3b82f6, #2563eb);
     border: none;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
     display: flex;
     align-items: center;
     gap: 6px;
+    box-shadow: var(--shadow-md);
   }
   .ag-search-btn:hover { 
-    opacity: 0.9;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    transform: translateY(-1px);
+    opacity: 1;
+    box-shadow: var(--shadow-lg), 0 0 20px rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
   }
   .ag-search-btn:active { transform: translateY(0); }
 
   /* ── Desktop Search Bar Constraints ── */
   @media (min-width: 769px) {
     .ag-search {
-      max-width: 50vw !important;
+      position: fixed !important;
+      top: 16px !important;
       left: 50% !important;
-      right: auto !important;
       transform: translateX(-50%) !important;
+      max-width: 50vw !important;
+      z-index: 100 !important;
+      margin: 0 !important;
+      right: auto !important;
+      bottom: auto !important;
     }
     .ag-search-btn {
       padding: 10px 18px;
       gap: 8px;
       font-size: 14px;
+    }
+
+    /* Desktop: Sidebar instead of bottom sheet */
+    .ag-sheet {
+      position: fixed !important;
+      right: 0 !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      left: auto !important;
+      width: 450px !important;
+      height: 100vh !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+      border: none !important;
+      border-left: 1px solid var(--border2) !important;
+      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15) !important;
+      transform: none !important;
+    }
+
+    .ag-sheet-handle {
+      display: none !important;
+    }
+
+    .ag-content {
+      padding: 20px 20px 20px;
+    }
+
+    .ag-list {
+      gap: 12px;
+    }
+
+    .ag-card {
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .ag-card-badge {
+      width: 48px;
+      height: 48px;
+      font-size: 14px;
+    }
+
+    .ag-card-name {
+      font-size: 13px;
+    }
+
+    .ag-card-price {
+      font-size: 14px;
+    }
+
+    .ag-book-btn {
+      padding: 10px 0;
+      font-size: 12px;
+    }
+
+    .ag-transit {
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .ag-stats {
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .ag-stat {
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .ag-progress-wrap {
+      margin-bottom: 12px;
+    }
+
+    .ag-info-row {
+      padding: 9px 12px;
+      font-size: 11px;
+    }
+
+    .ag-idle {
+      padding: 40px 28px 28px;
+    }
+
+    .ag-results-header {
+      padding: 8px 0 10px;
+    }
+
+    .ag-tabs {
+      padding: 0 0 10px;
     }
   }
 
@@ -248,6 +351,9 @@ const GLOBAL_CSS = `
     font-size: 36px;
     margin-bottom: 6px;
     opacity: 0.5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .ag-idle p {
     font-size: 13px;
@@ -261,14 +367,15 @@ const GLOBAL_CSS = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 0 10px;
+    padding: 16px 0 12px;
     flex-shrink: 0;
   }
   .ag-live-dot {
-    width: 7px; height: 7px; border-radius: 50%;
+    width: 8px; height: 8px; border-radius: 50%;
     background: var(--cyan);
     animation: blink 1.6s ease-in-out infinite;
     flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(59,130,246,0.6);
   }
   .ag-results-label {
     display: flex;
@@ -285,38 +392,51 @@ const GLOBAL_CSS = `
     font-weight: 600;
     color: #ff4d6d;
     background: none;
-    border: 1px solid #ffcdd2;
+    border: 1.5px solid #ffcdd2;
     border-radius: 8px;
-    padding: 5px 10px;
+    padding: 6px 12px;
     cursor: pointer;
     font-family: var(--font-ui);
-    transition: color 0.15s, border-color 0.15s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .ag-back-btn:hover { color: #ff3860; border-color: #ff6b9d; }
+  .ag-back-btn:hover { 
+    color: #ff3860;
+    border-color: #ff6b9d;
+    background: rgba(255,77,109,0.08);
+    box-shadow: var(--shadow-sm);
+  }
 
   /* ── Tabs ── */
   .ag-tabs {
     display: flex;
     gap: 6px;
-    padding: 0 0 10px;
+    padding: 0 0 12px;
     flex-shrink: 0;
   }
   .ag-tab {
-    padding: 6px 14px;
-    border-radius: 9px;
+    padding: 8px 16px;
+    border-radius: 10px;
     font-size: 12px;
     font-weight: 600;
     font-family: var(--font-ui);
     cursor: pointer;
-    transition: all 0.18s;
-    border: 1px solid var(--border);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1.5px solid var(--border);
     background: transparent;
     color: var(--text3);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ag-tab:hover {
+    border-color: var(--border2);
+    color: var(--text2);
   }
   .ag-tab.active {
-    background: var(--surface2);
-    border-color: var(--border2);
+    background: linear-gradient(135deg, var(--surface2) 0%, rgba(59,130,246,0.08) 100%);
+    border-color: #3b82f6;
     color: var(--text);
+    box-shadow: var(--shadow-sm);
   }
 
   /* ── Card list ── */
@@ -328,17 +448,30 @@ const GLOBAL_CSS = `
 
   /* ── Direct card ── */
   .ag-card {
-    border-radius: 18px;
-    padding: 16px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(255, 255, 255, 0.02));
+    border-radius: 16px;
+    padding: 18px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
     border: 1.5px solid #e5e7eb;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: default;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+  }
+  .ag-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), transparent);
+    pointer-events: none;
   }
   .ag-card:hover { 
     border-color: #3b82f6;
-    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12);
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+    transform: translateY(-4px);
   }
   .ag-card-head {
     display: flex;
@@ -353,7 +486,9 @@ const GLOBAL_CSS = `
     font-size: 18px; font-weight: 900;
     font-family: var(--font-mono);
     flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    z-index: 1;
   }
   .ag-card-info { flex: 1; min-width: 0; }
   .ag-card-name {
@@ -366,9 +501,13 @@ const GLOBAL_CSS = `
     font-size: 12px; color: #6b7280;
     font-family: var(--font-ui);
     line-height: 1.5;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
   }
   .ag-card-price-block { 
-    display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; 
+    display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0;
   }
   .ag-card-price { 
     font-size: 16px; font-weight: 800; color: #3b82f6;
@@ -376,22 +515,28 @@ const GLOBAL_CSS = `
   }
   .ag-card-eta { 
     font-size: 13px; font-weight: 600; margin-top: 4px; color: #6b7280;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
   .ag-card-dist { 
     font-size: 12px; color: #9ca3af; margin-top: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 
   /* ── Seat bar ── */
   .ag-seats { margin-bottom: 14px; }
-  .ag-seats-row { display: flex; gap: 4px; margin-bottom: 8px; }
-  .ag-seat { width: 14px; height: 6px; border-radius: 3px; transition: all 0.2s; }
+  .ag-seats-row { display: flex; gap: 5px; margin-bottom: 10px; }
+  .ag-seat { width: 16px; height: 7px; border-radius: 4px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
   .ag-seats-label { font-size: 11px; color: #6b7280; font-weight: 500; }
 
   /* ── Book btn ── */
   .ag-book-btn {
     width: 100%;
-    padding: 12px 0;
-    border-radius: 14px;
+    padding: 14px 0;
+    border-radius: 12px;
     font-size: 14px;
     font-weight: 700;
     font-family: var(--font-ui);
@@ -400,28 +545,54 @@ const GLOBAL_CSS = `
     border: none;
     color: #fff;
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
-  .ag-book-btn:hover:not(:disabled) { 
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+  .ag-book-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+  }
+  .ag-book-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg), 0 8px 20px rgba(59, 130, 246, 0.4);
+  }
+  .ag-book-btn:hover:not(:disabled)::before {
+    left: 100%;
   }
   .ag-book-btn:active:not(:disabled) {
-    transform: translateY(0);
+    transform: translateY(-1px);
   }
   .ag-book-btn:disabled { 
     opacity: 0.5; 
     cursor: not-allowed;
-    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.1);
+    box-shadow: var(--shadow-sm);
   }
 
   /* ── Transit card ── */
   .ag-transit {
-    border-radius: 16px;
-    padding: 13px 14px;
-    background: linear-gradient(135deg, rgba(168,85,247,0.06), rgba(59,130,246,0.08));
-    border: 1px solid rgba(59,130,246,0.18);
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(59,130,246,0.06));
+    border: 1.5px solid rgba(168,85,247,0.25);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .ag-transit:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: rgba(168,85,247,0.35);
   }
   .ag-transit-label {
     font-size: 10px;
@@ -444,24 +615,25 @@ const GLOBAL_CSS = `
     flex-wrap: wrap;
   }
   .ag-leg-chip {
-    padding: 4px 9px;
-    border-radius: 7px;
+    padding: 5px 11px;
+    border-radius: 8px;
     font-size: 11.5px;
     font-weight: 700;
     font-family: var(--font-mono);
     background: var(--surface2);
     color: var(--text2);
+    box-shadow: var(--shadow-sm);
   }
   .ag-leg-transit {
-    padding: 4px 9px;
-    border-radius: 7px;
+    padding: 5px 11px;
+    border-radius: 8px;
     font-size: 10px;
     font-weight: 700;
-    background: rgba(168,85,247,0.12);
-    border: 1px solid rgba(168,85,247,0.28);
+    background: rgba(168,85,247,0.15);
+    border: 1.5px solid rgba(168,85,247,0.35);
     color: var(--purple);
   }
-  .ag-leg-arrow { font-size: 12px; color: var(--text3); }
+  .ag-leg-arrow { font-size: 13px; color: var(--text3); }
 
   /* ── Tracking panel ── */
   .ag-tracking {
@@ -472,10 +644,10 @@ const GLOBAL_CSS = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 0 12px;
+    padding: 16px 0 14px;
     flex-shrink: 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 12px;
+    border-bottom: 1.5px solid var(--border);
+    margin-bottom: 14px;
   }
   .ag-tracking-title-row {
     display: flex;
@@ -488,32 +660,44 @@ const GLOBAL_CSS = `
     font-size: 13px; font-weight: 800;
     font-family: var(--font-mono);
     flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
   }
   .ag-tracking-name { font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.2; }
   .ag-tracking-sub { font-size: 10.5px; color: var(--text3); font-family: var(--font-mono); margin-top: 3px; }
   .ag-cancel-btn {
     width: 30px; height: 30px; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; background: rgba(255,77,109,0.1);
-    border: 1px solid rgba(255,77,109,0.22); color: var(--red);
-    cursor: pointer; flex-shrink: 0; transition: background 0.15s;
+    font-size: 13px; background: rgba(255,77,109,0.12);
+    border: 1.5px solid rgba(255,77,109,0.3); color: var(--red);
+    cursor: pointer; flex-shrink: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .ag-cancel-btn:hover { background: rgba(255,77,109,0.18); }
+  .ag-cancel-btn:hover { 
+    background: rgba(255,77,109,0.2);
+    border-color: rgba(255,77,109,0.4);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+  }
 
   /* ── Stats grid ── */
   .ag-stats {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
     padding: 0;
     flex-shrink: 0;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
   .ag-stat {
     border-radius: 12px;
-    padding: 10px 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    padding: 12px 14px;
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(59,130,246,0.04) 100%);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+  }
+  .ag-stat:hover {
+    border-color: var(--border2);
+    box-shadow: var(--shadow-md);
   }
   .ag-stat-label {
     font-size: 9.5px;
@@ -536,26 +720,28 @@ const GLOBAL_CSS = `
   .ag-progress-wrap {
     padding: 0;
     flex-shrink: 0;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
   .ag-progress-row {
     display: flex;
     justify-content: space-between;
     font-size: 10.5px;
     color: var(--text3);
-    margin-bottom: 7px;
+    margin-bottom: 8px;
   }
   .ag-progress-track {
-    height: 5px;
-    border-radius: 5px;
+    height: 6px;
+    border-radius: 6px;
     background: var(--surface2);
     overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
   }
   .ag-progress-fill {
     height: 100%;
-    border-radius: 5px;
+    border-radius: 6px;
     background: linear-gradient(90deg, #3b82f6, #a855f7);
     transition: width 1s linear;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
   }
 
   /* ── Tracking footer note ── */
@@ -569,11 +755,17 @@ const GLOBAL_CSS = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px;
+    padding: 11px 14px;
     border-radius: 11px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(59,130,246,0.04) 100%);
+    border: 1.5px solid var(--border);
     font-size: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+  }
+  .ag-info-row:hover {
+    border-color: var(--border2);
+    box-shadow: var(--shadow-md);
   }
   .ag-info-key { color: var(--text3); }
   .ag-info-val { font-weight: 600; color: var(--text2); font-family: var(--font-mono); font-size: 11.5px; }
@@ -588,24 +780,33 @@ const GLOBAL_CSS = `
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 13px 16px;
-    border-radius: 16px;
-    background: rgba(255,255,255,0.95);
-    border: 1px solid rgba(59,130,246,0.28);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.98);
+    border: 1.5px solid rgba(59,130,246,0.35);
+    box-shadow: var(--shadow-lg), 0 12px 40px rgba(59,130,246,0.2);
+    backdrop-filter: blur(12px);
   }
   .ag-notif-icon {
     width: 40px; height: 40px; border-radius: 11px;
-    display: flex; align-items: center; justify-content: center; font-size: 18px;
-    background: rgba(59,130,246,0.12);
-    border: 1px solid rgba(59,130,246,0.25);
+    display: flex; align-items: center; justify-content: center; 
+    font-size: 18px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(168, 85, 247, 0.1));
+    border: 1.5px solid rgba(59,130,246,0.3);
     flex-shrink: 0;
   }
   .ag-notif-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
   .ag-notif-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
   .ag-notif-close {
     background: none; border: none; color: var(--text3);
-    cursor: pointer; font-size: 15px; padding: 4px; flex-shrink: 0;
+    cursor: pointer; padding: 4px; flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .ag-notif-close:hover {
+    color: var(--text);
   }
 
   /* ── Pill badge ── */
@@ -625,20 +826,20 @@ const GLOBAL_CSS = `
     50%       { opacity: 0.2; }
   }
   @keyframes notifIn {
-    from { opacity: 0; transform: translateY(-10px); }
+    from { opacity: 0; transform: translateY(-12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   @keyframes notifOut {
     from { opacity: 1; transform: translateY(0); }
-    to   { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 0; transform: translateY(-12px); }
   }
-  .notif-in  { animation: notifIn  0.28s ease forwards; }
-  .notif-out { animation: notifOut 0.25s ease forwards; }
+  .notif-in  { animation: notifIn  0.35s cubic-bezier(0.16,1,0.3,1) forwards; }
+  .notif-out { animation: notifOut 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
   @keyframes fadeSlide {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .fade-slide { animation: fadeSlide 0.3s cubic-bezier(0.16,1,0.3,1) forwards; }
+  .fade-slide { animation: fadeSlide 0.35s cubic-bezier(0.16,1,0.3,1) forwards; }
 
   /* ── Mobile Responsive ── */
   @media (max-width: 768px) {
@@ -650,19 +851,28 @@ const GLOBAL_CSS = `
       flex-direction: column;
     }
 
-    .ag-sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      width: 100%;
-      min-width: 100%;
-      height: 100vh;
-      z-index: 30;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
-      border-right: none;
-      border-bottom: none;
+    /* Keep bottom sheet for mobile */
+    .ag-sheet {
+      position: fixed !important;
+      bottom: 0 !important;
+      top: auto !important;
+      right: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: auto !important;
+      max-height: 88vh !important;
+      border-radius: 28px 28px 0 0 !important;
+      border-top: 1px solid var(--border2) !important;
+      border-left: none !important;
+      border-right: none !important;
+      border-bottom: none !important;
+      box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.12) !important;
+      transform: translateY(0) !important;
+    }
+
+    .ag-sheet-handle {
+      display: flex !important;
+      height: 24px;
     }
 
     .ag-sidebar.mobile-open {
@@ -694,16 +904,19 @@ const GLOBAL_CSS = `
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid var(--border2);
+      background: rgba(255, 255, 255, 0.95);
+      border: 1.5px solid var(--border2);
       border-radius: 10px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       padding: 0;
+      box-shadow: var(--shadow-md);
     }
 
     .ag-hamburger:hover {
       background: rgba(255, 255, 255, 1);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
     }
 
     .ag-hamburger-line {
@@ -786,6 +999,10 @@ const GLOBAL_CSS = `
 
     .ag-idle p {
       font-size: 12px;
+    }
+
+    .ag-content {
+      padding: 0 20px 20px !important;
     }
 
     .ag-results-header {
@@ -1167,13 +1384,24 @@ function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) 
               {left === 0 && <span className="ag-pill" style={{ background: '#fee2e2', color: '#991b1b' }}>PENUH</span>}
               {left >= 8 && <span className="ag-pill" style={{ background: '#dbeafe', color: '#1e40af' }}>TERSEDIA</span>}
             </div>
-            <div className="ag-card-meta">🚗 {a.plate} · 👤 {a.driver}</div>
+            <div className="ag-card-meta" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <MdDirectionsCar size={14} /> {a.plate}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <MdPersonOutline size={14} /> {a.driver}
+              </span>
+            </div>
           </div>
         </div>
         <div className="ag-card-price-block">
           <div className="ag-card-price">{fmtRp(a.price)}</div>
-          <div className="ag-card-eta">⏱ {a.eta} min</div>
-          <div className="ag-card-dist">📍 {a.distance}m</div>
+          <div className="ag-card-eta" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <MdSchedule size={14} /> {a.eta} min
+          </div>
+          <div className="ag-card-dist" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <MdLocationOn size={14} /> {a.distance}m
+          </div>
         </div>
       </div>
       <SeatBar filled={a.capacity} total={a.maxCapacity} color={a.color} />
@@ -1182,7 +1410,7 @@ function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) 
         disabled={left === 0}
         onClick={() => onBook(a)}
       >
-        {left > 0 ? '🚀 Pesan Sekarang' : '🚫 Penuh'}
+        {left > 0 ? <><MdCheckCircle style={{ marginRight: 6 }} /> Pesan Sekarang</> : <><MdError style={{ marginRight: 6 }} /> Penuh</>}
       </button>
     </div>
   );
@@ -1191,7 +1419,9 @@ function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) 
 function TransitCard({ a }: { a: TransitAngkot }) {
   return (
     <div className="ag-transit">
-      <div className="ag-transit-label">🔀 Rute Transit · Ganti di Pertigaan</div>
+      <div className="ag-transit-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <FaExchangeAlt size={12} /> Rute Transit · Ganti di Pertigaan
+      </div>
       <div className="ag-transit-row">
         <div className="ag-transit-legs">
           <span className="ag-leg-chip">{a.legs[0]}</span>
@@ -1202,7 +1432,9 @@ function TransitCard({ a }: { a: TransitAngkot }) {
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{fmtRp(a.price)}</div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--purple)', marginTop: 2 }}>⏱ {a.eta} mnt</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--purple)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+            <MdSchedule size={12} /> {a.eta} mnt
+          </div>
         </div>
       </div>
     </div>
@@ -1473,7 +1705,7 @@ export default function AngkotGoPage() {
           {phase === 'idle' && (
             <div className="ag-content">
               <div className="ag-idle">
-                <div className="ag-idle-icon">🗺️</div>
+                <div className="ag-idle-icon"><FaMap size={36} color="var(--cyan)" /></div>
                 <p>
                   Lokasi kamu sudah terdeteksi ✦<br />
                   <strong>Ketik tujuan</strong> untuk mencari angkot terdekat
@@ -1500,7 +1732,7 @@ export default function AngkotGoPage() {
                     className={`ag-tab${tab === t ? ' active' : ''}`}
                     onClick={() => setTab(t)}
                   >
-                    {t === 'tercepat' ? '⚡ Tercepat' : 'Semua Rute'}
+                    {t === 'tercepat' ? <><MdFlashOn size={12} style={{ marginRight: 6 }} /> Tercepat</> : 'Semua Rute'}
                   </button>
                 ))}
               </div>
@@ -1529,7 +1761,7 @@ export default function AngkotGoPage() {
                     <div className="ag-tracking-sub">{booked.plate} · {booked.driver}</div>
                   </div>
                 </div>
-                <button className="ag-cancel-btn" onClick={cancelBooking} title="Batalkan">✕</button>
+                <button className="ag-cancel-btn" onClick={cancelBooking} title="Batalkan"><FaTimes size={14} /></button>
               </div>
 
               {/* Stats */}
@@ -1590,12 +1822,12 @@ export default function AngkotGoPage() {
       {/* Notification */}
       {notif && (
         <div className={`ag-notif ${notifVis ? 'notif-in' : 'notif-out'}`}>
-          <div className="ag-notif-icon">🚐</div>
+          <div className="ag-notif-icon"><FaBus size={18} color="var(--cyan)" /></div>
           <div style={{ flex: 1 }}>
             <div className="ag-notif-title">{notif.title}</div>
             <div className="ag-notif-sub">{notif.sub}</div>
           </div>
-          <button className="ag-notif-close" onClick={() => setNotifVis(false)}>✕</button>
+          <button className="ag-notif-close" onClick={() => setNotifVis(false)}><FaTimes size={16} /></button>
         </div>
       )}
     </div>
