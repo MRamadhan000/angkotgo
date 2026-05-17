@@ -111,25 +111,42 @@ const getPositionOnRoute = (from: [number, number], to: [number, number], progre
 };
 
 function svgAngkot(a: DirectAngkot): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="46" viewBox="0 0 64 46">
-    <rect x="2" y="0" width="60" height="24" rx="9" fill="${a.color}28" stroke="${a.color}99" stroke-width="1.5"/>
-    <text x="32" y="16" text-anchor="middle" dominant-baseline="middle"
-      font-family="monospace" font-size="12" font-weight="800" fill="${a.color}">${a.id}</text>
-    <line x1="32" y1="24" x2="32" y2="36" stroke="${a.color}77" stroke-width="1.5"/>
-    <circle cx="32" cy="40" r="5" fill="${a.color}" stroke="rgba(255,255,255,0.85)" stroke-width="2"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="70" height="52" viewBox="0 0 70 52">
+    <defs>
+      <filter id="shadowAngkot" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.25)"/>
+      </filter>
+    </defs>
+    <g filter="url(#shadowAngkot)">
+      <rect x="5" y="0" width="60" height="28" rx="10" fill="white" stroke="${a.color}" stroke-width="2.5"/>
+      <text x="35" y="15" text-anchor="middle" dominant-baseline="middle"
+        font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="900" fill="${a.color}">${a.id}</text>
+      <line x1="35" y1="28" x2="35" y2="40" stroke="${a.color}" stroke-width="3"/>
+      <circle cx="35" cy="44" r="6" fill="${a.color}" stroke="white" stroke-width="2.5"/>
+    </g>
   </svg>`;
 }
 function svgUser(): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-    <circle cx="16" cy="16" r="16" fill="rgba(0,229,255,0.18)"/>
-    <circle cx="16" cy="16" r="10" fill="rgba(0,229,255,0.3)"/>
-    <circle cx="16" cy="16" r="6"  fill="#00e5ff" stroke="white" stroke-width="2"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+    <defs>
+      <filter id="shadowUser" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,229,255,0.6)"/>
+      </filter>
+    </defs>
+    <circle cx="24" cy="24" r="20" fill="rgba(0,229,255,0.15)"/>
+    <circle cx="24" cy="24" r="12" fill="rgba(0,229,255,0.3)"/>
+    <circle cx="24" cy="24" r="8"  fill="#00e5ff" stroke="white" stroke-width="3" filter="url(#shadowUser)"/>
   </svg>`;
 }
 function svgDest(): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="10" fill="#a855f7" stroke="white" stroke-width="2.5"/>
-    <circle cx="12" cy="12" r="4"  fill="white"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+    <defs>
+      <filter id="shadowDest" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(168,85,247,0.5)"/>
+      </filter>
+    </defs>
+    <circle cx="18" cy="18" r="14" fill="#a855f7" stroke="white" stroke-width="3" filter="url(#shadowDest)"/>
+    <circle cx="18" cy="18" r="6"  fill="white"/>
   </svg>`;
 }
 
@@ -290,19 +307,19 @@ export default function AngkotGoPage() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     mapRef.current = map;
     userMkRef.current = L.marker(MALANG.userPos, {
-      icon: L.divIcon({ html: svgUser(), className: '', iconSize: [32, 32], iconAnchor: [16, 16] }),
+      icon: L.divIcon({ html: svgUser(), className: '', iconSize: [48, 48], iconAnchor: [24, 24] }),
       zIndexOffset: 1000,
     }).addTo(map);
   }, [leafletReady]);
 
   const makeAngkotIcon = useCallback((a: DirectAngkot) => {
     const L = (window as any).L as typeof import('leaflet');
-    return L.divIcon({ html: svgAngkot(a), className: '', iconSize: [64, 46], iconAnchor: [32, 46] });
+    return L.divIcon({ html: svgAngkot(a), className: '', iconSize: [70, 52], iconAnchor: [35, 52] });
   }, []);
   
   const makeDestIcon = useCallback(() => {
     const L = (window as any).L as typeof import('leaflet');
-    return L.divIcon({ html: svgDest(), className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
+    return L.divIcon({ html: svgDest(), className: '', iconSize: [36, 36], iconAnchor: [18, 18] });
   }, []);
 
   const clearExtras = useCallback(() => {
@@ -322,7 +339,7 @@ export default function AngkotGoPage() {
     setAngkots(city.angkots);
     userMkRef.current?.setLatLng(city.userPos);
     routeRef.current = L.polyline(generateCurvedRoute(city.userPos, city.destPos), {
-      color: '#00e5ff', weight: 2.5, opacity: 0.55, dashArray: '8 12',
+      color: '#2563eb', weight: 4.5, opacity: 0.85, dashArray: '10 12',
     }).addTo(mapRef.current);
     destMkRef.current = L.marker(city.destPos, { icon: makeDestIcon() }).addTo(mapRef.current);
     city.angkots
@@ -358,7 +375,7 @@ export default function AngkotGoPage() {
     if (mapRef.current) {
       const L = (window as any).L as typeof import('leaflet');
       routeRef.current = L.polyline(generateCurvedRoute(MALANG.userPos, MALANG.destPos), {
-        color: '#00e5ff', weight: 2.5, opacity: 0.55, dashArray: '8 12',
+        color: '#2563eb', weight: 4.5, opacity: 0.85, dashArray: '10 12',
       }).addTo(mapRef.current);
     }
     if (mapRef.current) {
