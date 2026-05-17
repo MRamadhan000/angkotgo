@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   Bus,
   MapPinned,
@@ -42,10 +44,16 @@ export default function HomePage() {
             <a href="#cta" className="text-slate-700 hover:text-blue-600 transition">Contact</a>
           </div>
 
-          <button className="hidden md:flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-300 transition text-white px-6 py-2.5 rounded-xl font-medium shadow-md">
-            Try Demo
-            <ChevronRight size={18} />
-          </button>
+          <div className="hidden md:flex items-center gap-3">
+            <Link href="/driver" className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-300 transition text-white px-6 py-2.5 rounded-xl font-semibold shadow-md">
+                Login Driver              
+              <ChevronRight size={18} />
+            </Link>
+            <Link href="/admin" className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-300 transition text-white px-6 py-2.5 rounded-xl font-semibold shadow-md">
+                Login Admin              
+              <ChevronRight size={18} />
+            </Link>
+          </div>
 
           <button className="md:hidden p-2 hover:bg-slate-100 rounded-lg transition">
             <Menu size={28} className="text-slate-700" />
@@ -79,12 +87,9 @@ export default function HomePage() {
             </p>
 
             <div className="mt-12 flex flex-col sm:flex-row gap-4">
-              <button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-300 hover:-translate-y-1 transition text-white px-8 py-4 rounded-xl font-semibold shadow-md">
-                Get Started
-              </button>
-              <button className="border-2 border-slate-300 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition text-slate-700 px-8 py-4 rounded-xl font-semibold shadow-sm">
-                View Live Map
-              </button>
+              <Link href="/rute" className="inline-flex justify-center items-center bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-300 hover:-translate-y-1 transition text-white px-8 py-4 rounded-xl font-semibold shadow-md">
+                Cari Rute
+              </Link>
             </div>
 
             {/* Stats */}
