@@ -37,14 +37,14 @@ const MALANG: CityData = {
   angkots: [
     {
       type: 'direct', id: 'AL', name: 'Arjosari – Landungsari',
-      color: '#3b82f6', eta: 3, distance: 850, price: 5000,
+      color: '#3b82f6', eta: 0.5, distance: 850, price: 5000,
       capacity: 5, maxCapacity: 12,
       pos: [-7.986, 112.618], plate: 'N 1111 AL', driver: 'Pak Budi',
     },
     {
       type: 'direct', id: 'GA', name: 'Gadang – Arjosari',
       color: '#22d36b', eta: 6, distance: 1400, price: 5000,
-      capacity: 10, maxCapacity: 12,
+      capacity: 12, maxCapacity: 12,
       pos: [-7.980, 112.628], plate: 'N 3333 GA', driver: 'Pak Rudi',
     },
     {
@@ -444,7 +444,15 @@ export default function AngkotGoPage() {
     etaTimerRef.current = setInterval(() => {
       setEta(prev => {
         const next = prev - 1;
-        if (next <= 0) { clearInterval(etaTimerRef.current!); return 0; }
+        if (next <= 0) { 
+          if (bookedRef.current) {
+            setNotif({ title: `Angkot Sudah Sampai!`, sub: `Silakan naik ke angkot ${bookedRef.current.id} (${bookedRef.current.plate}) 🎉` });
+            setNotifVis(true);
+            setTimeout(() => setNotifVis(false), 5000);
+          }
+          clearInterval(etaTimerRef.current!); 
+          return 0; 
+        }
         
         if (mapRef.current && angkotMkRef.current.has(bookedRef.current!.id)) {
           const currentProgress = etaMaxRef.current > 0
@@ -455,12 +463,16 @@ export default function AngkotGoPage() {
           if (mk) mk.setLatLng(newPos);
         }
         
-        if (!notifShownRef.current && next <= 30 && bookedRef.current) {
-          notifShownRef.current = true;
-          setNotif({ title: `${bookedRef.current.id} sudah sangat dekat!`, sub: `${bookedRef.current.plate} — bersiap naik ya 🎉` });
+        if ((etaMaxRef.current - next === 2) && bookedRef.current) {
+          setNotif({ title: `Pesanan Diterima!`, sub: `Angkot ${bookedRef.current.id} (${bookedRef.current.plate}) sedang meluncur 🚀` });
+          setNotifVis(true);
+          setTimeout(() => setNotifVis(false), 5000);
+        } else if (next === 10 && bookedRef.current) {
+          setNotif({ title: `Angkot Sudah Dekat!`, sub: `Pengemudi ${bookedRef.current.driver} akan tiba dalam 10 detik 📍` });
           setNotifVis(true);
           setTimeout(() => setNotifVis(false), 5000);
         }
+
         return next;
       });
     }, 1000);
@@ -639,82 +651,101 @@ export default function AngkotGoPage() {
           {phase === 'tracking' && booked && (
             <div className="flex flex-col p-0">
               {/* Header */}
-              <div className="flex items-center justify-between p-3 md:p-5 shrink-0 border-b border-gray-100 mb-2 md:mb-4">
-                <div className="flex items-center gap-2.5 md:gap-3">
+              <div className="flex items-center justify-between p-4 md:p-6 shrink-0 bg-white border-b border-gray-100 z-10 sticky top-0">
+                <div className="flex items-center gap-3 md:gap-4">
                   <div 
-                    className="w-10 md:w-14 h-10 md:h-14 rounded-3 flex items-center justify-center shrink-0 shadow-sm font-black text-xs md:text-base"
-                    style={{ background: `${booked.color}18`, border: `1px solid ${booked.color}44`, color: booked.color }}
+                    className="w-12 h-12 md:w-16 md:h-16 rounded-[14px] flex items-center justify-center shrink-0 shadow-sm border font-black text-sm md:text-xl"
+                    style={{ background: `${booked.color}15`, borderColor: `${booked.color}30`, color: booked.color }}
                   >
                     {booked.id}
                   </div>
                   <div>
-                    <div className="text-xs md:text-base font-bold text-gray-900 leading-tight">{booked.name}</div>
-                    <div className="text-[10px] md:text-sm text-gray-400 mt-0.5 md:mt-1 font-mono">{booked.plate} · {booked.driver}</div>
+                    <div className="text-sm md:text-lg font-black text-gray-900 leading-tight mb-1">{booked.name}</div>
+                    <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                      <span className="flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100 text-[10px] md:text-xs font-semibold text-gray-500">
+                        <MdDirectionsCar size={12} className="text-gray-400" /> {booked.plate}
+                      </span>
+                      <span className="flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100 text-[10px] md:text-xs font-semibold text-gray-500">
+                        <MdPersonOutline size={12} className="text-gray-400" /> {booked.driver}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <button 
-                  className="w-7 md:w-9 h-7 md:h-9 rounded-lg flex items-center justify-center text-xs md:text-base bg-rose-100/50 border border-rose-300/30 text-rose-500 cursor-pointer shrink-0 transition-all duration-300 hover:bg-rose-200/50 hover:border-rose-400/40 hover:shadow-sm"
+                  className="w-8 md:w-10 h-8 md:h-10 rounded-full flex items-center justify-center text-sm md:text-lg bg-rose-50 hover:bg-rose-100 text-rose-500 transition-colors shadow-sm"
                   onClick={cancelBooking}
-                  title="Batalkan"
+                  title="Batalkan Pesanan"
                 >
                   <FaTimes />
                 </button>
               </div>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-2 md:gap-3 px-3 md:px-5 mb-3 md:mb-4 shrink-0">
-                <div className="rounded-xl md:rounded-2xl p-2.5 md:p-4 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <div className="text-[9px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1.5">ETA</div>
-                  <div className="text-lg md:text-3xl font-black font-mono text-blue-500">{fmtEta(eta)}</div>
-                </div>
-                <div className="rounded-xl md:rounded-2xl p-2.5 md:p-4 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <div className="text-[9px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1.5">Tiba</div>
-                  <div className="text-xs md:text-base font-bold text-gray-900 mt-0.5 md:mt-1.5">{fmtTime(eta)}</div>
-                </div>
-                <div className="rounded-xl md:rounded-2xl p-2.5 md:p-4 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <div className="text-[9px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1.5">Status</div>
-                  <div className="mt-0.5 md:mt-1.5">
+              <div className="p-4 md:p-6 flex flex-col gap-4 md:gap-6">
+                {/* Stats Grid */}
+                <div className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-5 shadow-sm border border-gray-100 grid grid-cols-3 gap-2 md:gap-4 divide-x divide-gray-100">
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 md:mb-1.5">Sisa Waktu</span>
+                    <span className="text-xl md:text-3xl font-black font-mono text-blue-600">{fmtEta(eta)}</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 md:mb-1.5">Waktu Tiba</span>
+                    <span className="text-sm md:text-lg font-bold text-gray-900 mt-1">{fmtTime(eta)}</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 md:mb-1.5">Status</span>
                     <span 
-                      className="inline-block px-1.5 py-1 md:px-2.5 md:py-1.5 rounded md:rounded-lg text-[9px] md:text-sm font-bold"
+                      className="px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold mt-0.5 md:mt-1 shadow-sm"
                       style={{ background: statusLabel.bg, color: statusLabel.fg }}
                     >
                       {statusLabel.text}
                     </span>
                   </div>
                 </div>
-              </div>
 
-              {/* Progress Bar */}
-              <div className="px-3 md:px-5 mb-3 md:mb-4 shrink-0">
-                <div className="flex justify-between text-[10px] md:text-sm font-semibold text-gray-400 mb-1.5 md:mb-3">
-                  <span>Perjalanan</span>
-                  <span>{progress}%</span>
+                {/* Progress Bar */}
+                <div>
+                  <div className="flex justify-between text-[10px] md:text-sm font-bold text-gray-500 mb-2 md:mb-2.5">
+                    <span className="uppercase tracking-widest text-[9px] md:text-[10px] text-gray-400">Progres Perjalanan</span>
+                    <span className="text-blue-600">{progress}%</span>
+                  </div>
+                  <div className="h-2 md:h-3 rounded-full bg-gray-100 overflow-hidden shadow-inner">
+                    <div 
+                      className="h-full rounded-full bg-linear-to-r from-blue-400 to-blue-600 transition-all duration-1000 relative"
+                      style={{ width: `${progress}%` }}
+                    >
+                      <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                    </div>
+                  </div>
                 </div>
-                <div className="h-1 md:h-2 rounded-full bg-blue-100/80 overflow-hidden shadow-inner">
-                  <div 
-                    className="h-full rounded-full bg-linear-to-r from-blue-500 to-purple-500 transition-all duration-1000"
-                    style={{ width: `${progress}%`, boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)' }}
-                  />
-                </div>
-              </div>
 
-              {/* Info Rows */}
-              <div className="flex flex-col gap-2 md:gap-3 px-3 md:px-5 pb-6">
-                <div className="flex items-center justify-between p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-[10px] md:text-sm shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <span className="text-gray-400 font-medium">Harga</span>
-                  <span className="font-bold text-gray-700 font-mono text-xs md:text-base">{fmtRp(booked.price)}</span>
-                </div>
-                <div className="flex items-center justify-between p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-[10px] md:text-sm shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <span className="text-gray-400 font-medium">Jarak</span>
-                  <span className="font-bold text-gray-700 font-mono text-xs md:text-base">{booked.distance} m</span>
-                </div>
-                <div className="flex items-center justify-between p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-[10px] md:text-sm shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <span className="text-gray-400 font-medium">Pengemudi</span>
-                  <span className="font-bold text-gray-700 font-mono text-xs md:text-base">{booked.driver}</span>
-                </div>
-                <div className="flex items-center justify-between p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-[10px] md:text-sm shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md mb-5">
-                  <span className="text-gray-400 font-medium">Plat</span>
-                  <span className="font-bold text-gray-700 font-mono text-xs md:text-base">{booked.plate}</span>
+                {/* Info List */}
+                <div className="bg-white rounded-2xl md:rounded-3xl p-1 shadow-sm border border-gray-100">
+                  <div className="flex flex-col divide-y divide-gray-50">
+                    <div className="flex items-center justify-between p-3 md:p-4 hover:bg-gray-50/50 transition-colors rounded-t-xl">
+                      <span className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                        <MdLocationOn className="text-gray-400 text-sm md:text-base" /> Jarak Tempuh
+                      </span>
+                      <span className="font-black text-gray-800 text-xs md:text-sm">{booked.distance} m</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 md:p-4 hover:bg-gray-50/50 transition-colors">
+                      <span className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                        <MdPersonOutline className="text-gray-400 text-sm md:text-base" /> Nama Pengemudi
+                      </span>
+                      <span className="font-black text-gray-800 text-xs md:text-sm">{booked.driver}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 md:p-4 hover:bg-gray-50/50 transition-colors">
+                      <span className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                        <MdDirectionsCar className="text-gray-400 text-sm md:text-base" /> Nomor Pelat
+                      </span>
+                      <span className="font-black text-gray-800 text-xs md:text-sm bg-gray-100 px-2 py-0.5 rounded">{booked.plate}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 md:p-4 hover:bg-gray-50/50 transition-colors rounded-b-xl">
+                      <span className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                        <MdSchedule className="text-gray-400 text-sm md:text-base" /> Total Tarif
+                      </span>
+                      <span className="font-black text-blue-600 text-sm md:text-base">{fmtRp(booked.price)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -724,27 +755,29 @@ export default function AngkotGoPage() {
 
       {/* Notification */}
       {notif && (
-        <div className={`fixed top-3.5 left-4 right-4 z-50 flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/98 border border-blue-200/35 shadow-2xl backdrop-blur-3xl transition-all duration-300 ${
-          notifVis ? 'animate-in fade-in slide-in-from-top-3' : 'animate-out fade-out slide-out-to-top-3'
+        <div className={`fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:w-[420px] md:-translate-x-1/2 z-50 flex flex-col p-3 md:p-4 rounded-2xl bg-white/95 border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-3xl transition-all duration-500 ${
+          notifVis ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-10 opacity-0 scale-95 pointer-events-none'
         }`}>
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg bg-linear-to-br from-blue-50/80 to-purple-50/50 border border-blue-300/30 shrink-0">
-            <FaBus size={18} className="text-blue-500" />
+          <div className="flex items-start gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner bg-linear-to-br from-blue-50 to-blue-100/50 border border-blue-200/50">
+              <FaBus size={20} className="text-blue-600 drop-shadow-sm" />
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="px-2 py-0.5 bg-blue-100/80 text-blue-700 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-md">Live Update</span>
+                <button 
+                  className="w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors cursor-pointer"
+                  onClick={() => setNotifVis(false)}
+                >
+                  <FaTimes size={12} />
+                </button>
+              </div>
+              <div className="text-xs md:text-sm font-black text-gray-900 mb-0.5 leading-tight">{notif.title}</div>
+              <div className="text-[10px] md:text-xs font-medium text-gray-500 leading-snug pr-2">{notif.sub}</div>
+            </div>
           </div>
-          <div className="flex-1">
-            <div className="text-xs font-bold text-gray-900">{notif.title}</div>
-            <div className="text-xs text-gray-400 mt-0.75">{notif.sub}</div>
-          </div>
-          <button 
-            className="bg-transparent border-none text-gray-400 cursor-pointer p-1 shrink-0 flex items-center justify-center transition-all duration-200 hover:text-gray-900"
-            onClick={() => setNotifVis(false)}
-          >
-            <FaTimes size={16} />
-          </button>
         </div>
       )}
     </div>
   );
 }
-
-
-
