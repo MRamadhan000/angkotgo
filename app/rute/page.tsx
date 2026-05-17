@@ -149,7 +149,7 @@ function SeatBar({ filled, total, color }: { filled: number; total: number; colo
           }} />
         ))}
       </div>
-      <div className="text-xs text-gray-500 font-medium">
+      <div className="text-[10px] md:text-sm text-gray-500 font-medium">
         <strong>{filled}</strong> terisi, <strong>{left}</strong> tersedia dari <strong>{total}</strong> kursi
       </div>
     </div>
@@ -159,45 +159,45 @@ function SeatBar({ filled, total, color }: { filled: number; total: number; colo
 function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) => void }) {
   const left = a.maxCapacity - a.capacity;
   return (
-    <div className="rounded-2xl p-4 md:p-3 bg-linear-to-br from-white to-blue-50 border border-gray-200 transition-all duration-300 cursor-default shadow-md md:shadow-sm hover:border-blue-500 hover:shadow-2xl hover:md:shadow-lg hover:-translate-y-1 md:hover:-translate-y-0.5 relative overflow-hidden">
+    <div className="rounded-2xl p-3 md:p-5 bg-linear-to-br from-white to-blue-50 border border-gray-200 transition-all duration-300 cursor-default shadow-sm md:shadow-md hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
       <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 to-transparent pointer-events-none" />
-      <div className="flex gap-3 mb-3 md:gap-3 md:mb-3 items-start justify-between">
-        <div className="flex gap-3 flex-1 min-w-0">
+      <div className="flex gap-2.5 mb-2 md:gap-4 md:mb-4 items-start justify-between">
+        <div className="flex gap-2.5 md:gap-4 flex-1 min-w-0">
           <div 
-            className="w-14 md:w-12 h-14 md:h-12 rounded-3 md:rounded-3 flex items-center justify-center shrink-0 shadow-md md:shadow-sm font-black text-lg md:text-sm relative z-10"
+            className="w-12 md:w-16 h-12 md:h-16 rounded-3 flex items-center justify-center shrink-0 shadow-sm md:shadow-md font-black text-sm md:text-xl relative z-10"
             style={{ background: `${a.color}18`, border: `1px solid ${a.color}44`, color: a.color }}
           >
             {a.id}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm md:text-xs font-black text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis mb-1 md:mb-0.5">
+            <div className="text-xs md:text-base font-black text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis mb-0.5 md:mb-1">
               {a.name}
-              {left === 0 && <span className="inline-block text-xs font-bold px-2 py-0.75 rounded ml-1" style={{ background: '#fee2e2', color: '#991b1b' }}>PENUH</span>}
-              {left >= 8 && <span className="inline-block text-xs font-bold px-2 py-0.75 rounded ml-1" style={{ background: '#dbeafe', color: '#1e40af' }}>TERSEDIA</span>}
+              {left === 0 && <span className="inline-block text-[9px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1.5 align-middle" style={{ background: '#fee2e2', color: '#991b1b' }}>PENUH</span>}
+              {left >= 8 && <span className="inline-block text-[9px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1.5 align-middle" style={{ background: '#dbeafe', color: '#1e40af' }}>TERSEDIA</span>}
             </div>
-            <div className="flex gap-2 items-center flex-wrap text-xs text-gray-500 mt-1.5">
+            <div className="flex gap-2 items-center flex-wrap text-[10px] md:text-sm text-gray-500 mt-1 md:mt-2">
               <span className="flex items-center gap-1">
-                <MdDirectionsCar size={14} /> {a.plate}
+                <MdDirectionsCar size={12} className="md:w-5 md:h-5" /> {a.plate}
               </span>
               <span className="flex items-center gap-1">
-                <MdPersonOutline size={14} /> {a.driver}
+                <MdPersonOutline size={12} className="md:w-5 md:h-5" /> {a.driver}
               </span>
             </div>
           </div>
         </div>
         <div className="flex flex-col items-end shrink-0">
-          <div className="text-base font-black text-blue-500">{fmtRp(a.price)}</div>
-          <div className="flex items-center gap-1 font-semibold text-xs text-gray-500 mt-1">
-            <MdSchedule size={14} /> {a.eta} min
+          <div className="text-sm md:text-lg font-black text-blue-500">{fmtRp(a.price)}</div>
+          <div className="flex items-center gap-1 font-semibold text-[10px] md:text-sm text-gray-500 mt-0.5 md:mt-1.5">
+            <MdSchedule size={12} className="md:w-4 md:h-4" /> {a.eta} min
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-            <MdLocationOn size={14} /> {a.distance}m
+          <div className="flex items-center gap-1 text-[10px] md:text-sm text-gray-400 mt-0.5 md:mt-1">
+            <MdLocationOn size={12} className="md:w-4 md:h-4" /> {a.distance}m
           </div>
         </div>
       </div>
       <SeatBar filled={a.capacity} total={a.maxCapacity} color={a.color} />
       <button
-        className="w-full py-3 px-0 rounded-xl text-sm font-bold text-white bg-linear-to-r from-blue-500 to-blue-600 border-none cursor-pointer transition-all duration-300 shadow-md relative overflow-hidden flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-sm hover:enabled:-translate-y-0.75 hover:enabled:shadow-lg"
+        className="w-full py-2.5 md:py-3.5 px-0 rounded-xl text-xs md:text-base font-bold text-white bg-linear-to-r from-blue-500 to-blue-600 border-none cursor-pointer transition-all duration-300 shadow-md relative overflow-hidden flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-sm hover:enabled:-translate-y-0.75 hover:enabled:shadow-lg"
         disabled={left === 0}
         onClick={() => onBook(a)}
       >
@@ -209,22 +209,22 @@ function DirectCard({ a, onBook }: { a: DirectAngkot; onBook: (a: DirectAngkot) 
 
 function TransitCard({ a }: { a: TransitAngkot }) {
   return (
-    <div className="rounded-2xl p-3.5 bg-linear-to-br from-purple-50/50 to-blue-50/30 border border-purple-200/25 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-purple-300/35">
-      <div className="flex items-center gap-1.5 mb-2.5 text-xs font-bold text-purple-500 uppercase tracking-wider">
-        <FaExchangeAlt size={12} /> Rute Transit · Ganti di Pertigaan
+    <div className="rounded-2xl p-3 md:p-4 bg-linear-to-br from-purple-50/50 to-blue-50/30 border border-purple-200/25 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-purple-300/35">
+      <div className="flex items-center gap-1 mb-2 text-[10px] md:text-sm font-bold text-purple-500 uppercase tracking-wider">
+        <FaExchangeAlt size={10} className="md:w-3.5 md:h-3.5" /> Rute Transit · Ganti
       </div>
-      <div className="flex items-center justify-between gap-2.5">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="px-2.75 py-1.25 rounded-2 font-bold text-xs bg-blue-100/80 text-gray-600 shadow-sm">{a.legs[0]}</span>
-          <span className="text-xs text-gray-400">→</span>
-          <span className="px-2.75 py-1.25 rounded-2 font-bold text-xs bg-purple-100/60 border border-purple-300/35 text-purple-500">Transit</span>
-          <span className="text-xs text-gray-400">→</span>
-          <span className="px-2.75 py-1.25 rounded-2 font-bold text-xs bg-blue-100/80 text-gray-600 shadow-sm">{a.legs[1]}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="px-2 py-1 rounded font-bold text-[10px] md:text-sm bg-blue-100/80 text-gray-600 shadow-sm">{a.legs[0]}</span>
+          <span className="text-[10px] md:text-sm text-gray-400">→</span>
+          <span className="px-2 py-1 rounded font-bold text-[10px] md:text-sm bg-purple-100/60 border border-purple-300/35 text-purple-500">Transit</span>
+          <span className="text-[10px] md:text-sm text-gray-400">→</span>
+          <span className="px-2 py-1 rounded font-bold text-[10px] md:text-sm bg-blue-100/80 text-gray-600 shadow-sm">{a.legs[1]}</span>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-sm font-bold text-gray-900">{fmtRp(a.price)}</div>
-          <div className="flex items-center gap-1 font-bold text-xs text-purple-500 mt-0.5 justify-end">
-            <MdSchedule size={12} /> {a.eta} mnt
+          <div className="text-xs md:text-base font-bold text-gray-900">{fmtRp(a.price)}</div>
+          <div className="flex items-center gap-1 font-bold text-[10px] md:text-sm text-purple-500 mt-0.5 justify-end">
+            <MdSchedule size={10} className="md:w-3.5 md:h-3.5" /> {a.eta} mnt
           </div>
         </div>
       </div>
@@ -419,34 +419,33 @@ export default function AngkotGoPage() {
 
   const handleSheetDragStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Only allow drag on mobile
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
+    if (isDesktop) return;
     
     dragStartRef.current = { y: e.clientY, height: sheetHeight };
     const onMove = (moveEvent: PointerEvent) => {
       if (!dragStartRef.current) return;
       const delta = moveEvent.clientY - dragStartRef.current.y;
       const newHeight = dragStartRef.current.height - (delta / window.innerHeight) * 100;
-      setSheetHeight(newHeight);
+      // Max 50vh so it doesn't cover the map
+      setSheetHeight(Math.min(50, newHeight));
     };
     const onEnd = () => {
       dragStartRef.current = null;
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onEnd);
-      if (sheetHeight < -20) {
+      if (sheetHeight < 10) {
         cancelBooking();
         return;
       }
-      if (sheetHeight < 40) {
+      if (sheetHeight < 35) {
         setSheetHeight(30);
-      } else if (sheetHeight < 70) {
-        setSheetHeight(50);
       } else {
-        setSheetHeight(88);
+        setSheetHeight(50);
       }
     };
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onEnd);
-  }, [sheetHeight, cancelBooking]);
+  }, [sheetHeight, cancelBooking, isDesktop]);
 
   const listItems = tab === 'tercepat'
     ? [...angkots].sort((a, b) => a.eta - b.eta).slice(0, 3)
@@ -468,20 +467,20 @@ export default function AngkotGoPage() {
       <div ref={mapDivRef} className="absolute inset-0 z-0" />
 
       {/* Fixed Search Bar */}
-      <div className="fixed top-4 left-4 right-4 z-30 md:left-1/2 md:right-auto md:top-6 md:w-[400px] md:-translate-x-1/2 flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-gray-200 transition-all duration-300 shadow-md focus-within:border-blue-500 focus-within:shadow-lg focus-within:-translate-y-0.5">
-        <IoLocationSharp className="text-lg text-blue-500 shrink-0" />
+      <div className="fixed top-4 left-4 right-4 z-30 md:left-1/2 md:right-auto md:top-6 md:w-[480px] md:-translate-x-1/2 flex items-center gap-2 md:gap-4 p-3 md:p-4 rounded-2xl bg-white border border-gray-200 transition-all duration-300 shadow-md focus-within:border-blue-500 focus-within:shadow-lg focus-within:-translate-y-0.5">
+        <IoLocationSharp className="text-base md:text-xl text-blue-500 shrink-0" />
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && doSearch()}
           placeholder="Mau ke mana hari ini?"
-          className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-gray-900 placeholder-gray-300 min-w-0"
+          className="flex-1 bg-transparent border-none outline-none text-xs md:text-base font-medium text-gray-900 placeholder-gray-300 min-w-0"
         />
         <button 
-          className="shrink-0 px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-linear-to-r from-blue-500 to-blue-600 border-none cursor-pointer transition-all duration-300 shadow-md flex items-center gap-1.5 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 whitespace-nowrap"
+          className="shrink-0 px-3 py-2 md:px-5 md:py-3 rounded-xl md:rounded-2xl text-[10px] md:text-sm font-bold text-white bg-linear-to-r from-blue-500 to-blue-600 border-none cursor-pointer transition-all duration-300 shadow-md flex items-center gap-1 md:gap-1.5 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 whitespace-nowrap"
           onClick={doSearch}
         >
-          <IoSearch className="text-base" />
+          <IoSearch className="text-sm md:text-lg" />
           Cari
         </button>
       </div>
@@ -489,18 +488,18 @@ export default function AngkotGoPage() {
       {/* Bottom Sheet / Sidebar */}
       <div
         ref={sheetRef}
-        className="fixed bottom-0 left-0 right-0 z-20 md:fixed md:top-0 md:bottom-0 md:right-0 md:left-auto md:w-[400px] md:h-screen bg-white border-t border-gray-200 md:border-t-0 md:border-l rounded-t-7xl md:rounded-none flex flex-col touch-none user-select-none transition-all duration-300 shadow-2xl md:shadow-lg md:backdrop-blur-3xl"
+        className="fixed bottom-0 left-0 right-0 z-20 md:fixed md:top-0 md:bottom-0 md:right-0 md:left-auto md:w-[400px] md:h-screen bg-white border-t border-gray-200 md:border-t-0 md:border-l rounded-t-[2rem] md:rounded-none flex flex-col touch-none user-select-none transition-all duration-300 shadow-2xl md:shadow-lg md:backdrop-blur-3xl"
         style={isDesktop ? {
           height: '100vh',
           transform: 'none',
           maxHeight: 'none',
           opacity: 1,
         } : {
-          height: `${Math.max(20, sheetHeight)}vh`,
-          transform: `translateY(${Math.max(0, 100 - sheetHeight)}vh)`,
+          height: `${Math.max(15, sheetHeight)}vh`,
+          transform: 'none',
           opacity: sheetHeight > -10 ? 1 : Math.max(0, 1 + (sheetHeight + 10) / 10),
-          maxHeight: '88vh',
-          willChange: 'transform',
+          maxHeight: '50vh',
+          willChange: 'transform, height',
         }}
       >
         {/* Drag Handle */}
@@ -516,12 +515,12 @@ export default function AngkotGoPage() {
           {/* Idle State */}
           {phase === 'idle' && (
             <div className="flex flex-col p-0">
-              <div className="flex-1 flex flex-col items-center justify-center p-5 text-center gap-2">
-                <div className="flex items-center justify-center text-3xl mb-1.5 opacity-50">
-                  <FaMap className="text-blue-500" size={36} />
+              <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 text-center gap-2 md:gap-3">
+                <div className="flex items-center justify-center text-3xl md:text-5xl mb-1 md:mb-1.5 opacity-50">
+                  <FaMap className="text-blue-500 w-8 h-8 md:w-12 md:h-12" />
                 </div>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  Lokasi kamu sudah terdeteksi ✦<br />
+                <p className="text-[10px] md:text-sm text-gray-400 leading-relaxed">
+                  Lokasi kamu terdeteksi ✦<br />
                   <strong className="text-gray-600">Ketik tujuan</strong> untuk mencari angkot terdekat
                 </p>
               </div>
@@ -531,31 +530,31 @@ export default function AngkotGoPage() {
           {/* Results State */}
           {phase === 'results' && (
             <div className="flex flex-col p-0">
-              <div className="flex items-center justify-between p-4 shrink-0">
-                <div className="flex items-center gap-2 text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 animate-pulse" style={{ boxShadow: '0 0 6px rgba(59,130,246,0.6)' }} />
+              <div className="flex items-center justify-between p-3 md:p-5 shrink-0">
+                <div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-sm font-bold text-gray-600 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 md:w-2.5 md:h-2.5 rounded-full bg-blue-500 shrink-0 animate-pulse" style={{ boxShadow: '0 0 6px rgba(59,130,246,0.6)' }} />
                   {listItems.length} Rute Tersedia
                 </div>
                 <button 
-                  className="text-xs font-semibold text-rose-500 bg-transparent border border-rose-200 rounded-lg px-3 py-1.5 cursor-pointer transition-all duration-300 hover:text-rose-600 hover:border-pink-400 hover:bg-rose-50/50 hover:shadow-sm"
+                  className="text-[10px] md:text-sm font-semibold text-rose-500 bg-transparent border border-rose-200 rounded-md md:rounded-lg px-2.5 py-1 md:px-4 md:py-2 cursor-pointer transition-all duration-300 hover:text-rose-600 hover:border-pink-400 hover:bg-rose-50/50 hover:shadow-sm"
                   onClick={cancelBooking}
                 >
                   ← Batal
                 </button>
               </div>
 
-              <div className="flex gap-1.5 p-4 shrink-0">
+              <div className="flex gap-1.5 md:gap-2.5 px-3 pb-3 md:px-5 md:pt-0 md:pb-4 shrink-0">
                 {(['tercepat', 'semua'] as Tab[]).map(t => (
                   <button
                     key={t}
-                    className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all duration-300 border inline-flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 md:px-5 md:py-2.5 rounded-xl md:rounded-2xl text-[10px] md:text-sm font-semibold transition-all duration-300 border inline-flex items-center gap-1 md:gap-2 ${
                       tab === t 
                         ? 'bg-linear-to-br from-blue-50/50 to-transparent border-blue-500 text-gray-900 shadow-sm' 
                         : 'border-gray-200 bg-transparent text-gray-400 hover:border-gray-300 hover:text-gray-600'
                     }`}
                     onClick={() => setTab(t)}
                   >
-                    {t === 'tercepat' ? <><MdFlashOn className="text-sm" /> Tercepat</> : 'Semua Rute'}
+                    {t === 'tercepat' ? <><MdFlashOn className="text-xs md:text-base" /> Tercepat</> : 'Semua'}
                   </button>
                 ))}
               </div>
@@ -574,43 +573,43 @@ export default function AngkotGoPage() {
           {phase === 'tracking' && booked && (
             <div className="flex flex-col p-0">
               {/* Header */}
-              <div className="flex items-center justify-between p-4 shrink-0 border-b border-gray-200 mb-3">
-                <div className="flex items-center gap-2.75">
+              <div className="flex items-center justify-between p-3 md:p-5 shrink-0 border-b border-gray-100 mb-2 md:mb-4">
+                <div className="flex items-center gap-2.5 md:gap-3">
                   <div 
-                    className="w-11 h-11 rounded-3 flex items-center justify-center shrink-0 shadow-sm font-black text-xs"
+                    className="w-10 md:w-14 h-10 md:h-14 rounded-3 flex items-center justify-center shrink-0 shadow-sm font-black text-xs md:text-base"
                     style={{ background: `${booked.color}18`, border: `1px solid ${booked.color}44`, color: booked.color }}
                   >
                     {booked.id}
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-gray-900 leading-tight">{booked.name}</div>
-                    <div className="text-xs text-gray-400 mt-0.75 font-mono">{booked.plate} · {booked.driver}</div>
+                    <div className="text-xs md:text-base font-bold text-gray-900 leading-tight">{booked.name}</div>
+                    <div className="text-[10px] md:text-sm text-gray-400 mt-0.5 md:mt-1 font-mono">{booked.plate} · {booked.driver}</div>
                   </div>
                 </div>
                 <button 
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs bg-rose-100/50 border border-rose-300/30 text-rose-500 cursor-pointer shrink-0 transition-all duration-300 hover:bg-rose-200/50 hover:border-rose-400/40 hover:shadow-sm"
+                  className="w-7 md:w-9 h-7 md:h-9 rounded-lg flex items-center justify-center text-xs md:text-base bg-rose-100/50 border border-rose-300/30 text-rose-500 cursor-pointer shrink-0 transition-all duration-300 hover:bg-rose-200/50 hover:border-rose-400/40 hover:shadow-sm"
                   onClick={cancelBooking}
                   title="Batalkan"
                 >
-                  <FaTimes size={14} />
+                  <FaTimes />
                 </button>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-2.5 p-4 mb-3 shrink-0">
-                <div className="rounded-2xl p-3 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">ETA</div>
-                  <div className="text-2xl font-black font-mono text-blue-500">{fmtEta(eta)}</div>
+              <div className="grid grid-cols-3 gap-2 md:gap-3 px-3 md:px-5 mb-3 md:mb-4 shrink-0">
+                <div className="rounded-xl md:rounded-2xl p-2.5 md:p-4 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <div className="text-[9px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1.5">ETA</div>
+                  <div className="text-lg md:text-3xl font-black font-mono text-blue-500">{fmtEta(eta)}</div>
                 </div>
-                <div className="rounded-2xl p-3 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Tiba Pukul</div>
-                  <div className="text-xs font-bold text-gray-900 mt-1">{fmtTime(eta)}</div>
+                <div className="rounded-xl md:rounded-2xl p-2.5 md:p-4 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <div className="text-[9px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1.5">Tiba</div>
+                  <div className="text-xs md:text-base font-bold text-gray-900 mt-0.5 md:mt-1.5">{fmtTime(eta)}</div>
                 </div>
-                <div className="rounded-2xl p-3 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</div>
-                  <div className="mt-1">
+                <div className="rounded-xl md:rounded-2xl p-2.5 md:p-4 bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <div className="text-[9px] md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1.5">Status</div>
+                  <div className="mt-0.5 md:mt-1.5">
                     <span 
-                      className="inline-block px-2 py-1 rounded-lg text-xs font-bold"
+                      className="inline-block px-1.5 py-1 md:px-2.5 md:py-1.5 rounded md:rounded-lg text-[9px] md:text-sm font-bold"
                       style={{ background: statusLabel.bg, color: statusLabel.fg }}
                     >
                       {statusLabel.text}
@@ -620,12 +619,12 @@ export default function AngkotGoPage() {
               </div>
 
               {/* Progress Bar */}
-              <div className="p-4 mb-3 shrink-0">
-                <div className="flex justify-between text-xs text-gray-400 mb-2">
+              <div className="px-3 md:px-5 mb-3 md:mb-4 shrink-0">
+                <div className="flex justify-between text-[10px] md:text-sm font-semibold text-gray-400 mb-1.5 md:mb-3">
                   <span>Perjalanan</span>
                   <span>{progress}%</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-blue-100/80 overflow-hidden shadow-inner">
+                <div className="h-1 md:h-2 rounded-full bg-blue-100/80 overflow-hidden shadow-inner">
                   <div 
                     className="h-full rounded-full bg-linear-to-r from-blue-500 to-purple-500 transition-all duration-1000"
                     style={{ width: `${progress}%`, boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)' }}
@@ -634,22 +633,22 @@ export default function AngkotGoPage() {
               </div>
 
               {/* Info Rows */}
-              <div className="flex flex-col gap-2 p-4">
-                <div className="flex items-center justify-between p-2.75 rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-xs shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <span className="text-gray-400">Harga</span>
-                  <span className="font-bold text-gray-600 font-mono text-xs">{fmtRp(booked.price)}</span>
+              <div className="flex flex-col gap-2 md:gap-3 px-3 md:px-5 pb-6">
+                <div className="flex items-center justify-between p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-[10px] md:text-sm shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <span className="text-gray-400 font-medium">Harga</span>
+                  <span className="font-bold text-gray-700 font-mono text-xs md:text-base">{fmtRp(booked.price)}</span>
                 </div>
-                <div className="flex items-center justify-between p-2.75 rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-xs shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <span className="text-gray-400">Jarak</span>
-                  <span className="font-bold text-gray-600 font-mono text-xs">{booked.distance} m</span>
+                <div className="flex items-center justify-between p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-[10px] md:text-sm shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <span className="text-gray-400 font-medium">Jarak</span>
+                  <span className="font-bold text-gray-700 font-mono text-xs md:text-base">{booked.distance} m</span>
                 </div>
-                <div className="flex items-center justify-between p-2.75 rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-xs shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
-                  <span className="text-gray-400">Pengemudi</span>
-                  <span className="font-bold text-gray-600 font-mono text-xs">{booked.driver}</span>
+                <div className="flex items-center justify-between p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-[10px] md:text-sm shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md">
+                  <span className="text-gray-400 font-medium">Pengemudi</span>
+                  <span className="font-bold text-gray-700 font-mono text-xs md:text-base">{booked.driver}</span>
                 </div>
-                <div className="flex items-center justify-between p-2.75 rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-xs shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md mb-5">
-                  <span className="text-gray-400">Plat</span>
-                  <span className="font-bold text-gray-600 font-mono text-xs">{booked.plate}</span>
+                <div className="flex items-center justify-between p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-linear-to-br from-blue-50/80 to-blue-50/20 border border-blue-200/80 text-[10px] md:text-sm shadow-sm transition-all duration-300 hover:border-blue-300/80 hover:shadow-md mb-5">
+                  <span className="text-gray-400 font-medium">Plat</span>
+                  <span className="font-bold text-gray-700 font-mono text-xs md:text-base">{booked.plate}</span>
                 </div>
               </div>
             </div>
