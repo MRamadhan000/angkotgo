@@ -4,15 +4,17 @@ import Link from "next/link";
 import { useState } from "react";
 
 import {
-  Bus,
-  MapPinned,
-  Clock3,
-  Users,
-  ShieldCheck,
-  ChevronRight,
-  Menu,
-  X,
-} from "lucide-react";
+  FaBus,
+  FaMapMarkedAlt,
+  FaClock,
+  FaUsers,
+  FaShieldAlt,
+  FaArrowRight,
+  FaBars,
+  FaTimes,
+  FaRoute,
+  FaWifi,
+} from "react-icons/fa";
 
 import { Poppins } from "next/font/google";
 
@@ -24,252 +26,290 @@ const poppins = Poppins({
 export default function HomePage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const features = [
+    {
+      icon: <FaMapMarkedAlt size={26} />,
+      title: "Live Fleet Tracking",
+      desc: "Track every angkot in real-time with interactive GPS mapping.",
+    },
+    {
+      icon: <FaClock size={26} />,
+      title: "Smart ETA",
+      desc: "Accurate arrival estimation powered by live traffic updates.",
+    },
+    {
+      icon: <FaUsers size={26} />,
+      title: "Seat Availability",
+      desc: "Know occupancy status before the angkot arrives.",
+    },
+    {
+      icon: <FaShieldAlt size={26} />,
+      title: "Safe & Transparent",
+      desc: "Transparent fares and safer commuting for students.",
+    },
+  ];
+
   return (
     <main
-      className={`${poppins.className} bg-white text-slate-900 overflow-hidden`}
+      className={`${poppins.className} bg-[#f8fbff] text-slate-900 overflow-hidden`}
     >
-      {/* ================= NAVBAR ================= */}
-      <nav className="w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-xl fixed top-0 left-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+      {/* ================= BACKGROUND EFFECT ================= */}
+      <div className="absolute top-0 left-0 w-full h-[700px] bg-gradient-to-br from-blue-100/60 via-cyan-50 to-transparent blur-3xl -z-10" />
 
+      {/* ================= NAVBAR ================= */}
+      <nav className="fixed top-0 left-0 w-full z-50 backdrop-blur-xl bg-white/80 border-b border-slate-200/60">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
           {/* LOGO */}
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-2.5 rounded-xl shadow-lg shadow-blue-200">
-              <Bus size={22} />
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
+              <FaBus size={22} />
             </div>
+
             <div>
-              <h1 className="font-bold text-lg md:text-xl bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+              <h1 className="font-bold text-xl bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                 AngkotTrack
               </h1>
+
               <p className="text-xs text-slate-500">
-                Smart Transport for Students
+                Smart Transport Platform
               </p>
             </div>
           </div>
 
-          {/* MENU DESKTOP */}
+          {/* DESKTOP MENU */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <a href="#home" className="hover:text-blue-600 transition">
-              Home
-            </a>
-            <a href="#about" className="hover:text-blue-600 transition">
-              About
-            </a>
-            <a href="#features" className="hover:text-blue-600 transition">
-              Features
-            </a>
-            <a href="#cta" className="hover:text-blue-600 transition">
-              Contact
-            </a>
-          </div>
-
-          {/* LOGIN BUTTON DESKTOP */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/driver"
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md"
-            >
-              Login Driver
-              <ChevronRight size={18} />
-            </Link>
-
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md"
-            >
-              Login Admin
-              <ChevronRight size={18} />
-            </Link>
-          </div>
-
-          {/* HAMBURGER MOBILE */}
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="md:hidden p-2 hover:bg-slate-100 rounded-lg transition"
-          >
-            <Menu size={26} />
-          </button>
-        </div>
-      </nav>
-
-      {/* ================= MOBILE SIDEBAR ================= */}
-
-      {/* OVERLAY */}
-      <div
-        className={`fixed inset-0 bg-black/50 z-[60] transition-opacity duration-300 ${
-          isSidebarOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
-        onClick={() => setIsSidebarOpen(false)}
-      />
-
-      {/* SIDEBAR */}
-      <div
-        className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-[70] transform transition-transform duration-300 ${
-          isSidebarOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="p-6">
-
-          {/* HEADER */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-600 text-white p-2 rounded-xl">
-                <Bus size={22} />
-              </div>
-              <div>
-                <h2 className="font-bold text-lg">AngkotTrack</h2>
-                <p className="text-xs text-slate-500">Menu</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-2 hover:bg-slate-100 rounded-lg"
-            >
-              <X size={26} />
-            </button>
-          </div>
-
-          {/* MENU */}
-          <div className="flex flex-col gap-2 text-lg">
             <a
               href="#home"
-              onClick={() => setIsSidebarOpen(false)}
-              className="px-4 py-3 hover:bg-slate-100 rounded-xl"
+              className="hover:text-blue-600 transition duration-200"
             >
               Home
             </a>
 
             <a
               href="#about"
-              onClick={() => setIsSidebarOpen(false)}
-              className="px-4 py-3 hover:bg-slate-100 rounded-xl"
+              className="hover:text-blue-600 transition duration-200"
             >
               About
             </a>
 
             <a
               href="#features"
-              onClick={() => setIsSidebarOpen(false)}
-              className="px-4 py-3 hover:bg-slate-100 rounded-xl"
+              className="hover:text-blue-600 transition duration-200"
             >
               Features
             </a>
 
             <a
               href="#cta"
-              onClick={() => setIsSidebarOpen(false)}
-              className="px-4 py-3 hover:bg-slate-100 rounded-xl"
+              className="hover:text-blue-600 transition duration-200"
             >
               Contact
             </a>
           </div>
 
-          <div className="border-t border-slate-200 my-6" />
-
-          {/* LOGIN */}
-          <div className="flex flex-col gap-3">
+          {/* BUTTONS */}
+          <div className="hidden md:flex items-center gap-3">
             <Link
               href="/driver"
-              onClick={() => setIsSidebarOpen(false)}
-              className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-semibold"
+              className="px-5 py-2.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:text-blue-600 transition font-medium"
             >
-              Login Driver
-              <ChevronRight size={20} />
+              Driver
             </Link>
 
             <Link
               href="/admin"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg shadow-blue-200 hover:scale-[1.03] transition"
+            >
+              Admin
+              <FaArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* MOBILE BUTTON */}
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="md:hidden p-2 rounded-xl hover:bg-slate-100"
+          >
+            <FaBars size={22} />
+          </button>
+        </div>
+      </nav>
+
+      {/* ================= MOBILE SIDEBAR ================= */}
+      <div
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] transition-all duration-300 ${
+          isSidebarOpen
+            ? "opacity-100 visible"
+            : "opacity-0 invisible"
+        }`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
+
+      <aside
+        className={`fixed top-0 right-0 h-full w-72 bg-white z-[70] shadow-2xl transition-transform duration-300 ${
+          isSidebarOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 text-white p-3 rounded-xl">
+                <FaBus size={20} />
+              </div>
+
+              <div>
+                <h2 className="font-bold text-lg">AngkotTrack</h2>
+                <p className="text-xs text-slate-500">Navigation</p>
+              </div>
+            </div>
+
+            <button
               onClick={() => setIsSidebarOpen(false)}
-              className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-semibold"
+              className="p-2 rounded-lg hover:bg-slate-100"
+            >
+              <FaTimes size={22} />
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {["Home", "About", "Features", "Contact"].map((item) => (
+              <a
+                key={item}
+                href={`#${item.toLowerCase()}`}
+                onClick={() => setIsSidebarOpen(false)}
+                className="px-4 py-3 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition"
+              >
+                {item}
+              </a>
+            ))}
+          </div>
+
+          <div className="border-t my-6" />
+
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/driver"
+              className="bg-slate-100 py-3 rounded-xl text-center font-semibold hover:bg-slate-200 transition"
+            >
+              Login Driver
+            </Link>
+
+            <Link
+              href="/admin"
+              className="bg-blue-600 text-white py-3 rounded-xl text-center font-semibold"
             >
               Login Admin
-              <ChevronRight size={20} />
             </Link>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* ================= HERO ================= */}
-
-      <section id="home" className="pt-32 md:pt-40 pb-20 md:pb-28 px-4 md:px-6">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
-
-          {/* TEXT */}
+      <section
+        id="home"
+        className="relative pt-36 md:pt-44 pb-24 px-4 md:px-6"
+      >
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+          {/* LEFT */}
           <div>
-            <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm mb-6">
-              <ShieldCheck size={16} />
+            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-5 py-2 rounded-full text-sm font-medium mb-6">
+              <FaWifi size={14} />
               Real-Time Smart Transportation
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight">
-              Smart Angkot Tracking for
-              <span className="text-blue-600"> Students</span>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+              Modern
+              <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                {" "}
+                Angkot
+              </span>
+              <br />
+              Tracking System
             </h1>
 
-            <p className="mt-6 text-slate-600 text-base md:text-lg max-w-xl">
-              Monitor angkot locations in real-time, check estimated arrival
-              times, track seat availability, and enjoy transparent fares
-              around campus areas like UMM, UB, and UM.
+            <p className="mt-6 text-slate-600 text-lg leading-relaxed max-w-xl">
+              Empowering students with live angkot tracking, dynamic ETA,
+              transparent pricing, and smart transportation experiences around
+              campus areas.
             </p>
 
-            <div className="mt-10">
+            <div className="mt-10 flex flex-wrap gap-4">
               <Link
                 href="/rute"
-                className="inline-flex items-center justify-center bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-8 py-4 rounded-2xl font-semibold shadow-lg shadow-blue-200 hover:scale-[1.03] transition"
               >
-                Cari Rute
+                Explore Routes
+                <FaArrowRight />
               </Link>
+
+              <button className="px-8 py-4 rounded-2xl border border-slate-300 font-semibold hover:border-blue-500 hover:text-blue-600 transition">
+                Learn More
+              </button>
             </div>
 
             {/* STATS */}
-            <div className="mt-12 flex flex-wrap gap-8">
-              <div>
+            <div className="mt-14 grid grid-cols-3 gap-6">
+              <div className="bg-white rounded-2xl p-5 shadow-md border border-slate-100">
                 <h2 className="text-3xl font-bold text-blue-600">50+</h2>
-                <p className="text-slate-500 text-sm">Active Drivers</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Active Drivers
+                </p>
               </div>
 
-              <div>
-                <h2 className="text-3xl font-bold text-blue-600">3</h2>
-                <p className="text-slate-500 text-sm">Campus Routes</p>
+              <div className="bg-white rounded-2xl p-5 shadow-md border border-slate-100">
+                <h2 className="text-3xl font-bold text-blue-600">3+</h2>
+                <p className="text-sm text-slate-500 mt-1">Campus Routes</p>
               </div>
 
-              <div>
+              <div className="bg-white rounded-2xl p-5 shadow-md border border-slate-100">
                 <h2 className="text-3xl font-bold text-blue-600">24/7</h2>
-                <p className="text-slate-500 text-sm">Monitoring</p>
+                <p className="text-sm text-slate-500 mt-1">Monitoring</p>
               </div>
             </div>
           </div>
 
-          {/* IMAGE CARD */}
-          <div className="bg-white border rounded-3xl overflow-hidden shadow-xl">
-            <img
-              src="/angkot.png"
-              alt="Angkot"
-              className="w-full h-[260px] md:h-[320px] object-cover"
-            />
+          {/* RIGHT CARD */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-400 blur-3xl opacity-20 rounded-full" />
 
-            <div className="p-6">
-              <p className="text-xs uppercase text-slate-400 mb-4">
-                Active Route
-              </p>
+            <div className="relative bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-2xl">
+              <img
+                src="/angkot.png"
+                alt="Angkot"
+                className="w-full h-[300px] md:h-[380px] object-cover"
+              />
 
-              <div className="flex justify-between text-sm">
-                <span>UMM</span>
-                <span>Soekarno Hatta</span>
-                <span>UB</span>
-                <span>UM</span>
-              </div>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">
+                      Active Route
+                    </p>
 
-              <div className="mt-5 flex justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <Clock3 size={16} />
-                  ETA 3 min
+                    <h3 className="font-bold text-xl mt-1">
+                      UMM - UB - UM
+                    </h3>
+                  </div>
+
+                  <div className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-semibold">
+                    Online
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-green-600">
-                  <Users size={16} />
-                  Available
+                <div className="flex items-center justify-between text-sm text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <FaClock />
+                    ETA 3 Minutes
+                  </div>
+
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <FaUsers />
+                    6 Seats Available
+                  </div>
+                </div>
+
+                <div className="mt-6 h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-[65%] h-full bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full" />
                 </div>
               </div>
             </div>
@@ -278,78 +318,108 @@ export default function HomePage() {
       </section>
 
       {/* ================= ABOUT ================= */}
+      <section
+        id="about"
+        className="py-24 px-4 md:px-6 bg-gradient-to-b from-white to-slate-50"
+      >
+        <div className="max-w-5xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <FaRoute size={14} />
+            About Platform
+          </div>
 
-      <section id="about" className="py-20 md:py-28 px-4 md:px-6 bg-slate-50">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-bold">
-            Empowering Student Transportation
+          <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+            Smart Mobility for
+            <span className="text-blue-600"> Modern Students</span>
           </h2>
 
-          <p className="mt-6 text-slate-600 text-base md:text-lg">
-            AngkotTrack modernizes public angkot systems with real-time GPS,
-            ETA prediction, occupancy monitoring, and transparent fares.
+          <p className="mt-8 text-lg text-slate-600 leading-relaxed max-w-3xl mx-auto">
+            AngkotTrack transforms traditional public transportation into an
+            intelligent mobility ecosystem with GPS tracking, occupancy
+            monitoring, route analytics, and real-time student-friendly
+            transportation services.
           </p>
         </div>
       </section>
 
       {/* ================= FEATURES ================= */}
+      <section id="features" className="py-24 px-4 md:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl md:text-5xl font-bold">
+              Powerful Features
+            </h2>
 
-      <section id="features" className="py-20 md:py-28 px-4 md:px-6">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <p className="mt-4 text-slate-600 text-lg">
+              Designed to create a smarter commuting experience.
+            </p>
+          </div>
 
-          {[
-            {
-              icon: MapPinned,
-              title: "Live Fleet Map",
-              desc: "Track angkot movement in real-time with interactive maps.",
-            },
-            {
-              icon: Clock3,
-              title: "Dynamic ETA",
-              desc: "Get accurate arrival predictions.",
-            },
-            {
-              icon: Users,
-              title: "Occupancy Status",
-              desc: "Know whether the angkot is full.",
-            },
-            {
-              icon: ShieldCheck,
-              title: "Fare Transparency",
-              desc: "Official fares available.",
-            },
-          ].map((f, i) => (
-            <div
-              key={i}
-              className="bg-white border rounded-2xl p-6 shadow-md hover:shadow-xl transition"
-            >
-              <f.icon className="text-blue-600" size={28} />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {features.map((feature, i) => (
+              <div
+                key={i}
+                className="group bg-white border border-slate-100 rounded-3xl p-8 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                  {feature.icon}
+                </div>
 
-              <h3 className="font-bold mt-4">{f.title}</h3>
-              <p className="text-slate-600 text-sm mt-2">{f.desc}</p>
-            </div>
-          ))}
+                <h3 className="text-xl font-bold mt-6">
+                  {feature.title}
+                </h3>
+
+                <p className="text-slate-600 mt-3 leading-relaxed">
+                  {feature.desc}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ================= CTA ================= */}
+      <section id="cta" className="py-24 px-4 md:px-6">
+        <div className="max-w-5xl mx-auto relative overflow-hidden rounded-[40px] bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-12 md:p-20 text-center shadow-2xl">
+          <div className="absolute top-0 left-0 w-full h-full bg-white/10 backdrop-blur-3xl" />
 
-      <section id="cta" className="py-20 md:py-28 px-4 md:px-6">
-        <div className="max-w-4xl mx-auto bg-blue-600 text-white rounded-3xl p-10 md:p-16 text-center">
-          <h2 className="text-3xl md:text-5xl font-bold">
-            Ready to Experience Smart Transportation?
-          </h2>
+          <div className="relative z-10">
+            <h2 className="text-4xl md:text-6xl font-bold leading-tight">
+              Ready for Smarter Transportation?
+            </h2>
 
-          <button className="mt-8 bg-white text-blue-600 px-8 py-3 rounded-xl font-bold">
-            Launch Application
-          </button>
+            <p className="mt-6 text-blue-100 text-lg max-w-2xl mx-auto">
+              Experience real-time angkot tracking and transform your daily
+              campus commute today.
+            </p>
+
+            <button className="mt-10 bg-white text-blue-600 px-10 py-4 rounded-2xl font-bold hover:scale-[1.03] transition">
+              Launch Application
+            </button>
+          </div>
         </div>
       </section>
 
       {/* ================= FOOTER ================= */}
+      <footer className="border-t border-slate-200 py-10 px-6 bg-white">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 text-white p-2 rounded-xl">
+              <FaBus />
+            </div>
 
-      <footer className="border-t py-10 px-6 text-center text-slate-500">
-        © 2026 AngkotTrack
+            <div>
+              <h2 className="font-bold">AngkotTrack</h2>
+              <p className="text-sm text-slate-500">
+                Smart Transportation Platform
+              </p>
+            </div>
+          </div>
+
+          <p className="text-slate-500 text-sm">
+            © 2026 AngkotTrack. All rights reserved.
+          </p>
+        </div>
       </footer>
     </main>
   );
