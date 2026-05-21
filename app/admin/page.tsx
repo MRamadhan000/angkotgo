@@ -21,6 +21,7 @@ import {
 } from "react-icons/fa6";
 
 import { Poppins } from "next/font/google";
+import { Bell, Search } from "lucide-react";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -39,148 +40,118 @@ export default function AdminDashboardPage() {
       <div className="fixed top-0 left-0 w-full h-[600px] bg-gradient-to-br from-blue-100/60 via-cyan-50 to-transparent blur-3xl -z-10" />
 
       {/* ================= OVERLAY ================= */}
-      <div
-        onClick={() => setSidebarOpen(false)}
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-all duration-300 lg:hidden ${
-          sidebarOpen
-            ? "opacity-100 visible"
-            : "opacity-0 invisible"
-        }`}
-      />
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* ================= SIDEBAR ================= */}
       <aside
-        className={`fixed top-0 left-0 h-screen w-[290px] bg-white/90 backdrop-blur-2xl border-r border-white/40 z-50 shadow-2xl transition-transform duration-300 ${
-          sidebarOpen
-            ? "translate-x-0"
-            : "-translate-x-full"
-        } lg:translate-x-0`}
+        className={`
+          fixed top-0 left-0 z-50 h-screen w-64
+          bg-gradient-to-b from-blue-50 to-white border-r border-slate-200
+          transition-transform duration-300 md:hidden
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
       >
-        {/* HEADER */}
-        <div className="h-[90px] border-b border-slate-100 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
-              <FaBus size={22} />
+        {/* Header */}
+        <div className="h-20 border-b border-slate-200 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-2.5 rounded-xl shadow-lg">
+              <FaBus size={20} />
             </div>
 
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+            <div className="hidden sm:block">
+              <h1 className="text-lg font-bold text-blue-700">
                 AngkotTrack
               </h1>
 
-              <p className="text-sm text-slate-500">
-                Admin Dashboard
+              <p className="text-xs text-slate-500">
+                Admin
               </p>
             </div>
           </div>
 
           <button
+            className="md:hidden p-2 hover:bg-slate-100 rounded-lg transition"
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-xl hover:bg-slate-100"
           >
-            <FaXmark size={22} />
+            <FaXmark size={20} />
           </button>
         </div>
 
-        {/* ADMIN CARD */}
-        <div className="p-6">
-          <div className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-[28px] p-5 text-white shadow-xl">
-            <div className="flex items-center gap-4">
-              <img
-                src="https://i.pravatar.cc/100?img=15"
-                alt="admin"
-                className="w-14 h-14 rounded-2xl border-2 border-white/40"
-              />
+        {/* Menu */}
+        <div className="p-4 space-y-2">
+          <a
+            href="/admin"
+            className="flex items-center gap-3 bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold shadow-lg shadow-blue-200/50 text-sm"
+          >
+            <FaTableCellsLarge size={18} />
+            <span>Dashboard</span>
+          </a>
 
-              <div>
-                <h3 className="font-bold text-lg">
-                  Admin Utama
-                </h3>
+          <a
+            href="/admin/rute"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition font-medium text-sm"
+          >
+            <FaRoute size={18} />
+            <span>Manajemen Rute</span>
+          </a>
 
-                <p className="text-sm text-blue-100">
-                  System Administrator
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center gap-2 text-sm text-blue-100">
-              <FaCircleCheck />
-              Sistem berjalan normal
-            </div>
-          </div>
-
-          {/* MENU */}
-          <div className="mt-8 space-y-3">
-            <a
-              href="/admin"
-              className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-5 py-4 rounded-2xl font-semibold shadow-lg shadow-blue-200"
-            >
-              <div className="flex items-center gap-4">
-                <FaTableCellsLarge size={20} />
-                Dashboard
-              </div>
-
-              <FaChevronRight />
-            </a>
-
-            <a
-              href="/admin/rute"
-              className="flex items-center justify-between px-5 py-4 rounded-2xl hover:bg-slate-100 transition font-medium group"
-            >
-              <div className="flex items-center gap-4">
-                <FaRoute
-                  size={20}
-                  className="text-slate-500 group-hover:text-blue-600"
-                />
-
-                Manajemen Rute
-              </div>
-
-              <FaChevronRight className="text-slate-400 text-sm" />
-            </a>
-
-            <a
-              href="/admin/driver"
-              className="flex items-center justify-between px-5 py-4 rounded-2xl hover:bg-slate-100 transition font-medium group"
-            >
-              <div className="flex items-center gap-4">
-                <FaUsers
-                  size={20}
-                  className="text-slate-500 group-hover:text-blue-600"
-                />
-
-                Manajemen Driver
-              </div>
-
-              <FaChevronRight className="text-slate-400 text-sm" />
-            </a>
-          </div>
+          <a
+            href="/admin/driver"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition font-medium text-sm"
+          >
+            <FaUsers size={18} />
+            <span>Manajemen Driver</span>
+          </a>
         </div>
       </aside>
 
       {/* ================= MAIN ================= */}
-      <div className="lg:ml-[290px]">
+      <div>
         {/* ================= NAVBAR ================= */}
         <nav className="sticky top-0 z-30 h-[85px] border-b border-white/30 bg-white/80 backdrop-blur-xl">
-          <div className="h-full px-4 md:px-6 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto h-full px-4 md:px-6 flex items-center justify-between">
             {/* LEFT */}
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-xl hover:bg-slate-100"
+                className="md:hidden p-2 rounded-xl hover:bg-slate-100 transition"
               >
                 <FaBars size={22} />
               </button>
 
-              <div>
-                <h2 className="text-2xl font-bold">
-                  Dashboard Admin
-                </h2>
+              <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
+                <FaBus size={22} />
+              </div>
 
-                <p className="text-sm text-slate-500 hidden sm:block">
-                  Monitoring sistem angkot Kota Malang
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                  AngkotTrack
+                </h1>
+
+                <p className="text-xs md:text-sm text-slate-500">
+                  Admin Dashboard
                 </p>
               </div>
+            </div>
+
+            {/* DESKTOP MENU */}
+            <div className="hidden md:flex items-center gap-8 text-sm font-medium">
+              <a href="/admin" className="text-blue-600 font-semibold">
+                Dashboard
+              </a>
+
+              <a href="/admin/rute" className="hover:text-blue-600 transition">
+                Manajemen Rute
+              </a>
+
+              <a href="/admin/driver" className="hover:text-blue-600 transition">
+                Manajemen Driver
+              </a>
             </div>
 
             {/* RIGHT */}
@@ -201,7 +172,7 @@ export default function AdminDashboardPage() {
         </nav>
 
         {/* ================= CONTENT ================= */}
-        <section className="px-4 md:px-6 py-8 md:py-10">
+        <section className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10">
           {/* HERO */}
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
             <div>

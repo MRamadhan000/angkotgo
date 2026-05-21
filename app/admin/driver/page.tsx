@@ -67,7 +67,7 @@ export default function DriverManagementPage() {
       {/* ================= OVERLAY ================= */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -75,217 +75,230 @@ export default function DriverManagementPage() {
       {/* ================= SIDEBAR ================= */}
       <aside
         className={`
-          fixed top-0 left-0 z-50 h-screen w-[280px]
-          bg-white border-r border-slate-200
-          transition-transform duration-300
+          fixed top-0 left-0 z-50 h-screen w-64
+          bg-gradient-to-b from-blue-50 to-white border-r border-slate-200
+          transition-transform duration-300 md:hidden
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0
         `}
       >
         {/* Header */}
-        <div className="h-[85px] border-b border-slate-200 px-6 flex items-center justify-between">
+        <div className="h-20 border-b border-slate-200 px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
-              <Bus size={24} />
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-2.5 rounded-xl shadow-lg">
+              <Bus size={20} />
             </div>
 
-            <div>
-              <h1 className="text-2xl font-bold text-blue-700">
+            <div className="hidden sm:block">
+              <h1 className="text-lg font-bold text-blue-700">
                 AngkotTrack
               </h1>
 
-              <p className="text-sm text-slate-500">
-                Admin Dashboard
+              <p className="text-xs text-slate-500">
+                Admin
               </p>
             </div>
           </div>
 
           <button
-            className="lg:hidden"
+            className="md:hidden p-2 hover:bg-slate-100 rounded-lg transition"
             onClick={() => setSidebarOpen(false)}
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Menu */}
-        <div className="p-5 space-y-3">
+        <div className="p-4 space-y-2">
           <a
             href="/admin"
-            className="flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-700 hover:bg-slate-100 transition font-medium"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition font-medium text-sm"
           >
-            <LayoutDashboard size={22} />
-            Dashboard
+            <LayoutDashboard size={18} />
+            <span>Dashboard</span>
           </a>
 
           <a
             href="/admin/rute"
-            className="flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-700 hover:bg-slate-100 transition font-medium"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition font-medium text-sm"
           >
-            <Route size={22} />
-            Manajemen Rute
+            <Route size={18} />
+            <span>Manajemen Rute</span>
           </a>
 
           <a
             href="/admin/driver"
-            className="flex items-center gap-4 bg-blue-600 text-white px-5 py-4 rounded-2xl font-semibold shadow-lg shadow-blue-200"
+            className="flex items-center gap-3 bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold shadow-lg shadow-blue-200/50 text-sm"
           >
-            <Users size={22} />
-            Manajemen Driver
+            <Users size={18} />
+            <span>Manajemen Driver</span>
           </a>
         </div>
       </aside>
 
       {/* ================= MAIN ================= */}
-      <div className="lg:ml-[280px]">
+      <div>
         
         {/* ================= NAVBAR ================= */}
-        <nav className="w-full h-[85px] border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-30">
-          <div className="h-full px-4 sm:px-6 flex items-center justify-between">
-            
+        <nav className="sticky top-0 z-30 h-[85px] border-b border-white/30 bg-white/80 backdrop-blur-xl">
+          <div className="max-w-7xl mx-auto h-full px-4 md:px-6 flex items-center justify-between">
             {/* LEFT */}
             <div className="flex items-center gap-4">
-              {/* MOBILE MENU */}
               <button
-                className="lg:hidden"
                 onClick={() => setSidebarOpen(true)}
+                className="md:hidden p-2 rounded-xl hover:bg-slate-100 transition"
               >
-                <Menu size={28} />
+                <Menu size={22} />
               </button>
 
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold">
-                  Manajemen Driver
-                </h2>
+              <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
+                <Bus size={22} />
+              </div>
 
-                <p className="text-sm text-slate-500 hidden sm:block">
-                  Monitoring driver angkot
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                  AngkotTrack
+                </h1>
+
+                <p className="text-xs md:text-sm text-slate-500">
+                  Admin Dashboard
                 </p>
               </div>
             </div>
 
-            {/* RIGHT */}
-            <div className="flex items-center gap-3">
-              
-              {/* Search */}
-              <div className="hidden md:flex items-center gap-3 bg-slate-100 px-4 py-3 rounded-2xl w-[240px]">
-                <Search size={18} className="text-slate-400" />
+            {/* DESKTOP MENU */}
+            <div className="hidden md:flex items-center gap-8 text-sm font-medium">
+              <a href="/admin" className="hover:text-blue-600 transition">
+                Dashboard
+              </a>
 
+              <a href="/admin/rute" className="hover:text-blue-600 transition">
+                Manajemen Rute
+              </a>
+
+              <a href="/admin/driver" className="text-blue-600 font-semibold">
+                Manajemen Driver
+              </a>
+            </div>
+
+            {/* RIGHT */}
+            <div className="flex items-center gap-4">
+              {/* Search */}
+              <div className="hidden lg:flex items-center gap-3 bg-slate-100 px-4 py-2.5 rounded-lg">
+                <Search size={16} className="text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Cari data..."
+                  placeholder="Cari driver..."
                   className="bg-transparent outline-none w-full text-sm"
                 />
               </div>
 
               {/* Notification */}
-              <button className="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
-                <Bell size={20} />
+              <button className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+                <Bell size={18} />
               </button>
             </div>
           </div>
         </nav>
 
         {/* ================= CONTENT ================= */}
-        <section className="px-4 sm:px-6 py-6 sm:py-10">
+        <section className="max-w-7xl mx-auto px-4 md:px-6 py-6 sm:py-8">
           
           {/* Header */}
-          <div>
-            <h2 className="text-3xl sm:text-4xl font-bold">
+          <div className="mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold">
               Manajemen Driver
             </h2>
 
-            <p className="text-slate-500 mt-2 text-base sm:text-lg">
-              Verifikasi, monitoring, dan kelola status driver angkot
+            <p className="text-slate-500 mt-1 text-sm sm:text-base">
+              Verifikasi dan kelola status driver angkot
             </p>
           </div>
 
           {/* ================= STATS ================= */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mt-10">
-            
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
             {/* Total Driver */}
-            <div className="bg-white rounded-[30px] p-6 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition">
               <div className="flex items-center justify-between">
                 
-                <div>
-                  <p className="text-slate-500">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm text-slate-500 font-medium">
                     Total Driver
                   </p>
 
-                  <h3 className="text-3xl font-bold mt-2 text-blue-600">
+                  <h3 className="text-2xl sm:text-3xl font-bold mt-2 text-blue-600">
                     52
                   </h3>
                 </div>
 
-                <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl">
-                  <Users size={28} />
+                <div className="bg-blue-100 text-blue-600 p-3 rounded-lg flex-shrink-0">
+                  <Users size={20} />
                 </div>
               </div>
             </div>
 
             {/* Verified */}
-            <div className="bg-white rounded-[30px] p-6 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition">
               <div className="flex items-center justify-between">
                 
-                <div>
-                  <p className="text-slate-500">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm text-slate-500 font-medium">
                     Terverifikasi
                   </p>
 
-                  <h3 className="text-3xl font-bold mt-2 text-green-600">
+                  <h3 className="text-2xl sm:text-3xl font-bold mt-2 text-green-600">
                     40
                   </h3>
                 </div>
 
-                <div className="bg-green-100 text-green-600 p-4 rounded-2xl">
-                  <ShieldCheck size={28} />
+                <div className="bg-green-100 text-green-600 p-3 rounded-lg flex-shrink-0">
+                  <ShieldCheck size={20} />
                 </div>
               </div>
             </div>
 
             {/* Pending */}
-            <div className="bg-white rounded-[30px] p-6 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition">
               <div className="flex items-center justify-between">
                 
-                <div>
-                  <p className="text-slate-500">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm text-slate-500 font-medium">
                     Pending
                   </p>
 
-                  <h3 className="text-3xl font-bold mt-2 text-orange-600">
+                  <h3 className="text-2xl sm:text-3xl font-bold mt-2 text-orange-600">
                     8
                   </h3>
                 </div>
 
-                <div className="bg-orange-100 text-orange-600 p-4 rounded-2xl">
-                  <Clock3 size={28} />
+                <div className="bg-orange-100 text-orange-600 p-3 rounded-lg flex-shrink-0">
+                  <Clock3 size={20} />
                 </div>
               </div>
             </div>
 
             {/* Nonaktif */}
-            <div className="bg-white rounded-[30px] p-6 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition">
               <div className="flex items-center justify-between">
                 
-                <div>
-                  <p className="text-slate-500">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm text-slate-500 font-medium">
                     Diberhentikan
                   </p>
 
-                  <h3 className="text-3xl font-bold mt-2 text-red-600">
+                  <h3 className="text-2xl sm:text-3xl font-bold mt-2 text-red-600">
                     4
                   </h3>
                 </div>
 
-                <div className="bg-red-100 text-red-600 p-4 rounded-2xl">
-                  <ShieldX size={28} />
+                <div className="bg-red-100 text-red-600 p-3 rounded-lg flex-shrink-0">
+                  <ShieldX size={20} />
                 </div>
               </div>
             </div>
           </div>
 
           {/* ================= FILTER ================= */}
-          <div className="mt-10 flex flex-wrap gap-4">
+          <div className="mb-8 flex flex-wrap gap-2 sm:gap-3">
             
             {[
               "Semua",
@@ -297,11 +310,11 @@ export default function DriverManagementPage() {
                 key={i}
                 onClick={() => setSelectedStatus(status)}
                 className={`
-                  px-5 sm:px-6 py-3 rounded-2xl font-semibold transition text-sm sm:text-base
+                  px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg font-semibold transition text-xs sm:text-sm
                   ${
                     selectedStatus === status
-                      ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
-                      : "bg-white border border-slate-200 text-slate-600 hover:border-blue-400"
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-200/50"
+                      : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
                   }
                 `}
               >
@@ -311,54 +324,50 @@ export default function DriverManagementPage() {
           </div>
 
           {/* ================= DRIVER TABLE ================= */}
-          <section className="mt-10 bg-white rounded-[36px] border border-slate-100 p-4 sm:p-8 shadow-sm">
+          <section className="bg-white rounded-3xl border border-slate-100 p-4 sm:p-8 shadow-sm">
             
             {/* Header */}
-            <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
               
               <div>
                 <h3 className="text-2xl sm:text-3xl font-bold">
                   Data Driver
                 </h3>
 
-                <p className="text-slate-500 mt-2">
+                <p className="text-slate-500 mt-2 text-sm">
                   Monitoring dan verifikasi akun driver
                 </p>
               </div>
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto mt-10">
-              <table className="w-full min-w-[1100px]">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full min-w-[900px]">
                 
                 <thead>
                   <tr className="border-b border-slate-200">
                     
-                    <th className="text-left pb-5 text-slate-500 font-semibold">
+                    <th className="text-left py-4 px-4 text-slate-500 font-semibold text-sm">
                       Driver
                     </th>
 
-                    <th className="text-left pb-5 text-slate-500 font-semibold">
+                    <th className="text-left py-4 px-4 text-slate-500 font-semibold text-sm">
                       Kontak
                     </th>
 
-                    <th className="text-left pb-5 text-slate-500 font-semibold">
+                    <th className="text-left py-4 px-4 text-slate-500 font-semibold text-sm">
                       Jalur
                     </th>
 
-                    <th className="text-left pb-5 text-slate-500 font-semibold">
-                      Kendaraan
-                    </th>
-
-                    <th className="text-left pb-5 text-slate-500 font-semibold">
+                    <th className="text-left py-4 px-4 text-slate-500 font-semibold text-sm">
                       Status
                     </th>
 
-                    <th className="text-left pb-5 text-slate-500 font-semibold">
+                    <th className="text-left py-4 px-4 text-slate-500 font-semibold text-sm">
                       Verifikasi
                     </th>
 
-                    <th className="text-center pb-5 text-slate-500 font-semibold">
+                    <th className="text-center py-4 px-4 text-slate-500 font-semibold text-sm">
                       Action
                     </th>
                   </tr>
@@ -367,77 +376,56 @@ export default function DriverManagementPage() {
                 <tbody className="divide-y divide-slate-100">
                   
                   {drivers.map((driver, i) => (
-                    <tr key={i}>
+                    <tr key={i} className="hover:bg-slate-50 transition">
                       
                       {/* Driver */}
-                      <td className="py-6">
-                        <div className="flex items-center gap-4">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
                           
                           <img
                             src={`https://i.pravatar.cc/150?img=${i + 10}`}
-                            className="w-14 h-14 rounded-2xl object-cover"
+                            className="w-10 h-10 rounded-lg object-cover"
                           />
 
-                          <div>
-                            <h4 className="font-bold text-lg">
+                          <div className="min-w-0">
+                            <h4 className="font-semibold text-sm truncate">
                               {driver.name}
                             </h4>
 
-                            <p className="text-sm text-slate-500">
-                              Driver Angkot
+                            <p className="text-xs text-slate-500">
+                              Driver
                             </p>
                           </div>
                         </div>
                       </td>
 
                       {/* Kontak */}
-                      <td className="py-6">
-                        <div className="space-y-2">
-                          
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Phone size={16} />
-                            {driver.phone}
+                      <td className="py-4 px-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-slate-600 text-sm">
+                            <Phone size={14} className="flex-shrink-0" />
+                            <span className="truncate">{driver.phone}</span>
                           </div>
 
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <MapPinned size={16} />
+                          <div className="flex items-center gap-2 text-slate-600 text-xs">
+                            <MapPinned size={12} className="flex-shrink-0" />
                             Malang
                           </div>
                         </div>
                       </td>
 
                       {/* Jalur */}
-                      <td className="py-6">
-                        <span className="bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-semibold">
+                      <td className="py-4 px-4">
+                        <span className="bg-blue-100 text-blue-600 px-3 py-1.5 rounded-md text-xs font-semibold">
                           {driver.route}
                         </span>
                       </td>
 
-                      {/* Kendaraan */}
-                      <td className="py-6">
-                        <div className="flex items-center gap-3">
-                          
-                          <div className="bg-orange-100 text-orange-600 p-3 rounded-2xl">
-                            <Car size={18} />
-                          </div>
-
-                          <div>
-                            <h5 className="font-semibold">
-                              {driver.plate}
-                            </h5>
-
-                            <p className="text-sm text-slate-500">
-                              Angkot Aktif
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
                       {/* Status */}
-                      <td className="py-6">
+                      <td className="py-4 px-4">
                         <span
                           className={`
-                            px-4 py-2 rounded-full text-sm font-semibold
+                            px-3 py-1.5 rounded-md text-xs font-semibold
                             ${
                               driver.status === "Aktif"
                                 ? "bg-green-100 text-green-600"
@@ -452,10 +440,10 @@ export default function DriverManagementPage() {
                       </td>
 
                       {/* Verification */}
-                      <td className="py-6">
+                      <td className="py-4 px-4">
                         <span
                           className={`
-                            px-4 py-2 rounded-full text-sm font-semibold
+                            px-3 py-1.5 rounded-md text-xs font-semibold
                             ${
                               driver.verification === "Terverifikasi"
                                 ? "bg-green-100 text-green-600"
@@ -470,19 +458,19 @@ export default function DriverManagementPage() {
                       </td>
 
                       {/* Action */}
-                      <td className="py-6">
-                        <div className="flex items-center justify-center gap-3">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-center gap-2">
                           
-                          <button className="w-11 h-11 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center hover:bg-slate-200 transition">
-                            <Eye size={18} />
+                          <button className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition">
+                            <Eye size={16} />
                           </button>
 
-                          <button className="w-11 h-11 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition">
-                            <CheckCircle2 size={18} />
+                          <button className="w-9 h-9 rounded-lg bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition">
+                            <CheckCircle2 size={16} />
                           </button>
 
-                          <button className="w-11 h-11 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition">
-                            <XCircle size={18} />
+                          <button className="w-9 h-9 rounded-lg bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition">
+                            <XCircle size={16} />
                           </button>
                         </div>
                       </td>
