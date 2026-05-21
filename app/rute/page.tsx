@@ -37,7 +37,7 @@ const MALANG: CityData = {
   angkots: [
     {
       type: 'direct', id: 'AL', name: 'Arjosari – Landungsari',
-      color: '#3b82f6', eta: 0.5, distance: 850, price: 5000,
+      color: '#3b82f6', eta: 0.25, distance: 850, price: 5000,
       capacity: 5, maxCapacity: 12,
       pos: [-7.986, 112.618], plate: 'N 1111 AL', driver: 'Pak Budi',
     },
@@ -65,8 +65,8 @@ const fmtEta  = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padS
 const fmtRp   = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
 const fmtTime = (s: number) => {
   const d = new Date();
-  d.setSeconds(d.getSeconds() + s);
-  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  d.setSeconds(d.getSeconds() + Math.round(s));
+  return 15;
 };
 
 // Generate curved route waypoints following terrain
@@ -435,7 +435,7 @@ export default function AngkotGoPage() {
         mapRef.current.fitBounds(L.latLngBounds([up, ap]), { padding: [70, 70] });
       }
     }
-    const total = a.eta * 60;
+    const total = Math.round(a.eta * 60);
     etaMaxRef.current = total;
     setEta(total);
     setBooked(a);
@@ -504,21 +504,15 @@ export default function AngkotGoPage() {
       if (!dragStartRef.current) return;
       const delta = moveEvent.clientY - dragStartRef.current.y;
       const newHeight = dragStartRef.current.height - (delta / window.innerHeight) * 100;
-      // Max 50vh so it doesn't cover the map
-      setSheetHeight(Math.min(50, newHeight));
+      // Clamp between 15vh and 80vh, no snap points
+      setSheetHeight(Math.max(15, Math.min(80, newHeight)));
     };
     const onEnd = () => {
       dragStartRef.current = null;
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onEnd);
-      if (sheetHeight < 10) {
+      if (sheetHeight < 15) {
         cancelBooking();
-        return;
-      }
-      if (sheetHeight < 35) {
-        setSheetHeight(30);
-      } else {
-        setSheetHeight(50);
       }
     };
     document.addEventListener('pointermove', onMove);
@@ -576,7 +570,7 @@ export default function AngkotGoPage() {
           height: `${Math.max(15, sheetHeight)}vh`,
           transform: 'none',
           opacity: sheetHeight > -10 ? 1 : Math.max(0, 1 + (sheetHeight + 10) / 10),
-          maxHeight: '50vh',
+          maxHeight: '80vh',
           willChange: 'transform, height',
         }}
       >
