@@ -26,10 +26,23 @@ const poppins = Poppins({
 });
 
 export default function DriverProfilePage() {
-  const [selectedRoute, setSelectedRoute] = useState("AG");
-  const [tempSelectedRoute, setTempSelectedRoute] = useState("AG");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
+  
+  // Form Data State
+  const [formData, setFormData] = useState({
+    name: "Budi Santoso",
+    email: "budi.santoso@angkotgo.com",
+    phone: "081234567890",
+    address: "Jl. Arjosari No. 123, Malang",
+    platNomor: "N 1111 AG",
+    warnaAngkot: "Biru",
+    route: "AG",
+  });
+  
+  const [selectedRoute, setSelectedRoute] = useState("AG");
+  const [tempSelectedRoute, setTempSelectedRoute] = useState("AG");
+  const [hasChanges, setHasChanges] = useState(false);
 
   const routes = [
     { id: "AG", name: "Jalur AG", description: "Arjosari - Gadang" },
@@ -37,6 +50,19 @@ export default function DriverProfilePage() {
     { id: "BC", name: "Jalur BC", description: "Batu - Cimahi" },
     { id: "DE", name: "Jalur DE", description: "Dago - Ende" },
   ];
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setHasChanges(true);
+  };
+
+  const handleSaveChanges = () => {
+    setFormData(prev => ({ ...prev, route: selectedRoute }));
+    setHasChanges(false);
+    // Here you would typically send data to backend
+    console.log('Changes saved:', formData);
+  };
  
   return (
     <main
@@ -219,19 +245,21 @@ export default function DriverProfilePage() {
         {/* HEADER */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-5">
           <div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
               Driver Profile
             </h2>
 
-            <p className="text-slate-500 text-base sm:text-lg mt-2 sm:mt-3">
+            <p className="text-slate-500 text-xs sm:text-sm md:text-base lg:text-lg mt-2 sm:mt-3">
               Kelola informasi driver dan kendaraan angkot secara modern.
             </p>
           </div>
 
-          <button className="flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-blue-200 hover:scale-[1.02] transition text-sm sm:text-base whitespace-nowrap">
-            <FaSave />
-            Save Changes
-          </button>
+          {hasChanges && (
+            <button onClick={handleSaveChanges} className="flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-blue-200 hover:scale-[1.02] transition text-xs sm:text-sm whitespace-nowrap">
+              <FaSave />
+              Save Changes
+            </button>
+          )}
         </div>
 
         {/* ================= PROFILE CARD ================= */}
@@ -241,11 +269,11 @@ export default function DriverProfilePage() {
           {/* HEADER */}
           <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between flex-wrap gap-3 sm:gap-4">
             <div>
-              <h3 className="text-2xl sm:text-3xl font-bold">
+              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold">
                 Driver Information
               </h3>
 
-              <p className="text-slate-500 text-sm sm:text-base mt-1 sm:mt-2">
+              <p className="text-slate-500 text-xs sm:text-xs md:text-sm lg:text-base mt-1 sm:mt-2">
                 Lengkapi data profile driver anda
               </p>
             </div>
@@ -291,6 +319,9 @@ export default function DriverProfilePage() {
 
                   <input
                     type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
                     placeholder="Masukkan nama lengkap"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-2xl pl-10 sm:pl-14 pr-3 sm:pr-5 py-2.5 sm:py-4 text-sm sm:text-base outline-none focus:border-blue-500 focus:bg-white transition"
                   />
@@ -308,6 +339,9 @@ export default function DriverProfilePage() {
 
                   <input
                     type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
                     placeholder="Masukkan email"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-2xl pl-10 sm:pl-14 pr-3 sm:pr-5 py-2.5 sm:py-4 text-sm sm:text-base outline-none focus:border-blue-500 focus:bg-white transition"
                   />
@@ -325,6 +359,9 @@ export default function DriverProfilePage() {
 
                   <input
                     type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
                     placeholder="08xxxxxxxxxx"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-2xl pl-10 sm:pl-14 pr-3 sm:pr-5 py-2.5 sm:py-4 text-sm sm:text-base outline-none focus:border-blue-500 focus:bg-white transition"
                   />
@@ -342,6 +379,9 @@ export default function DriverProfilePage() {
 
                   <textarea
                     rows={4}
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
                     placeholder="Masukkan alamat lengkap"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-2xl pl-10 sm:pl-14 pr-3 sm:pr-5 py-2.5 sm:py-4 text-sm sm:text-base outline-none resize-none focus:border-blue-500 focus:bg-white transition"
                   />
@@ -358,11 +398,11 @@ export default function DriverProfilePage() {
           {/* HEADER */}
           <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between flex-wrap gap-3 sm:gap-4">
             <div>
-              <h3 className="text-2xl sm:text-3xl font-bold">
+              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold">
                 Vehicle Information
               </h3>
 
-              <p className="text-slate-500 text-sm sm:text-base mt-1 sm:mt-2">
+              <p className="text-slate-500 text-xs sm:text-xs md:text-sm lg:text-base mt-1 sm:mt-2">
                 Lengkapi data kendaraan angkot
               </p>
             </div>
@@ -405,6 +445,9 @@ export default function DriverProfilePage() {
 
                 <input
                   type="text"
+                  name="platNomor"
+                  value={formData.platNomor}
+                  onChange={handleInputChange}
                   placeholder="N 1234 AB"
                   className="mt-2 sm:mt-3 w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-2xl px-3 sm:px-5 py-2.5 sm:py-4 text-sm sm:text-base outline-none focus:border-blue-500 focus:bg-white transition"
                 />
@@ -417,6 +460,9 @@ export default function DriverProfilePage() {
 
                 <input
                   type="text"
+                  name="warnaAngkot"
+                  value={formData.warnaAngkot}
+                  onChange={handleInputChange}
                   placeholder="Biru"
                   className="mt-2 sm:mt-3 w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-2xl px-3 sm:px-5 py-2.5 sm:py-4 text-sm sm:text-base outline-none focus:border-blue-500 focus:bg-white transition"
                 />
@@ -452,6 +498,16 @@ export default function DriverProfilePage() {
           </div>
         </div>
 
+        {/* SAVE BUTTON AT BOTTOM */}
+        {hasChanges && (
+          <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-white/0 pt-4 pb-4 sm:pb-6 px-4 sm:px-0 z-30">
+            <button onClick={handleSaveChanges} className="w-full sm:w-auto flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-blue-200 hover:scale-[1.02] transition text-sm sm:text-base">
+              <FaSave />
+              Simpan Perubahan
+            </button>
+          </div>
+        )}
+
         {/* ================= ROUTE SELECTION MODAL ================= */}
         {isRouteModalOpen && (
           <>
@@ -467,10 +523,10 @@ export default function DriverProfilePage() {
                 {/* HEADER */}
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-bold">
+                    <h3 className="text-lg sm:text-xl font-bold">
                       Pilih Jalur
                     </h3>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
                       Silakan pilih jalur operasional anda
                     </p>
                   </div>
@@ -490,7 +546,7 @@ export default function DriverProfilePage() {
                       onClick={() => {
                         setTempSelectedRoute(route.id);
                       }}
-                      className={`w-full p-4 rounded-lg sm:rounded-xl border-2 transition-all text-left ${
+                      className={`w-full p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 transition-all text-left text-sm sm:text-base ${
                         tempSelectedRoute === route.id
                           ? "border-blue-500 bg-blue-50"
                           : "border-slate-200 bg-white hover:border-blue-300"
