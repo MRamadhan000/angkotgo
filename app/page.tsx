@@ -112,7 +112,7 @@ export default function HomePage() {
           {/* BUTTONS */}
           <div className="hidden md:flex items-center gap-2 lg:gap-3">
             <Link
-              href="/driver"
+              href="/driver/auth/login"
               className="px-3 lg:px-5 py-1.5 lg:py-2.5 rounded-lg lg:rounded-xl border border-slate-200 hover:border-blue-500 hover:text-blue-600 transition font-medium text-xs lg:text-sm"
             >
               Driver
@@ -192,14 +192,14 @@ export default function HomePage() {
 
           <div className="flex flex-col gap-2 sm:gap-3">
             <Link
-              href="/driver"
+              href="/driver/auth/login"
               className="bg-slate-100 py-2 sm:py-3 rounded-lg text-center font-semibold text-sm sm:text-base hover:bg-slate-200 transition"
             >
               Login Driver
             </Link>
 
             <Link
-              href="/admin"
+              href="/admin/auth/login"
               className="bg-blue-600 text-white py-2 sm:py-3 rounded-lg text-center font-semibold text-sm sm:text-base"
             >
               Login Admin
