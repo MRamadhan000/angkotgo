@@ -304,7 +304,7 @@ export default function HomePage() {
 
                   <div className="flex items-center gap-2 text-blue-600">
                     <FaUsers />
-                    6 Seats Available
+                    Seats Available
                   </div>
                 </div>
 
