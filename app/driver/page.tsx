@@ -196,12 +196,12 @@ export default function DriverAvailabilityPage() {
         {/* HERO HEADER */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-600 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium mb-3 sm:mb-5">
+            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-600 px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-[11px] sm:text-xs md:text-sm font-medium mb-2 sm:mb-3 md:mb-5">
               <FaBus size={14} />
               Real-Time Driver Monitoring
             </div>
 
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
               Dashboard
               <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                 {" "}
@@ -209,7 +209,7 @@ export default function DriverAvailabilityPage() {
               </span>
             </h2>
 
-            <p className="text-slate-500 text-base sm:text-lg mt-3 sm:mt-4 max-w-2xl">
+            <p className="text-slate-500 text-xs sm:text-sm md:text-base lg:text-lg mt-2 sm:mt-3 md:mt-4 max-w-2xl">
               Kelola status angkot, kapasitas penumpang, dan pantau lokasi
               perjalanan secara real-time.
             </p>
@@ -220,9 +220,9 @@ export default function DriverAvailabilityPage() {
             <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-lg min-w-[110px] sm:min-w-[160px]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-slate-500">Passenger</p>
+                  <p className="text-xs text-slate-500">Passenger</p>
 
-                  <h3 className="text-2xl sm:text-3xl font-bold mt-1">18</h3>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mt-1">18</h3>
                 </div>
 
                 <div className="bg-blue-100 text-blue-600 w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-2xl flex items-center justify-center text-lg sm:text-2xl">
@@ -234,9 +234,9 @@ export default function DriverAvailabilityPage() {
             <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-lg min-w-[110px] sm:min-w-[160px]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-slate-500">Trips Today</p>
+                  <p className="text-xs text-slate-500">Trips Today</p>
 
-                  <h3 className="text-2xl sm:text-3xl font-bold mt-1">7</h3>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mt-1">7</h3>
                 </div>
 
                 <div className="bg-green-100 text-green-600 w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-2xl flex items-center justify-center text-lg sm:text-2xl">
@@ -253,36 +253,36 @@ export default function DriverAvailabilityPage() {
           <div className="relative overflow-hidden bg-white border border-slate-100 rounded-2xl sm:rounded-[36px] p-5 sm:p-6 md:p-8 shadow-xl">
             <div className="absolute top-0 right-0 w-[240px] h-[240px] bg-green-100/40 rounded-full blur-3xl" />
 
-            <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="relative flex flex-row items-start sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div>
-                <h3 className="text-xl sm:text-2xl font-bold">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold">
                   Status Angkot
                 </h3>
 
-                <p className="text-slate-500 text-sm sm:text-base mt-1 sm:mt-2">
+                <p className="text-slate-500 text-xs sm:text-xs md:text-sm mt-1 sm:mt-2">
                   Kontrol status operasional angkot
                 </p>
               </div>
 
               <div
-                className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg flex-shrink-0 ${
+                className={`w-10 h-10 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg flex-shrink-0 ${
                   isActive
                     ? "bg-green-100 text-green-600"
                     : "bg-red-100 text-red-600"
                 }`}
               >
-                <FaPowerOff size={20} className="sm:w-6 sm:h-6" />
+                <FaPowerOff size={16} className="sm:w-6 sm:h-6" />
               </div>
             </div>
 
-            <div className="relative mt-6 sm:mt-8 md:mt-10 bg-slate-50 rounded-xl sm:rounded-[30px] p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="relative mt-6 sm:mt-8 md:mt-10 bg-slate-50 rounded-xl sm:rounded-[30px] p-4 sm:p-6 flex flex-row items-center justify-between gap-3 sm:gap-4">
               <div>
-                <p className="text-slate-500 text-xs sm:text-sm">
+                <p className="text-slate-500 text-xs sm:text-xs md:text-sm">
                   Current Status
                 </p>
 
                 <h4
-                  className={`text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 ${
+                  className={`text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2 ${
                     isActive ? "text-green-600" : "text-red-600"
                   }`}
                 >
@@ -309,36 +309,36 @@ export default function DriverAvailabilityPage() {
           <div className="relative overflow-hidden bg-white border border-slate-100 rounded-2xl sm:rounded-[36px] p-5 sm:p-6 md:p-8 shadow-xl">
             <div className="absolute bottom-0 left-0 w-[240px] h-[240px] bg-blue-100/40 rounded-full blur-3xl" />
 
-            <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="relative flex flex-row items-start sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div>
-                <h3 className="text-xl sm:text-2xl font-bold">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold">
                   Kapasitas Penumpang
                 </h3>
 
-                <p className="text-slate-500 text-sm sm:text-base mt-1 sm:mt-2">
+                <p className="text-slate-500 text-xs sm:text-xs md:text-sm mt-1 sm:mt-2">
                   Update status kursi penumpang
                 </p>
               </div>
 
               <div
-                className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg flex-shrink-0 ${
+                className={`w-10 h-10 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg flex-shrink-0 ${
                   isFull
                     ? "bg-blue-100 text-blue-600"
                     : "bg-red-100 text-red-600"
                 }`}
               >
-                <FaUsers size={18} className="sm:w-6 sm:h-6" />
+                <FaUsers size={16} className="sm:w-6 sm:h-6" />
               </div>
             </div>
 
-            <div className="relative mt-6 sm:mt-8 md:mt-10 bg-slate-50 rounded-xl sm:rounded-[30px] p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="relative mt-6 sm:mt-8 md:mt-10 bg-slate-50 rounded-xl sm:rounded-[30px] p-4 sm:p-6 flex flex-row items-center justify-between gap-3 sm:gap-4">
               <div>
-                <p className="text-slate-500 text-xs sm:text-sm">
+                <p className="text-slate-500 text-xs sm:text-xs md:text-sm">
                   Seat Availability
                 </p>
 
                 <h4
-                  className={`text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 ${
+                  className={`text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2 ${
                     isFull ? "text-blue-600" : "text-red-600"
                   }`}
                 >
@@ -374,17 +374,17 @@ export default function DriverAvailabilityPage() {
                 Live Passenger Heatmap
               </div>
 
-              <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold">
+              <h3 className="text-lg sm:text-xl md:text-3xl lg:text-4xl font-bold">
                 Real-Time Tracking
               </h3>
 
-              <p className="text-slate-500 mt-2 sm:mt-3 text-base sm:text-lg">
+              <p className="text-slate-500 mt-1 sm:mt-2 md:mt-3 text-xs sm:text-sm md:text-base lg:text-lg">
                 Pantau lokasi penumpang dan perjalanan angkot secara langsung.
               </p>
             </div>
 
             {/* LEGEND */}
-            <div className="flex flex-wrap gap-3 sm:gap-4 md:gap-5 text-xs sm:text-sm font-medium">
+            <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4 lg:gap-5 text-xs font-medium">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gradient-to-r from-blue-400 to-blue-600" />
 
