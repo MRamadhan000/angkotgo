@@ -3,26 +3,36 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
-// Dynamic import Leaflet agar SSR di-skip
+import { FaBus, FaUsers, FaMapMarkerAlt, FaRoute } from "react-icons/fa";
+
+// ================= DYNAMIC IMPORT =================
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
-  { ssr: false }
+  { ssr: false },
 );
+
 const TileLayer = dynamic(
   () => import("react-leaflet").then((mod) => mod.TileLayer),
-  { ssr: false }
+  { ssr: false },
 );
+
 const Marker = dynamic(
   () => import("react-leaflet").then((mod) => mod.Marker),
-  { ssr: false }
+  { ssr: false },
 );
+
 const Polyline = dynamic(
   () => import("react-leaflet").then((mod) => mod.Polyline),
-  { ssr: false }
+  { ssr: false },
 );
-const Popup = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Popup),
-  { ssr: false }
+
+const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
+  ssr: false,
+});
+
+const CircleMarker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.CircleMarker),
+  { ssr: false },
 );
 
 // ================= DATA =================
@@ -45,27 +55,83 @@ const angkotPosition: [number, number] = [-7.9515, 112.619];
 
 export default function DriverMap() {
   const [leafletReady, setLeafletReady] = useState(false);
+
   const [angkotIcon, setAngkotIcon] = useState<any>(null);
 
-  // Inisialisasi Leaflet + Custom Icon (hanya client)
   useEffect(() => {
     const initLeaflet = async () => {
       const L = (await import("leaflet")).default;
 
-      // Fix default marker icon
+      // ================= DEFAULT ICON FIX =================
       delete (L.Icon.Default.prototype as any)._getIconUrl;
+
       L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        iconRetinaUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
         iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        shadowUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      // Custom Angkot Icon
+      // ================= CUSTOM ANGKOT ICON =================
       const customIcon = L.divIcon({
-        html: `<div style="font-size: 42px; line-height: 1;">🚌</div>`,
-        className: "custom-angkot-icon",
-        iconSize: [60, 60],
-        iconAnchor: [30, 30],
+        html: `
+          <div style="
+            position: relative;
+            width: 72px;
+            height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            
+            <div style="
+              position: absolute;
+              width: 72px;
+              height: 72px;
+              background: rgba(59,130,246,0.18);
+              border-radius: 999px;
+              animation: pulse 2s infinite;
+            "></div>
+
+            <div style="
+              width: 56px;
+              height: 56px;
+              background: linear-gradient(135deg,#2563eb,#06b6d4);
+              border-radius: 18px;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              box-shadow: 0 12px 30px rgba(37,99,235,0.35);
+              border: 4px solid white;
+              font-size: 28px;
+            ">
+              🚌
+            </div>
+          </div>
+
+          <style>
+            @keyframes pulse {
+              0% {
+                transform: scale(0.9);
+                opacity: 0.7;
+              }
+
+              70% {
+                transform: scale(1.4);
+                opacity: 0;
+              }
+
+              100% {
+                transform: scale(1.4);
+                opacity: 0;
+              }
+            }
+          </style>
+        `,
+        className: "custom-angkot-marker",
+        iconSize: [72, 72],
+        iconAnchor: [36, 36],
       });
 
       setAngkotIcon(customIcon);
@@ -76,51 +142,175 @@ export default function DriverMap() {
   }, []);
 
   if (!leafletReady) {
-    return <div className="h-[500px] flex items-center justify-center">Loading Map...</div>;
+    return (
+      <div className="h-[500px] rounded-[32px] bg-gradient-to-br from-blue-50 to-cyan-50 flex flex-col items-center justify-center border border-blue-100">
+        <div className="w-16 h-16 rounded-3xl bg-gradient-to-r from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-200 animate-pulse">
+          <FaBus className="text-white text-2xl" />
+        </div>
+
+        <h3 className="mt-6 text-xl font-bold text-slate-800">
+          Loading Live Map
+        </h3>
+
+        <p className="text-slate-500 mt-2">Menyiapkan tracking angkot...</p>
+      </div>
+    );
   }
 
   return (
-    <MapContainer
-      center={angkotPosition}
-      zoom={15}
-      style={{ height: "500px", width: "100%", borderRadius: "12px" }}
-    >
-      <TileLayer
-        attribution='&copy; OpenStreetMap contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div className="relative h-full w-full">
+      {/* ================= FLOATING MAP INFO ================= */}
+      <div className="absolute top-5 left-5 z-[1000] bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-3xl p-5 w-[250px]">
+        {/* HEADER */}
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+            <FaBus size={22} />
+          </div>
 
-      {/* Route */}
-      <Polyline
-        positions={routePath}
-        color="#3b82f6"
-        weight={6}
-        opacity={0.8}
-      />
+          <div>
+            <h3 className="font-bold text-lg">Angkot AG</h3>
 
-      {/* Passenger Points */}
-      {passengerPoints.map((point, index) => (
-        <Marker key={index} position={point}>
-          <Popup>
-            <strong>🚶 Calon Penumpang #{index + 1}</strong>
-            <br />
-            Menunggu di titik ini
-          </Popup>
-        </Marker>
-      ))}
+            <p className="text-sm text-green-600 font-medium">● Online</p>
+          </div>
+        </div>
 
-      {/* Angkot Position */}
-      {angkotIcon && (
-        <Marker position={angkotPosition} icon={angkotIcon}>
-          <Popup>
-            <strong>🚌 Angkot Jalur AG</strong>
-            <br />
-            Status: <span className="text-green-600">Aktif</span>
-            <br />
-            Penumpang: 8 / 12
-          </Popup>
-        </Marker>
-      )}
-    </MapContainer>
+        {/* INFO */}
+        <div className="mt-5 space-y-4">
+          {/* ROUTE */}
+          <div className="flex items-center justify-between bg-slate-50 rounded-2xl px-4 py-3">
+            <div className="flex items-center gap-2 text-slate-500 text-sm">
+              <FaRoute className="text-blue-500" />
+              Jalur
+            </div>
+
+            <span className="font-bold text-blue-600">AG</span>
+          </div>
+
+          {/* PASSENGER */}
+          <div className="flex items-center justify-between bg-slate-50 rounded-2xl px-4 py-3">
+            <div className="flex items-center gap-2 text-slate-500 text-sm">
+              <FaUsers className="text-cyan-500" />
+              Penumpang Menunggu
+            </div>
+
+            <span className="font-bold text-slate-800">8</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ================= MAP ================= */}
+      <MapContainer
+        center={angkotPosition}
+        zoom={15}
+        zoomControl={false}
+        style={{
+          height: "100%",
+          width: "100%",
+          borderRadius: "32px",
+        }}
+        className="shadow-2xl"
+      >
+        {/* ================= TILE ================= */}
+        <TileLayer
+          attribution="&copy; OpenStreetMap contributors"
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        />
+
+        {/* ================= ROUTE LINE ================= */}
+        <Polyline
+          positions={routePath}
+          pathOptions={{
+            color: "#2563eb",
+            weight: 7,
+            opacity: 0.9,
+            lineCap: "round",
+            lineJoin: "round",
+            dashArray: "12 10",
+          }}
+        />
+
+        {/* ================= PASSENGER POINTS ================= */}
+        {passengerPoints.map((point, index) => (
+          <CircleMarker
+            key={index}
+            center={point}
+            radius={12}
+            pathOptions={{
+              color: "#ffffff",
+              fillColor: "#3b82f6",
+              fillOpacity: 1,
+              weight: 4,
+            }}
+          >
+            <Popup>
+              <div className="min-w-[180px]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                    <FaMapMarkerAlt />
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-slate-800">
+                      Passenger Point
+                    </h3>
+
+                    <p className="text-sm text-slate-500">
+                      Calon Penumpang #{index + 1}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 bg-slate-50 rounded-2xl p-3 text-sm text-slate-600">
+                  Penumpang sedang menunggu angkot di titik ini.
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+
+        {/* ================= ANGKOT POSITION ================= */}
+        {angkotIcon && (
+          <Marker position={angkotPosition} icon={angkotIcon}>
+            <Popup>
+              <div className="min-w-[220px]">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-lg">
+                    <FaBus size={22} />
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-lg">Angkot Jalur AG</h3>
+
+                    <p className="text-sm text-green-600 font-medium">
+                      ● Sedang Beroperasi
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500">Passenger</span>
+
+                    <span className="font-semibold">8 / 12</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500">Route</span>
+
+                    <span className="font-semibold text-blue-600">
+                      Arjosari - Gadang
+                    </span>
+                  </div>
+
+                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden mt-2">
+                    <div className="w-[67%] h-full bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+      </MapContainer>
+    </div>
   );
 }

@@ -2,61 +2,84 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-
 import Link from "next/link";
-import { Bus, Users, Power, Menu, TrendingUp, X } from "lucide-react";
+
+import {
+  FaBus,
+  FaUsers,
+  FaPowerOff,
+  FaBars,
+  FaChartLine,
+  FaTimes,
+  FaMapMarkedAlt,
+  FaUserCircle,
+  FaBell,
+  FaRoute,
+  FaArrowUp,
+} from "react-icons/fa";
 
 import { Poppins } from "next/font/google";
+
+const DriverMap = dynamic(() => import("./DriverMap"), {
+  ssr: false,
+});
 
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-const DriverMap = dynamic(() => import("./DriverMap"), { ssr: false });
-
 export default function DriverAvailabilityPage() {
   const [isActive, setIsActive] = useState(true);
   const [isFull, setIsFull] = useState(false);
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <main
-      className={`${poppins.className} min-h-screen bg-[#F5F9FF] text-slate-900`}
+      className={`${poppins.className} min-h-screen bg-[#F4F8FF] text-slate-900 overflow-hidden`}
     >
-      {/* ================= NAVBAR ================= */}
+      {/* ================= BACKGROUND ================= */}
+      <div className="fixed top-0 left-0 w-full h-[600px] bg-gradient-to-br from-blue-100/60 via-cyan-50 to-transparent blur-3xl -z-10" />
 
-      <nav className="w-full h-[75px] md:h-[85px] border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-50">
+      {/* ================= NAVBAR ================= */}
+      <nav className="sticky top-0 z-50 h-[85px] border-b border-white/30 bg-white/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto h-full px-4 md:px-6 flex items-center justify-between">
-          {/* LOGO */}
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 text-white p-2 md:p-3 rounded-2xl shadow-lg shadow-blue-200">
-              <Bus size={22} />
+          {/* LEFT */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 rounded-xl hover:bg-slate-100 transition"
+            >
+              <FaBars size={22} />
+            </button>
+
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
+              <FaBus size={22} />
             </div>
 
             <div>
-              <h1 className="text-lg md:text-2xl font-bold text-blue-700">
+              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                 AngkotTrack
               </h1>
+
               <p className="text-xs md:text-sm text-slate-500">
                 Driver Dashboard
               </p>
             </div>
           </div>
 
-          {/* DESKTOP NAV */}
+          {/* DESKTOP MENU */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium">
             <Link
               href="/driver"
-              className="text-slate-600 hover:text-blue-600 transition"
+              className="hover:text-blue-600 transition"
             >
               Dashboard
             </Link>
 
             <Link
               href="/driver/profile"
-              className="text-slate-600 hover:text-blue-600 transition"
+              className="hover:text-blue-600 transition"
             >
               Profile
             </Link>
@@ -64,163 +87,259 @@ export default function DriverAvailabilityPage() {
 
           {/* RIGHT */}
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-3 bg-slate-100 rounded-2xl px-3 py-2">
+            {/* NOTIFICATION */}
+            <button className="hidden md:flex w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-md items-center justify-center hover:border-blue-500 transition">
+              <FaBell className="text-slate-600" />
+            </button>
+
+            {/* PROFILE */}
+            <div className="hidden md:flex items-center gap-4 bg-white border border-slate-100 shadow-md rounded-2xl px-4 py-2">
               <img
                 src="https://i.pravatar.cc/100?img=12"
                 alt="profile"
-                className="w-10 h-10 rounded-xl object-cover"
+                className="w-12 h-12 rounded-2xl object-cover"
               />
 
               <div>
-                <h4 className="font-semibold text-sm">Budi Santoso</h4>
+                <h4 className="font-semibold">
+                  Budi Santoso
+                </h4>
 
-                <p className="text-xs text-slate-500">Driver AG</p>
+                <p className="text-sm text-slate-500">
+                  Driver AG
+                </p>
               </div>
             </div>
-
-            <button onClick={() => setSidebarOpen(true)} className="md:hidden">
-              <Menu size={28} />
-            </button>
           </div>
         </div>
       </nav>
 
-      {/* ================= SIDEBAR MOBILE ================= */}
-
-      {/* OVERLAY */}
-
+      {/* ================= MOBILE SIDEBAR ================= */}
       <div
         onClick={() => setSidebarOpen(false)}
-        className={`fixed inset-0 bg-black/40 z-40 transition ${
-          sidebarOpen ? "opacity-100 visible" : "opacity-0 invisible"
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-all duration-300 ${
+          sidebarOpen
+            ? "opacity-100 visible"
+            : "opacity-0 invisible"
         }`}
       />
 
-      {/* SIDEBAR */}
-
-      <div
-        className={`fixed top-0 right-0 h-full w-[270px] bg-white z-50 shadow-2xl transform transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
+      <aside
+        className={`fixed top-0 right-0 h-full w-[290px] bg-white/90 backdrop-blur-2xl z-50 shadow-2xl transition-transform duration-300 ${
+          sidebarOpen
+            ? "translate-x-0"
+            : "translate-x-full"
         }`}
       >
         <div className="p-6">
+          {/* HEADER */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-600 text-white p-2 rounded-xl">
-                <Bus size={20} />
+              <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl">
+                <FaBus size={18} />
               </div>
 
               <div>
-                <h2 className="font-bold text-lg">AngkotTrack</h2>
-                <p className="text-xs text-slate-500">Driver Menu</p>
+                <h2 className="font-bold text-lg">
+                  AngkotTrack
+                </h2>
+
+                <p className="text-xs text-slate-500">
+                  Driver Menu
+                </p>
               </div>
             </div>
 
-            <button onClick={() => setSidebarOpen(false)}>
-              <X size={26} />
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-2 rounded-xl hover:bg-slate-100"
+            >
+              <FaTimes size={20} />
             </button>
           </div>
 
-          <div className="mt-8 flex flex-col gap-3 text-lg">
+          {/* PROFILE */}
+          <div className="mt-8 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-3xl p-5 text-white shadow-xl">
+            <div className="flex items-center gap-4">
+              <img
+                src="https://i.pravatar.cc/100?img=12"
+                className="w-14 h-14 rounded-2xl border-2 border-white/40"
+              />
+
+              <div>
+                <h3 className="font-bold">
+                  Budi Santoso
+                </h3>
+
+                <p className="text-sm text-blue-100">
+                  Driver AG
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* MENU */}
+          <div className="mt-8 flex flex-col gap-3">
             <Link
               href="/driver"
-              onClick={() => setSidebarOpen(false)}
-              className="px-4 py-3 rounded-xl hover:bg-slate-100"
+              className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-blue-50 text-blue-600 font-semibold"
             >
+              <FaChartLine />
               Dashboard
             </Link>
 
             <Link
               href="/driver/profile"
-              onClick={() => setSidebarOpen(false)}
-              className="px-4 py-3 rounded-xl hover:bg-slate-100"
+              className="flex items-center gap-4 px-5 py-4 rounded-2xl hover:bg-slate-100 transition"
             >
+              <FaUserCircle />
               Profile
             </Link>
           </div>
 
-          <div className="border-t my-6" />
+          {/* INFO CARD */}
+          <div className="mt-10 bg-slate-50 rounded-3xl p-5 border border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 text-blue-600 w-12 h-12 rounded-2xl flex items-center justify-center">
+                <FaRoute />
+              </div>
 
-          <div className="flex items-center gap-3">
-            <img
-              src="https://i.pravatar.cc/100?img=12"
-              className="w-12 h-12 rounded-xl"
-            />
+              <div>
+                <h4 className="font-bold">
+                  Active Route
+                </h4>
 
-            <div>
-              <h4 className="font-semibold">Budi Santoso</h4>
-
-              <p className="text-xs text-slate-500">Driver AG</p>
+                <p className="text-sm text-slate-500">
+                  Arjosari - Gadang
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* ================= CONTENT ================= */}
+      <section className="max-w-7xl mx-auto px-4 md:px-6 py-10">
+        {/* HERO HEADER */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-medium mb-5">
+              <FaBus size={14} />
+              Real-Time Driver Monitoring
+            </div>
 
-      <section className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10">
-        {/* HEADER */}
+            <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+              Dashboard
+              <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                {" "}
+                Availability
+              </span>
+            </h2>
 
-        <div>
-          <h2 className="text-2xl md:text-4xl font-bold">
-            Dashboard Ketersediaan
-          </h2>
+            <p className="text-slate-500 text-lg mt-4 max-w-2xl">
+              Kelola status angkot, kapasitas penumpang, dan pantau lokasi
+              perjalanan secara real-time.
+            </p>
+          </div>
 
-          <p className="text-slate-500 mt-2 text-sm md:text-lg">
-            Kelola status angkot dan pantau penumpang secara real-time
-          </p>
+          {/* STATS */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-lg min-w-[160px]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">
+                    Passenger
+                  </p>
+
+                  <h3 className="text-3xl font-bold mt-1">
+                    18
+                  </h3>
+                </div>
+
+                <div className="bg-blue-100 text-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center">
+                  <FaUsers />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-lg min-w-[160px]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">
+                    Trips Today
+                  </p>
+
+                  <h3 className="text-3xl font-bold mt-1">
+                    7
+                  </h3>
+                </div>
+
+                <div className="bg-green-100 text-green-600 w-14 h-14 rounded-2xl flex items-center justify-center">
+                  <FaArrowUp />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* ================= STATUS ================= */}
-
-        <div className="grid md:grid-cols-2 gap-6 md:gap-8 mt-8 md:mt-10">
+        {/* ================= STATUS GRID ================= */}
+        <div className="grid lg:grid-cols-2 gap-8 mt-10">
           {/* STATUS ANGKOT */}
+          <div className="relative overflow-hidden bg-white border border-slate-100 rounded-[36px] p-8 shadow-xl">
+            <div className="absolute top-0 right-0 w-[240px] h-[240px] bg-green-100/40 rounded-full blur-3xl" />
 
-          <div className="bg-white rounded-[28px] md:rounded-[36px] border border-slate-100 p-6 md:p-8 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="relative flex items-center justify-between">
               <div>
-                <h3 className="text-xl md:text-2xl font-bold">Status Angkot</h3>
+                <h3 className="text-2xl font-bold">
+                  Status Angkot
+                </h3>
 
-                <p className="text-slate-500 mt-1 text-sm">
-                  Aktifkan atau nonaktifkan angkot
+                <p className="text-slate-500 mt-2">
+                  Kontrol status operasional angkot
                 </p>
               </div>
 
               <div
-                className={`p-3 md:p-4 rounded-2xl ${
+                className={`w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg ${
                   isActive
                     ? "bg-green-100 text-green-600"
                     : "bg-red-100 text-red-600"
                 }`}
               >
-                <Power size={26} />
+                <FaPowerOff size={24} />
               </div>
             </div>
 
-            <div className="mt-8 flex items-center justify-between bg-slate-50 rounded-2xl md:rounded-[28px] p-5 md:p-6">
+            <div className="relative mt-10 bg-slate-50 rounded-[30px] p-6 flex items-center justify-between">
               <div>
-                <p className="text-slate-500 text-sm">Kondisi Saat Ini</p>
+                <p className="text-slate-500 text-sm">
+                  Current Status
+                </p>
 
                 <h4
-                  className={`text-2xl md:text-3xl font-bold mt-2 ${
-                    isActive ? "text-green-600" : "text-red-600"
+                  className={`text-3xl font-bold mt-2 ${
+                    isActive
+                      ? "text-green-600"
+                      : "text-red-600"
                   }`}
                 >
-                  {isActive ? "Aktif" : "Nonaktif"}
+                  {isActive ? "Online" : "Offline"}
                 </h4>
               </div>
 
               <button
                 onClick={() => setIsActive(!isActive)}
-                className={`relative w-[80px] md:w-[90px] h-[42px] md:h-[48px] rounded-full transition ${
-                  isActive ? "bg-green-500" : "bg-red-500"
+                className={`relative w-[90px] h-[48px] rounded-full transition-all duration-300 ${
+                  isActive
+                    ? "bg-green-500"
+                    : "bg-red-500"
                 }`}
               >
                 <div
-                  className={`absolute top-[4px] md:top-[5px] w-[34px] md:w-[38px] h-[34px] md:h-[38px] bg-white rounded-full shadow-lg transition ${
+                  className={`absolute top-[5px] w-[38px] h-[38px] bg-white rounded-full shadow-lg transition-all duration-300 ${
                     isActive
-                      ? "left-[42px] md:left-[47px]"
-                      : "left-[4px] md:left-[5px]"
+                      ? "left-[47px]"
+                      : "left-[5px]"
                   }`}
                 />
               </button>
@@ -228,54 +347,61 @@ export default function DriverAvailabilityPage() {
           </div>
 
           {/* STATUS KAPASITAS */}
+          <div className="relative overflow-hidden bg-white border border-slate-100 rounded-[36px] p-8 shadow-xl">
+            <div className="absolute bottom-0 left-0 w-[240px] h-[240px] bg-blue-100/40 rounded-full blur-3xl" />
 
-          <div className="bg-white rounded-[28px] md:rounded-[36px] border border-slate-100 p-6 md:p-8 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="relative flex items-center justify-between">
               <div>
-                <h3 className="text-xl md:text-2xl font-bold">
-                  Status Kapasitas
+                <h3 className="text-2xl font-bold">
+                  Kapasitas Penumpang
                 </h3>
 
-                <p className="text-slate-500 mt-1 text-sm">
-                  Update ketersediaan kursi
+                <p className="text-slate-500 mt-2">
+                  Update status kursi penumpang
                 </p>
               </div>
 
               <div
-                className={`p-3 md:p-4 rounded-2xl ${
+                className={`w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg ${
                   isFull
                     ? "bg-red-100 text-red-600"
                     : "bg-blue-100 text-blue-600"
                 }`}
               >
-                <Users size={26} />
+                <FaUsers size={22} />
               </div>
             </div>
 
-            <div className="mt-8 flex items-center justify-between bg-slate-50 rounded-2xl md:rounded-[28px] p-5 md:p-6">
+            <div className="relative mt-10 bg-slate-50 rounded-[30px] p-6 flex items-center justify-between">
               <div>
-                <p className="text-slate-500 text-sm">Kapasitas Saat Ini</p>
+                <p className="text-slate-500 text-sm">
+                  Seat Availability
+                </p>
 
                 <h4
-                  className={`text-2xl md:text-3xl font-bold mt-2 ${
-                    isFull ? "text-red-600" : "text-blue-600"
+                  className={`text-3xl font-bold mt-2 ${
+                    isFull
+                      ? "text-red-600"
+                      : "text-blue-600"
                   }`}
                 >
-                  {isFull ? "Penuh" : "Masih Tersedia"}
+                  {isFull ? "Full" : "Available"}
                 </h4>
               </div>
 
               <button
                 onClick={() => setIsFull(!isFull)}
-                className={`relative w-[80px] md:w-[90px] h-[42px] md:h-[48px] rounded-full transition ${
-                  isFull ? "bg-red-500" : "bg-blue-500"
+                className={`relative w-[90px] h-[48px] rounded-full transition-all duration-300 ${
+                  isFull
+                    ? "bg-red-500"
+                    : "bg-blue-500"
                 }`}
               >
                 <div
-                  className={`absolute top-[4px] md:top-[5px] w-[34px] md:w-[38px] h-[34px] md:h-[38px] bg-white rounded-full shadow-lg transition ${
+                  className={`absolute top-[5px] w-[38px] h-[38px] bg-white rounded-full shadow-lg transition-all duration-300 ${
                     isFull
-                      ? "left-[42px] md:left-[47px]"
-                      : "left-[4px] md:left-[5px]"
+                      ? "left-[47px]"
+                      : "left-[5px]"
                   }`}
                 />
               </button>
@@ -284,42 +410,56 @@ export default function DriverAvailabilityPage() {
         </div>
 
         {/* ================= MAP ================= */}
+        <div className="relative overflow-hidden mt-10 bg-white border border-slate-100 rounded-[40px] p-8 shadow-2xl">
+          <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-cyan-100/40 rounded-full blur-3xl" />
 
-        <div className="mt-8 md:mt-10 bg-white rounded-[28px] md:rounded-[40px] border border-slate-100 p-6 md:p-8 shadow-sm">
-          <div className="flex items-center justify-between flex-wrap gap-4">
+          {/* HEADER */}
+          <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
             <div>
-              <h3 className="text-xl md:text-3xl font-bold">
-                Heatmap Penumpang
+              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-medium mb-4">
+                <FaMapMarkedAlt size={14} />
+                Live Passenger Heatmap
+              </div>
+
+              <h3 className="text-3xl md:text-4xl font-bold">
+                Real-Time Tracking
               </h3>
 
-              <p className="text-slate-500 mt-2 text-sm md:text-lg">
-                Lokasi penumpang dan jalur perjalanan angkot secara real-time
+              <p className="text-slate-500 mt-3 text-lg">
+                Pantau lokasi penumpang dan perjalanan angkot secara langsung.
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-100 to-cyan-100 text-blue-600 p-3 md:p-4 rounded-2xl shadow-lg shadow-blue-200">
-              <TrendingUp size={26} />
+            {/* LEGEND */}
+            <div className="flex flex-wrap gap-5 text-sm font-medium">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-400 to-blue-600" />
+
+                <span className="text-slate-700">
+                  Passenger
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" />
+
+                <span className="text-slate-700">
+                  Route
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🚌</span>
+
+                <span className="text-slate-700">
+                  Angkot Position
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-6 text-xs md:text-sm font-medium">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-400 to-blue-600" />
-              <span className="text-slate-700">Penumpang Menunggu</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" />
-              <span className="text-slate-700">Rute Angkot</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🚌</span>
-              <span className="text-slate-700">Posisi Angkot</span>
-            </div>
-          </div>
-
-          <div className="mt-6 h-[350px] md:h-[450px] rounded-2xl overflow-hidden">
+          {/* MAP */}
+          <div className="relative mt-8 h-[380px] md:h-[520px] rounded-[32px] overflow-hidden border border-slate-100 shadow-inner">
             <DriverMap />
           </div>
         </div>
