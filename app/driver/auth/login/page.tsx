@@ -77,12 +77,12 @@ function Sidebar() {
   return (
     <aside className="hidden md:flex w-56 flex-shrink-0 flex-col bg-[#0C447C] px-5 py-8 relative overflow-hidden">
       {/* Decorative blobs */}
-      <div className="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-[#185FA5] opacity-40" />
-      <div className="absolute -bottom-10 -left-10 w-36 h-36 rounded-full bg-[#042C53] opacity-50" />
+      <div className="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-cyan-500 opacity-40" />
+      <div className="absolute -bottom-10 -left-10 w-36 h-36 rounded-full bg-black/10" />
 
       {/* Logo */}
       <div className="relative z-10 flex items-center gap-2 mb-10">
-        <div className="w-9 h-9 rounded-xl bg-[#378ADD] flex items-center justify-center shadow-md">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 flex items-center justify-center shadow-md">
           <FaBus className="text-white text-base" />
         </div>
         <div>
@@ -106,7 +106,7 @@ function Sidebar() {
             className="flex items-center gap-2 px-2.5 py-2 rounded-lg first:bg-white/10"
           >
             <RouteDot color={route.color} />
-            <span className="text-[#B5D4F4] text-[11px] font-medium flex-1 leading-tight">
+            <span className="text-blue-100 text-[11px] font-medium flex-1 leading-tight">
               {route.name}
             </span>
             <StatusBadge status={route.status} />
@@ -116,11 +116,11 @@ function Sidebar() {
 
       {/* Tip card */}
       <div className="relative z-10 mt-6 bg-white/[0.07] rounded-xl p-3 border border-white/10">
-        <p className="flex items-center gap-1.5 text-[#B5D4F4] text-[10px] font-semibold mb-1">
+        <p className="flex items-center gap-1.5 text-blue-100 text-[10px] font-semibold mb-1">
           <FaInfoCircle className="text-[11px]" />
           Mode Narik
         </p>
-        <p className="text-[#85B7EB] text-[10px] leading-relaxed">
+        <p className="text-blue-100 text-[10px] leading-relaxed">
           Aktifkan mode narik saat mulai beroperasi agar penumpang bisa melihat
           posisi angkotmu secara real-time.
         </p>
@@ -160,7 +160,7 @@ export default function DriverLoginPage() {
       className={`${poppins.className} h-screen overflow-hidden relative`}
       style={{
         background:
-          "linear-gradient(135deg, #e6f1fb 0%, #f8fafc 50%, #eaf3de 100%)",
+          "linear-gradient(135deg, #f0f9ff 0%, #f8fafc 50%, #f0fdf4 100%)",
       }}
     >
       {/* Background Decorations */}
@@ -178,7 +178,7 @@ export default function DriverLoginPage() {
         {/* ================================================= */}
         <section className="hidden lg:flex relative overflow-hidden">
           {/* Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0C447C] via-[#185FA5] to-[#378ADD]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500" />
 
           {/* Decorative */}
           <div className="absolute top-[-120px] right-[-120px] w-[300px] h-[300px] rounded-full bg-white/10" />
@@ -205,7 +205,7 @@ export default function DriverLoginPage() {
 
             {/* Hero */}
             <div className="max-w-xl">
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium mb-6">
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium mb-6 text-white">
                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                 Real-time Monitoring System
               </div>
@@ -214,7 +214,7 @@ export default function DriverLoginPage() {
                 Pantau Angkot
                 <br />
                 Secara
-                <span className="text-[#C8E6FF]"> Real-Time</span>
+                <span className="text-cyan-200"> Real-Time</span>
               </h2>
 
               <p className="mt-6 text-blue-100 text-lg leading-relaxed">
@@ -283,7 +283,7 @@ export default function DriverLoginPage() {
           <div className="w-full max-w-md">
             {/* Mobile Logo */}
             <div className="lg:hidden text-center mb-6 sm:mb-8">
-              <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#185FA5] shadow-lg shadow-blue-500/20">
+              <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 shadow-lg shadow-blue-500/20">
                 <FaBus className="text-white text-xl sm:text-2xl" />
               </div>
 
@@ -378,7 +378,7 @@ export default function DriverLoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group mt-3 sm:mt-2 w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-[#0C447C] hover:bg-[#185FA5] text-white font-bold text-xs sm:text-sm transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 sm:gap-3"
+                  className="group mt-3 sm:mt-2 w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold text-xs sm:text-sm transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 sm:gap-3"
                 >
                   {isLoading ? (
                     <>
@@ -404,7 +404,7 @@ export default function DriverLoginPage() {
               {/* Register Shortcut */}
               <Link
                 href="/driver/auth/register"
-                className="group flex items-center justify-center gap-2 w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl border-2 border-blue-200 hover:border-blue-400 bg-blue-50/50 hover:bg-blue-100 text-blue-700 font-semibold text-xs sm:text-sm transition-all duration-200 hover:scale-[1.01]"
+                  className="group flex items-center justify-center gap-2 w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl border-2 border-blue-300 hover:border-blue-400 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs sm:text-sm transition-all duration-200 hover:scale-[1.01]"
               >
                 <FaUser className="text-sm" />
                 Belum punya akun? Daftar

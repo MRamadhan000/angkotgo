@@ -76,15 +76,15 @@ function RouteDot({ color }: { color: ActiveRoute["color"] }) {
 
 function Sidebar() {
   return (
-    <aside className="hidden lg:flex w-full flex-col bg-[#0C447C] px-8 py-10 relative overflow-hidden">
+    <aside className="hidden lg:flex w-full flex-col bg-gradient-to-br from-blue-600 to-cyan-500 px-8 py-10 relative overflow-hidden">
       {/* Decorative */}
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-[#378ADD]/20" />
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/10" />
 
-      <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-black/10" />
+      <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-black/5" />
 
       {/* Logo */}
       <div className="relative z-10 flex items-center gap-3 mb-12">
-        <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-lg">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-400 to-cyan-300 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg shadow-blue-400/30">
           <FaBus className="text-2xl text-white" />
         </div>
 
@@ -217,7 +217,7 @@ export default function DriverRegisterPage() {
           <div className="w-full max-w-md">
             {/* Mobile Logo */}
             <div className="lg:hidden text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#185FA5] shadow-lg shadow-blue-500/20">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 shadow-lg shadow-cyan-400/30">
                 <FaBus className="text-white text-2xl" />
               </div>
 
@@ -234,8 +234,8 @@ export default function DriverRegisterPage() {
             <div className="bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl p-5 sm:p-7 lg:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
               {/* Header */}
               <div className="mb-7">
-                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
                   Portal Registrasi Driver
                 </div>
 
@@ -264,7 +264,7 @@ export default function DriverRegisterPage() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Masukkan nama lengkap"
-                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
                     />
                   </div>
                 </div>
@@ -283,7 +283,7 @@ export default function DriverRegisterPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="08xxxxxxxxxx"
-                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
                     />
                   </div>
                 </div>
@@ -302,7 +302,7 @@ export default function DriverRegisterPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="contoh@email.com"
-                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
                     />
                   </div>
                 </div>
@@ -318,7 +318,7 @@ export default function DriverRegisterPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group mt-2 w-full h-12 sm:h-14 rounded-2xl bg-[#0C447C] hover:bg-[#185FA5] text-white font-bold text-sm transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-blue-900/20 flex items-center justify-center gap-3"
+                  className="group mt-3 sm:mt-2 w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold text-xs sm:text-sm transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 sm:gap-3"
                 >
                   {isLoading ? (
                     <>
