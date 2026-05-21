@@ -159,45 +159,6 @@ export default function DriverMap() {
 
   return (
     <div className="relative h-full w-full">
-      {/* ================= FLOATING MAP INFO ================= */}
-      <div className="absolute top-5 left-5 z-[1000] bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-3xl p-5 w-[250px]">
-        {/* HEADER */}
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-            <FaBus size={22} />
-          </div>
-
-          <div>
-            <h3 className="font-bold text-lg">Angkot AG</h3>
-
-            <p className="text-sm text-green-600 font-medium">● Online</p>
-          </div>
-        </div>
-
-        {/* INFO */}
-        <div className="mt-5 space-y-4">
-          {/* ROUTE */}
-          <div className="flex items-center justify-between bg-slate-50 rounded-2xl px-4 py-3">
-            <div className="flex items-center gap-2 text-slate-500 text-sm">
-              <FaRoute className="text-blue-500" />
-              Jalur
-            </div>
-
-            <span className="font-bold text-blue-600">AG</span>
-          </div>
-
-          {/* PASSENGER */}
-          <div className="flex items-center justify-between bg-slate-50 rounded-2xl px-4 py-3">
-            <div className="flex items-center gap-2 text-slate-500 text-sm">
-              <FaUsers className="text-cyan-500" />
-              Penumpang Menunggu
-            </div>
-
-            <span className="font-bold text-slate-800">8</span>
-          </div>
-        </div>
-      </div>
-
       {/* ================= MAP ================= */}
       <MapContainer
         center={angkotPosition}
