@@ -28,6 +28,7 @@ const poppins = Poppins({
 export default function DriverProfilePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   
   // Form Data State
   const [formData, setFormData] = useState({
@@ -58,8 +59,13 @@ export default function DriverProfilePage() {
   };
 
   const handleSaveChanges = () => {
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmSave = () => {
     setFormData(prev => ({ ...prev, route: selectedRoute }));
     setHasChanges(false);
+    setIsConfirmModalOpen(false);
     // Here you would typically send data to backend
     console.log('Changes saved:', formData);
   };
@@ -253,13 +259,6 @@ export default function DriverProfilePage() {
               Kelola informasi driver dan kendaraan angkot secara modern.
             </p>
           </div>
-
-          {hasChanges && (
-            <button onClick={handleSaveChanges} className="flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-blue-200 hover:scale-[1.02] transition text-xs sm:text-sm whitespace-nowrap">
-              <FaSave />
-              Save Changes
-            </button>
-          )}
         </div>
 
         {/* ================= PROFILE CARD ================= */}
@@ -495,17 +494,77 @@ export default function DriverProfilePage() {
                 </button>
               </div>
             </div>
+
+            {/* SAVE BUTTON */}
+            {hasChanges && (
+              <div className="flex justify-end mt-8 sm:mt-10">
+                <button onClick={handleSaveChanges} className="flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-blue-200 hover:scale-[1.02] transition text-sm sm:text-base">
+                  <FaSave />
+                  Simpan Perubahan
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* SAVE BUTTON AT BOTTOM */}
-        {hasChanges && (
-          <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-white/0 pt-4 pb-4 sm:pb-6 px-4 sm:px-0 z-30">
-            <button onClick={handleSaveChanges} className="w-full sm:w-auto flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-blue-200 hover:scale-[1.02] transition text-sm sm:text-base">
-              <FaSave />
-              Simpan Perubahan
-            </button>
-          </div>
+
+        {/* ================= CONFIRMATION MODAL ================= */}
+        {isConfirmModalOpen && (
+          <>
+            {/* MODAL BACKDROP */}
+            <div
+              onClick={() => setIsConfirmModalOpen(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-all duration-300"
+            />
+
+            {/* MODAL CONTENT */}
+            <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 sm:px-6">
+              <div className="bg-white rounded-2xl sm:rounded-[32px] p-6 sm:p-8 shadow-2xl max-w-md w-full animate-in fade-in zoom-in-95 duration-300">
+                {/* HEADER */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <FaSave className="text-blue-600" size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold">
+                      Simpan Perubahan?
+                    </h3>
+                  </div>
+                </div>
+
+                {/* MESSAGE */}
+                <p className="text-sm sm:text-base text-slate-600 mb-6">
+                  Apakah anda yakin ingin menyimpan semua perubahan data profil driver dan kendaraan?
+                </p>
+
+                {/* CHANGES SUMMARY */}
+                <div className="bg-slate-50 rounded-lg p-4 mb-6">
+                  <p className="text-xs sm:text-sm font-semibold text-slate-700 mb-3">Perubahan yang akan disimpan:</p>
+                  <ul className="space-y-2 text-xs sm:text-sm text-slate-600">
+                    <li>• Informasi profil driver</li>
+                    <li>• Data kendaraan angkot</li>
+                    <li>• Jalur operasional</li>
+                  </ul>
+                </div>
+
+                {/* ACTION BUTTONS */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsConfirmModalOpen(false)}
+                    className="flex-1 px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-sm sm:text-base"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={confirmSave}
+                    className="flex-1 px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold hover:scale-[1.02] transition text-sm sm:text-base"
+                  >
+                    Ya, Simpan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* ================= ROUTE SELECTION MODAL ================= */}
