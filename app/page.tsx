@@ -26,7 +26,6 @@ const poppins = Poppins({
 
 export default function HomePage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [expandedFAQ, setExpandedFAQ] = useState(0);
 
   const features = [
     {
@@ -48,39 +47,6 @@ export default function HomePage() {
       icon: <FaShieldAlt size={26} />,
       title: "Safe & Transparent",
       desc: "Transparent fares and safer commuting for students.",
-    },
-  ];
-
-  const faqs = [
-    {
-      question: "Apa itu AngkotTrack dan bagaimana cara kerjanya?",
-      answer:
-        "AngkotTrack adalah platform pelacakan angkot real-time yang membantu mahasiswa memantau lokasi angkot, estimasi waktu tiba, ketersediaan tempat duduk, dan tarif transportasi. Teknologi GPS dan live tracking membuat commuting lebih efisien.",
-    },
-    {
-      question: "Bagaimana cara melacak angkot saya?",
-      answer:
-        "Cukup buka aplikasi, pilih rute yang Anda tuju, dan Anda akan melihat semua angkot aktif di peta dengan lokasi real-time, ETA, dan jumlah kursi yang tersedia. Anda juga bisa memesan tempat duduk sebelumnya.",
-    },
-    {
-      question: "Apakah ada biaya untuk menggunakan AngkotTrack?",
-      answer:
-        "Aplikasi AngkotTrack gratis untuk diunduh dan digunakan. Anda hanya membayar tarif normal angkot saat perjalanan. Tidak ada biaya tersembunyi atau biaya aplikasi tambahan.",
-    },
-    {
-      question: "Rute apa saja yang tersedia di AngkotTrack?",
-      answer:
-        "Saat ini kami menyediakan 3+ rute kampus termasuk UMM-UB-UM dan rute lainnya. Kami terus menambah rute baru berdasarkan permintaan pengguna dan kemitraan dengan operator angkot lokal.",
-    },
-    {
-      question: "Bagaimana cara menjadi driver di AngkotTrack?",
-      answer:
-        "Driver dapat mendaftar melalui aplikasi AngkotTrack dengan persyaratan kendaraan yang sesuai dan dokumentasi lengkap. Setelah verifikasi admin, Anda dapat langsung mulai melayani penumpang dengan sistem tracking kami.",
-    },
-    {
-      question: "Apakah AngkotTrack aman digunakan?",
-      answer:
-        "Ya! AngkotTrack dirancang dengan standar keamanan tinggi. Semua driver terverifikasi, semua transaksi transparan, dan lokasi real-time memberikan keamanan tambahan bagi penumpang. Kami juga memiliki fitur emergency dan rating driver.",
     },
   ];
 
@@ -122,33 +88,19 @@ export default function HomePage() {
               Home
             </a>
 
-            <a
-              href="#about"
-              className="hover:text-blue-600 transition duration-200"
-            >
-              About
-            </a>
-
-            <a
-              href="#features"
-              className="hover:text-blue-600 transition duration-200"
-            >
-              Features
-            </a>
-
-            <a
-              href="#faq"
+            <Link
+              href="/faq"
               className="hover:text-blue-600 transition duration-200"
             >
               FAQ
-            </a>
+            </Link>
 
-            <a
-              href="#cta"
+            <Link
+              href="/info-rute"
               className="hover:text-blue-600 transition duration-200"
             >
-              Contact
-            </a>
+              Info Rute
+            </Link>
           </div>
 
           {/* BUTTONS */}
@@ -218,10 +170,18 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-col gap-1.5 sm:gap-2">
-            {["Home", "About", "Features", "FAQ", "Contact"].map((item) => (
+            {["Home", "FAQ", "Info Rute", "Contact"].map((item) => (
               <a
                 key={item}
-                href={`#${item.toLowerCase()}`}
+                href={
+                  item === "Home"
+                    ? "#home"
+                    : item === "FAQ"
+                    ? "/faq"
+                    : item === "Info Rute"
+                    ? "/info-rute"
+                    : "#cta"
+                }
                 onClick={() => setIsSidebarOpen(false)}
                 className="px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-sm sm:text-base hover:bg-blue-50 hover:text-blue-600 transition"
               >
@@ -420,78 +380,6 @@ export default function HomePage() {
                 </p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ================= FAQ ================= */}
-      <section
-        id="faq"
-        className="py-12 sm:py-16 md:py-24 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-white to-slate-50"
-      >
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8 sm:mb-10 md:mb-14">
-            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6">
-              <FaWifi size={12} className="sm:hidden" />
-              <FaWifi size={14} className="hidden sm:block" />
-              Pertanyaan Umum
-            </div>
-
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
-              Frequently Asked
-              <span className="text-blue-600"> Questions</span>
-            </h2>
-
-            <p className="mt-4 sm:mt-6 text-slate-600 text-xs sm:text-sm md:text-base lg:text-lg max-w-2xl mx-auto">
-              Temukan jawaban untuk pertanyaan umum tentang AngkotTrack dan cara menggunakan platform kami.
-            </p>
-          </div>
-
-          <div className="space-y-3 sm:space-y-4">
-            {faqs.map((faq, index) => (
-              <div
-                key={index}
-                className="bg-white border border-slate-100 rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm hover:shadow-md transition-shadow"
-              >
-                <button
-                  onClick={() =>
-                    setExpandedFAQ(expandedFAQ === index ? -1 : index)
-                  }
-                  className="w-full px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 flex items-center justify-between gap-3 text-left"
-                >
-                  <h3 className="font-semibold text-sm sm:text-base md:text-lg text-slate-900 leading-tight">
-                    {faq.question}
-                  </h3>
-
-                  <FaChevronDown
-                    size={16}
-                    className={`text-blue-600 flex-shrink-0 transition-transform duration-300 ${
-                      expandedFAQ === index ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {expandedFAQ === index && (
-                  <div className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 md:pb-6 border-t border-slate-100">
-                    <p className="text-slate-600 text-xs sm:text-sm md:text-base leading-relaxed">
-                      {faq.answer}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-10 sm:mt-12 md:mt-16 p-6 sm:p-8 md:p-10 bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl md:rounded-2xl text-center">
-            <p className="text-slate-700 text-sm sm:text-base">
-              Ada pertanyaan lain yang tidak terjawab?{" "}
-              <a
-                href="#cta"
-                className="font-semibold text-blue-600 hover:text-blue-700 transition"
-              >
-                Hubungi kami
-              </a>
-            </p>
           </div>
         </div>
       </section>
