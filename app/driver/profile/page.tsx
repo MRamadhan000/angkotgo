@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
 import {
   FaBus,
@@ -9,24 +8,14 @@ import {
   FaChevronDown,
   FaEnvelope,
   FaMapMarkerAlt,
-  FaBars,
   FaPhoneAlt,
   FaSave,
   FaUser,
   FaCarSide,
-  FaRoute,
   FaTimes,
 } from "react-icons/fa";
 
-import { Poppins } from "next/font/google";
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
 export default function DriverProfilePage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   
@@ -71,183 +60,7 @@ export default function DriverProfilePage() {
   };
  
   return (
-    <main
-      className={`${poppins.className} min-h-screen bg-[#F4F8FF] text-slate-900 overflow-hidden`}
-    >
-      {/* ================= BACKGROUND ================= */}
-      <div className="fixed top-0 left-0 w-full h-[500px] bg-gradient-to-br from-blue-100/50 via-cyan-50 to-transparent blur-3xl -z-10" />
-
-      {/* ================= NAVBAR ================= */}
-      <nav className="sticky top-0 z-50 h-[85px] border-b border-white/30 bg-white/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto h-full px-4 md:px-6 flex items-center justify-between">
-          {/* LEFT */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl hover:bg-slate-100 transition"
-            >
-              <FaBars size={22} />
-            </button>
-
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
-              <FaBus size={22} />
-            </div>
-
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-                AngkotTrack
-              </h1>
-
-              <p className="text-xs md:text-sm text-slate-500">
-                Driver Dashboard
-              </p>
-            </div>
-          </div>
-
-          {/* DESKTOP MENU */}
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-            <Link
-              href="/driver"
-              className="hover:text-blue-600 transition"
-            >
-              Dashboard
-            </Link>
-
-            <Link
-              href="/driver/profile"
-              className="text-blue-600 font-semibold"
-            >
-              Profile
-            </Link>
-          </div>
-
-          {/* PROFILE */}
-          <div className="hidden md:flex items-center gap-4 bg-white border border-slate-100 shadow-md rounded-2xl px-4 py-2">
-            <img
-              src="https://i.pravatar.cc/100?img=12"
-              alt="profile"
-              className="w-12 h-12 rounded-2xl object-cover"
-            />
-
-            <div>
-              <h4 className="font-semibold">
-                Budi Santoso
-              </h4>
-
-              <p className="text-sm text-slate-500">
-                Driver AG
-              </p>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* ================= MOBILE SIDEBAR ================= */}
-      <div
-        onClick={() => setSidebarOpen(false)}
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-all duration-300 ${
-          sidebarOpen
-            ? "opacity-100 visible"
-            : "opacity-0 invisible"
-        }`}
-      />
-
-      <aside
-        className={`fixed top-0 left-0 h-full w-[290px] bg-white/90 backdrop-blur-2xl z-50 shadow-2xl transition-transform duration-300 ${
-          sidebarOpen
-            ? "translate-x-0"
-            : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6">
-          {/* HEADER */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl">
-                <FaBus size={18} />
-              </div>
-
-              <div>
-                <h2 className="font-bold text-lg">
-                  AngkotTrack
-                </h2>
-
-                <p className="text-xs text-slate-500">
-                  Driver Menu
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="p-2 rounded-xl hover:bg-slate-100"
-            >
-              <FaTimes size={20} />
-            </button>
-          </div>
-
-          {/* PROFILE */}
-          <div className="mt-8 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-3xl p-5 text-white shadow-xl">
-            <div className="flex items-center gap-4">
-              <img
-                src="https://i.pravatar.cc/100?img=12"
-                className="w-14 h-14 rounded-2xl border-2 border-white/40"
-              />
-
-              <div>
-                <h3 className="font-bold">
-                  Budi Santoso
-                </h3>
-
-                <p className="text-sm text-blue-100">
-                  Driver AG
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* MENU */}
-          <div className="mt-8 flex flex-col gap-3">
-            <Link
-              href="/driver"
-              className="flex items-center gap-4 px-5 py-4 rounded-2xl hover:bg-slate-100 transition"
-            >
-              <FaRoute />
-              Dashboard
-            </Link>
-
-            <Link
-              href="/driver/profile"
-              className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-blue-50 text-blue-600 font-semibold"
-            >
-              <FaUser />
-              Profile
-            </Link>
-          </div>
-
-          {/* ACTIVE ROUTE */}
-          <div className="mt-10 bg-slate-50 rounded-3xl p-5 border border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-100 text-blue-600 w-12 h-12 rounded-2xl flex items-center justify-center">
-                <FaRoute />
-              </div>
-
-              <div>
-                <h4 className="font-bold">
-                  Active Route
-                </h4>
-
-                <p className="text-sm text-slate-500">
-                  Arjosari - Gadang
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* ================= CONTENT ================= */}
-      <section className="max-w-7xl mx-auto w-full px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-10 space-y-8 sm:space-y-10">
+    <section className="max-w-7xl mx-auto w-full px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-10 space-y-8 sm:space-y-10">
         {/* HEADER */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-5">
           <div>
@@ -663,6 +476,5 @@ export default function DriverProfilePage() {
           </>
         )}
       </section>
-    </main>
   );
 }
