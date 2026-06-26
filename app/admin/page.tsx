@@ -1,502 +1,355 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-
+import React, { useEffect, useRef, useState } from 'react';
+// import Topbar from '@/components/Topbar';
 import {
-  FaBus,
-  FaRoute,
-  FaUsers,
-  FaMoneyBillWave,
-  FaBell,
-  FaBars,
-  FaChartLine,
-  FaArrowTrendUp,
-  FaLocationDot,
-  FaXmark,
-  FaTableCellsLarge,
-  FaUserShield,
-  FaCircleCheck,
-  FaClockRotateLeft,
-  FaChevronRight,
-} from "react-icons/fa6";
+  FaRoute, FaUsers, FaClock, FaRupeeSign,
+  FaBus, FaTrophy, FaSave, FaCheckCircle, FaChevronRight,
+} from 'react-icons/fa';
+import { HiOutlineSave } from 'react-icons/hi';
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
 
-import { Poppins } from "next/font/google";
-import { Bell, Search } from "lucide-react";
+// ─── Data ──────────────────────────────────────────────────────────────────
+const SPARK_DRIVER   = [42,48,55,52,60,58,65,62,70,68,78,80,98];
+const SPARK_AKTIF    = [70,75,78,80,82,79,83,85,84,86,85,86,86];
+const SPARK_NONAKTIF = [50,48,45,42,40,38,36,35,34,33,32,32,32];
 
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
+const TOP_ROUTES = [
+  { rank:1, code:'AL',  name:'Arjosari – Landungsari',          drivers:45 },
+  { rank:2, code:'ADL', name:'Arjosari – Dinoyo – Landungsari', drivers:28 },
+  { rank:3, code:'GA',  name:'Gadang – Arjosari',               drivers:24 },
+];
 
-export default function AdminDashboardPage() {
-  const [sidebarOpen, setSidebarOpen] =
-    useState(false);
+// ─── Sparkline ────────────────────────────────────────────────────────────
+function Sparkline({
+  id, data, color, fill,
+}: { id: string; data: number[]; color: string; fill: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const chart = new Chart(ref.current, {
+      type: 'line',
+      data: {
+        labels: data.map((_, i) => i),
+        datasets: [{
+          data,
+          borderColor: color,
+          backgroundColor: fill,
+          borderWidth: 1.5,
+          tension: 0.45,
+          pointRadius: 0,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } },
+      },
+    });
+    return () => chart.destroy();
+  }, []);
 
   return (
-    <main
-      className={`${poppins.className} min-h-screen bg-[#F4F8FF] text-slate-900 overflow-hidden`}
-    >
-      {/* ================= BACKGROUND ================= */}
-      <div className="fixed top-0 left-0 w-full h-[600px] bg-gradient-to-br from-blue-100/60 via-cyan-50 to-transparent blur-3xl -z-10" />
+    <div className="absolute bottom-0 right-0 w-[55%] h-[70px]">
+      <canvas ref={ref} role="img" aria-label={`Sparkline ${id}`} />
+    </div>
+  );
+}
 
-      {/* ================= OVERLAY ================= */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
+// ─── Donut Chart ──────────────────────────────────────────────────────────
+function DonutChart() {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const chart = new Chart(ref.current, {
+      type: 'doughnut',
+      data: {
+        labels: ['Angkot Aktif', 'Angkot Tidak Aktif'],
+        datasets: [{
+          data: [86, 32],
+          backgroundColor: ['#3b82f6', '#fb923c'],
+          borderWidth: 0,
+          hoverOffset: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw}` } },
+        },
+      },
+    });
+    return () => chart.destroy();
+  }, []);
+
+  return <canvas ref={ref} role="img" aria-label="Pie chart ringkasan armada">Aktif 86, Tidak aktif 32.</canvas>;
+}
+
+// ─── Tarif Form ───────────────────────────────────────────────────────────
+function TarifForm() {
+  const [tarifBaru, setTarifBaru] = useState(6000);
+  const [saved, setSaved] = useState(false);
+  const [currentTarif, setCurrentTarif] = useState(5000);
+
+  const handleSimpan = () => {
+    setCurrentTarif(tarifBaru);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  return (
+    <>
+      {/* Info box */}
+      <div className="bg-blue-50 rounded-[8px] px-3 py-2.5 mb-4 text-[11px] text-blue-600 leading-relaxed">
+        Perubahan tarif akan berlaku untuk semua rute dan semua angkot.
+      </div>
+
+      {/* Tarif saat ini */}
+      <p className="text-[11px] text-slate-500 font-medium mb-1.5">Tarif Saat Ini</p>
+      <div className="bg-slate-50 border border-slate-200 rounded-[7px] px-3 py-2 text-[13px] font-semibold text-slate-600 mb-3">
+        Rp {currentTarif.toLocaleString('id-ID')}
+      </div>
+
+      {/* Tarif baru */}
+      <p className="text-[11px] text-slate-500 font-medium mb-1.5">Tarif Baru</p>
+      <div className="flex items-center border border-slate-200 rounded-[7px] overflow-hidden mb-4">
+        <span className="px-3 py-2 bg-slate-50 border-r border-slate-200 text-[12px] text-slate-500 font-medium">
+          Rp
+        </span>
+        <input
+          type="number"
+          value={tarifBaru}
+          onChange={e => setTarifBaru(Number(e.target.value))}
+          className="flex-1 px-3 py-2 text-[13px] font-semibold text-slate-800 outline-none
+                     focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+          min={0}
+          step={500}
         />
-      )}
+      </div>
 
-      {/* ================= SIDEBAR ================= */}
-      <aside
-        className={`
-          fixed top-0 left-0 z-50 h-screen w-64
-          bg-gradient-to-b from-blue-50 to-white border-r border-slate-200
-          transition-transform duration-300 md:hidden
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
+      <button
+        onClick={handleSimpan}
+        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white
+                   text-[13px] font-bold rounded-[9px] flex items-center justify-center gap-2
+                   transition-colors"
       >
-        {/* Header */}
-        <div className="h-20 border-b border-slate-200 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-2.5 rounded-xl shadow-lg">
-              <FaBus size={20} />
-            </div>
+        <HiOutlineSave className="text-[16px]" />
+        Simpan Perubahan Tarif
+      </button>
 
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-blue-700">
-                AngkotTrack
-              </h1>
+      {saved && (
+        <div className="mt-2.5 flex items-center gap-2 bg-green-50 border border-green-200
+                        text-green-700 text-[11px] font-semibold px-3 py-2 rounded-[8px]">
+          <FaCheckCircle className="text-[12px]" />
+          Tarif berhasil diperbarui
+        </div>
+      )}
+    </>
+  );
+}
 
-              <p className="text-xs text-slate-500">
-                Admin
-              </p>
-            </div>
-          </div>
+// ─── Page ─────────────────────────────────────────────────────────────────
+export default function DashboardPage() {
+  const today = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
 
-          <button
-            className="md:hidden p-2 hover:bg-slate-100 rounded-lg transition"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <FaXmark size={20} />
+  const rankColors: Record<number, string> = {
+    1: 'bg-amber-400',
+    2: 'bg-slate-400',
+    3: 'bg-amber-700',
+  };
+
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      {/* <Topbar breadcrumb={{ parent: 'Beranda', current: 'Dashboard' }} /> */}
+
+      <main className="flex-1 overflow-y-auto p-5 bg-[#f0f4f8]">
+
+        {/* Page header */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-[17px] font-bold text-slate-900">Informasi General</h1>
+          <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-[8px]
+                             px-3 py-1.5 text-[12px] text-slate-600 hover:bg-slate-50 transition-colors">
+            <FaClock className="text-blue-500 text-[12px]" />
+            {today}
+            <FaChevronRight className="text-slate-300 text-[10px]" />
           </button>
         </div>
 
-        {/* Menu */}
-        <div className="p-4 space-y-2">
-          <a
-            href="/admin"
-            className="flex items-center gap-3 bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold shadow-lg shadow-blue-200/50 text-sm"
-          >
-            <FaTableCellsLarge size={18} />
-            <span>Dashboard</span>
-          </a>
-
-          <a
-            href="/admin/rute"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition font-medium text-sm"
-          >
-            <FaRoute size={18} />
-            <span>Manajemen Rute</span>
-          </a>
-
-          <a
-            href="/admin/driver"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition font-medium text-sm"
-          >
-            <FaUsers size={18} />
-            <span>Manajemen Driver</span>
-          </a>
-        </div>
-      </aside>
-
-      {/* ================= MAIN ================= */}
-      <div>
-        {/* ================= NAVBAR ================= */}
-        <nav className="sticky top-0 z-30 h-[85px] border-b border-white/30 bg-white/80 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto h-full px-4 md:px-6 flex items-center justify-between">
-            {/* LEFT */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2 rounded-xl hover:bg-slate-100 transition"
-              >
-                <FaBars size={22} />
-              </button>
-
-              <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
-                <FaBus size={22} />
-              </div>
-
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-                  AngkotTrack
-                </h1>
-
-                <p className="text-xs md:text-sm text-slate-500">
-                  Admin Dashboard
-                </p>
-              </div>
+        {/* ── Row 1: Stat cards ─────────────────────────── */}
+        <div className="grid grid-cols-4 gap-3 mb-3">
+          {/* Total Rute */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-3">
+            <div className="w-11 h-11 bg-blue-50 rounded-[10px] flex items-center justify-center flex-shrink-0">
+              <FaRoute className="text-blue-500 text-[18px]" />
             </div>
-
-            {/* DESKTOP MENU */}
-            <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-              <a href="/admin" className="text-blue-600 font-semibold">
-                Dashboard
-              </a>
-
-              <a href="/admin/rute" className="hover:text-blue-600 transition">
-                Manajemen Rute
-              </a>
-
-              <a href="/admin/driver" className="hover:text-blue-600 transition">
-                Manajemen Driver
-              </a>
-            </div>
-
-            {/* RIGHT */}
-            <div className="flex items-center gap-4">
-              <button className="relative w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-md flex items-center justify-center hover:border-blue-500 transition">
-                <FaBell className="text-slate-600" />
-
-                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full" />
-              </button>
-
-              <img
-                src="https://i.pravatar.cc/100?img=15"
-                alt="admin"
-                className="hidden md:block w-12 h-12 rounded-2xl border border-slate-100 shadow-md"
-              />
-            </div>
-          </div>
-        </nav>
-
-        {/* ================= CONTENT ================= */}
-        <section className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10">
-          {/* HERO */}
-          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-medium mb-5">
-                <FaChartLine size={14} />
-                Real-Time Monitoring System
-              </div>
-
-              <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-                Admin
-                <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-                  {" "}
-                  Dashboard
-                </span>
-              </h1>
-
-              <p className="text-slate-500 text-lg mt-4 max-w-2xl">
-                Pantau performa sistem angkot, driver,
-                rute, dan aktivitas penumpang secara
-                real-time.
-              </p>
-            </div>
-
-            {/* STATUS CARD */}
-            <div className="bg-white border border-slate-100 rounded-[32px] p-6 shadow-xl min-w-[300px]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-500 text-sm">
-                    System Status
-                  </p>
-
-                  <h3 className="text-3xl font-bold mt-2 text-green-600">
-                    Online
-                  </h3>
-                </div>
-
-                <div className="w-16 h-16 rounded-3xl bg-green-100 text-green-600 flex items-center justify-center">
-                  <FaCircleCheck size={28} />
-                </div>
-              </div>
-
-              <div className="mt-5 flex items-center gap-2 text-sm text-green-600 font-medium">
-                <FaArrowTrendUp />
-                Semua layanan berjalan normal
-              </div>
+              <p className="text-[11px] text-slate-400 font-medium mb-0.5">Total Rute</p>
+              <p className="text-[26px] font-extrabold text-slate-900 leading-none tracking-tight">24</p>
+              <p className="text-[11px] text-slate-400 mt-1">Rute Aktif</p>
             </div>
           </div>
 
-          {/* ================= STATS ================= */}
-          <div className="grid sm:grid-cols-2 2xl:grid-cols-4 gap-6 mt-10">
-            {[
-              {
-                title: "Total Rute",
-                value: "12",
-                desc: "+2 jalur baru bulan ini",
-                icon: FaRoute,
-                color:
-                  "from-orange-500 to-yellow-400",
-                bg: "bg-orange-100",
-                text: "text-orange-600",
-              },
-              {
-                title: "Total Driver",
-                value: "84",
-                desc: "72 driver aktif hari ini",
-                icon: FaUsers,
-                color:
-                  "from-blue-600 to-cyan-500",
-                bg: "bg-blue-100",
-                text: "text-blue-600",
-              },
-              {
-                title: "Tarif Aktif",
-                value: "Rp5K",
-                desc: "Tarif angkot saat ini",
-                icon: FaMoneyBillWave,
-                color:
-                  "from-green-500 to-emerald-400",
-                bg: "bg-green-100",
-                text: "text-green-600",
-              },
-              {
-                title: "Trayek Populer",
-                value: "AG",
-                desc: "Jalur paling aktif",
-                icon: FaLocationDot,
-                color:
-                  "from-red-500 to-pink-400",
-                bg: "bg-red-100",
-                text: "text-red-600",
-              },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="group relative overflow-hidden bg-white rounded-[32px] border border-slate-100 p-7 shadow-lg hover:-translate-y-2 transition-all duration-300"
-              >
-                <div
-                  className={`absolute top-0 right-0 w-[180px] h-[180px] bg-gradient-to-br ${item.color} opacity-10 rounded-full blur-3xl`}
-                />
+          {/* Total Driver */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-3">
+            <div className="w-11 h-11 bg-green-50 rounded-[10px] flex items-center justify-center flex-shrink-0">
+              <FaUsers className="text-green-500 text-[18px]" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium mb-0.5">Total Driver</p>
+              <p className="text-[26px] font-extrabold text-slate-900 leading-none tracking-tight">152</p>
+              <p className="text-[11px] text-slate-400 mt-1">Semua Driver</p>
+            </div>
+          </div>
 
-                <div className="relative flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-500">
-                      {item.title}
-                    </p>
+          {/* Trayek terbanyak */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-3">
+            <div className="w-11 h-11 bg-yellow-50 rounded-[10px] flex items-center justify-center flex-shrink-0">
+              <FaTrophy className="text-yellow-500 text-[18px]" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium mb-0.5">Trayek Paling Banyak</p>
+              <p className="text-[26px] font-extrabold text-slate-900 leading-none tracking-tight">AL</p>
+              <p className="text-[11px] text-slate-400 mt-1">Arjosari – Landungsari</p>
+              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 text-[10px]
+                               font-semibold px-2 py-0.5 rounded-full mt-1.5">
+                <FaBus className="text-[9px]" /> 12 Angkot
+              </span>
+            </div>
+          </div>
 
-                    <h3
-                      className={`text-4xl font-bold mt-3 ${item.text}`}
-                    >
-                      {item.value}
-                    </h3>
-                  </div>
+          {/* Tarif */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-3">
+            <div className="w-11 h-11 bg-purple-50 rounded-[10px] flex items-center justify-center flex-shrink-0">
+              <FaRupeeSign className="text-purple-500 text-[18px]" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium mb-0.5">Tarif Saat Ini</p>
+              <p className="text-[20px] font-extrabold text-slate-900 leading-none tracking-tight mt-1">
+                Rp 5.000
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">Tarif per penumpang</p>
+            </div>
+          </div>
+        </div>
 
-                  <div
-                    className={`${item.bg} ${item.text} w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg`}
-                  >
-                    <item.icon size={28} />
-                  </div>
+        {/* ── Row 2: Metric + sparkline cards ───────────── */}
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          {[
+            {
+              title: 'Driver Online', badge: '● Online', badgeCls: 'bg-green-50 text-green-600',
+              val: '98', unit: 'Driver', pct: '64.5% dari total driver',
+              id: 'sp1', data: SPARK_DRIVER, color: '#16a34a', fill: 'rgba(22,163,74,.08)',
+            },
+            {
+              title: 'Angkot Aktif', badge: '● Aktif', badgeCls: 'bg-blue-50 text-blue-600',
+              val: '86', unit: 'Angkot', pct: '72.9% dari total angkot',
+              id: 'sp2', data: SPARK_AKTIF, color: '#2563eb', fill: 'rgba(37,99,235,.08)',
+            },
+            {
+              title: 'Angkot Tidak Aktif', badge: '● Tidak Aktif', badgeCls: 'bg-orange-50 text-orange-500',
+              val: '32', unit: 'Angkot', pct: '27.1% dari total angkot',
+              id: 'sp3', data: SPARK_NONAKTIF, color: '#ea580c', fill: 'rgba(234,88,12,.08)',
+            },
+          ].map(card => (
+            <div key={card.id} className="bg-white border border-slate-100 rounded-xl p-4 relative overflow-hidden">
+              <div className="flex items-start justify-between mb-2">
+                <p className="text-[12px] font-semibold text-slate-600">{card.title}</p>
+                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${card.badgeCls}`}>
+                  {card.badge}
+                </span>
+              </div>
+              <p className="text-[30px] font-extrabold text-slate-900 tracking-tight leading-none">
+                {card.val}
+              </p>
+              <p className="text-[13px] font-semibold text-slate-500 mt-1">{card.unit}</p>
+              <p className="text-[11px] text-slate-400 mt-1.5">{card.pct}</p>
+              <Sparkline id={card.id} data={card.data} color={card.color} fill={card.fill} />
+            </div>
+          ))}
+        </div>
+
+        {/* ── Row 3: Ranking / Pie / Tarif ──────────────── */}
+        <div className="grid grid-cols-3 gap-3">
+          {/* Ranking */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4">
+            <p className="text-[13px] font-bold text-slate-900 mb-3">Trayek dengan Supir Terbanyak</p>
+            {TOP_ROUTES.map(r => (
+              <div key={r.rank} className="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0">
+                <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center
+                                 text-[11px] font-bold text-white flex-shrink-0 ${rankColors[r.rank]}`}>
+                  {r.rank}
                 </div>
-
-                <div className="relative mt-6 flex items-center gap-2 text-sm text-green-600 font-medium">
-                  <FaArrowTrendUp size={14} />
-                  {item.desc}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-bold text-slate-800">{r.code}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{r.name}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-[14px] font-extrabold text-slate-800">{r.drivers}</p>
+                  <p className="text-[10px] text-slate-400">Supir</p>
                 </div>
               </div>
             ))}
+            <button className="w-full mt-3 py-2 border border-slate-200 rounded-[8px] text-[12px]
+                               font-semibold text-blue-600 flex items-center justify-center gap-1.5
+                               hover:bg-slate-50 transition-colors">
+              Lihat Semua Trayek <FaChevronRight className="text-[10px]" />
+            </button>
           </div>
 
-          {/* ================= MAIN GRID ================= */}
-          <div className="grid xl:grid-cols-3 gap-8 mt-10">
-            {/* LEFT */}
-            <div className="xl:col-span-2 space-y-8">
-              {/* OVERVIEW */}
-              <section className="relative overflow-hidden bg-white rounded-[36px] border border-slate-100 p-8 shadow-xl">
-                <div className="absolute top-0 right-0 w-[260px] h-[260px] bg-blue-100/40 rounded-full blur-3xl" />
-
-                <div className="relative flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <h3 className="text-3xl font-bold">
-                      Overview Sistem
-                    </h3>
-
-                    <p className="text-slate-500 mt-2">
-                      Ringkasan performa angkot
-                    </p>
-                  </div>
-
-                  <div className="w-16 h-16 rounded-3xl bg-blue-100 text-blue-600 flex items-center justify-center shadow-lg">
-                    <FaChartLine size={28} />
-                  </div>
+          {/* Pie / Ringkasan Armada */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4">
+            <p className="text-[13px] font-bold text-slate-900 mb-3">Ringkasan Armada</p>
+            <div className="flex items-center gap-5">
+              <div className="relative w-[150px] h-[150px] flex-shrink-0">
+                <DonutChart />
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[20px] font-extrabold text-slate-900 leading-none">118</span>
+                  <span className="text-[9px] font-semibold text-slate-500 mt-0.5">Total Angkot</span>
                 </div>
-
-                <div className="relative grid sm:grid-cols-3 gap-5 mt-8">
-                  {[
-                    {
-                      title: "Driver Online",
-                      value: "72",
-                      color:
-                        "from-blue-500 to-cyan-400",
-                    },
-                    {
-                      title: "Angkot Aktif",
-                      value: "58",
-                      color:
-                        "from-orange-500 to-yellow-400",
-                    },
-                    {
-                      title: "Penumpang",
-                      value: "1.2K",
-                      color:
-                        "from-green-500 to-emerald-400",
-                    },
-                  ].map((card, i) => (
-                    <div
-                      key={i}
-                      className={`bg-gradient-to-br ${card.color} rounded-[28px] p-6 text-white shadow-lg`}
-                    >
-                      <p className="text-white/80 text-sm">
-                        {card.title}
+              </div>
+              <div className="flex-1 space-y-3">
+                {[
+                  { color: 'bg-blue-500', label: 'Angkot Aktif',       val: 86, pct: '72.9%' },
+                  { color: 'bg-orange-400', label: 'Angkot Tidak Aktif', val: 32, pct: '27.1%' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2.5">
+                    <div className={`w-3 h-3 rounded-full ${item.color} flex-shrink-0`} />
+                    <div>
+                      <p className="text-[11px] text-slate-500">{item.label}</p>
+                      <p className="text-[12px] font-bold text-slate-800">
+                        {item.val}&nbsp;
+                        <span className="text-[11px] font-normal text-slate-400">({item.pct})</span>
                       </p>
-
-                      <h4 className="text-4xl font-bold mt-3">
-                        {card.value}
-                      </h4>
                     </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* ACTIVITY */}
-              <section className="bg-white rounded-[36px] border border-slate-100 p-8 shadow-xl">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <h3 className="text-3xl font-bold">
-                      Aktivitas Terbaru
-                    </h3>
-
-                    <p className="text-slate-500 mt-2">
-                      Monitoring aktivitas sistem
-                    </p>
                   </div>
-
-                  <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center">
-                    <FaClockRotateLeft size={26} />
-                  </div>
-                </div>
-
-                <div className="mt-8 space-y-5">
-                  {[
-                    {
-                      text: "Driver AG-12 berhasil diverifikasi",
-                      color: "bg-green-500",
-                    },
-                    {
-                      text: "Rute baru AL berhasil ditambahkan",
-                      color: "bg-blue-500",
-                    },
-                    {
-                      text: "Tarif diperbarui menjadi Rp5.000",
-                      color: "bg-orange-500",
-                    },
-                    {
-                      text: "Driver AH-07 diberhentikan",
-                      color: "bg-red-500",
-                    },
-                  ].map((item, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-4 bg-slate-50 rounded-[28px] p-5 hover:bg-slate-100 transition"
-                    >
-                      <div
-                        className={`w-3 h-3 rounded-full mt-1.5 ${item.color}`}
-                      />
-
-                      <div>
-                        <p className="font-semibold">
-                          {item.text}
-                        </p>
-
-                        <p className="text-sm text-slate-500 mt-1">
-                          Baru saja diperbarui
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                ))}
+              </div>
             </div>
-
-            {/* RIGHT */}
-            <div className="space-y-8">
-              {/* SETTING */}
-              <section className="relative overflow-hidden bg-white rounded-[36px] border border-slate-100 p-8 shadow-xl">
-                <div className="absolute bottom-0 left-0 w-[220px] h-[220px] bg-green-100/40 rounded-full blur-3xl" />
-
-                <div className="relative flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold">
-                      Setting Tarif
-                    </h3>
-
-                    <p className="text-slate-500 mt-2">
-                      Atur tarif angkot aktif
-                    </p>
-                  </div>
-
-                  <div className="w-16 h-16 rounded-3xl bg-green-100 text-green-600 flex items-center justify-center shadow-lg">
-                    <FaMoneyBillWave size={26} />
-                  </div>
-                </div>
-
-                <div className="relative mt-8">
-                  <label className="text-sm font-semibold text-slate-600">
-                    Tarif Saat Ini
-                  </label>
-
-                  <div className="mt-3 relative">
-                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
-                      Rp
-                    </span>
-
-                    <input
-                      type="number"
-                      defaultValue="5000"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-14 pr-5 py-4 outline-none focus:border-blue-500 focus:bg-white transition"
-                    />
-                  </div>
-
-                  <button className="w-full mt-6 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 transition text-white py-4 rounded-2xl font-semibold shadow-xl shadow-blue-200">
-                    Simpan Tarif
-                  </button>
-                </div>
-              </section>
-
-              {/* QUICK STATUS */}
-              <section className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-[36px] p-8 text-white shadow-2xl shadow-blue-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-100">
-                      Active Drivers
-                    </p>
-
-                    <h3 className="text-5xl font-bold mt-3">
-                      72
-                    </h3>
-                  </div>
-
-                  <div className="w-16 h-16 rounded-3xl bg-white/20 backdrop-blur-lg flex items-center justify-center">
-                    <FaUserShield size={28} />
-                  </div>
-                </div>
-
-                <div className="mt-8 h-3 bg-white/20 rounded-full overflow-hidden">
-                  <div className="w-[78%] h-full bg-white rounded-full" />
-                </div>
-
-                <div className="mt-3 text-sm text-blue-100">
-                  78% driver sedang aktif hari ini
-                </div>
-              </section>
-            </div>
+            <button className="w-full mt-4 py-2 border border-slate-200 rounded-[8px] text-[12px]
+                               font-semibold text-blue-600 flex items-center justify-center gap-1.5
+                               hover:bg-slate-50 transition-colors">
+              Lihat Semua Armada <FaChevronRight className="text-[10px]" />
+            </button>
           </div>
-        </section>
-      </div>
-    </main>
+
+          {/* Ubah Tarif */}
+          <div className="bg-white border border-slate-100 rounded-xl p-4">
+            <p className="text-[13px] font-bold text-slate-900 mb-3">Ubah Tarif Angkot</p>
+            <TarifForm />
+          </div>
+        </div>
+
+      </main>
+    </div>
   );
 }
