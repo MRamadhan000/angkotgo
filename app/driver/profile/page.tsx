@@ -108,7 +108,7 @@ const PhotoBox = ({
 // --- Save Button ---
 const SaveButton = () => (
   <div className="flex justify-end pt-2">
-    <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200">
+    <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200 w-full sm:w-auto justify-center">
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -147,14 +147,14 @@ export default function ProfilPage() {
   const [nomorAngkot] = useState("AL001");
 
   return (
-    <div className="p-6 space-y-5 max-w-4xl">
+    <div className="p-4 sm:p-6 space-y-5 max-w-4xl">
 
       {/* ---- EDIT PROFIL ---- */}
       <Section title="Edit Profil">
-        <div className="flex gap-8">
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8">
           {/* Left: Photo */}
-          <div className="w-36 flex-shrink-0">
-            <p className="text-xs font-medium text-gray-500 mb-3">Foto Profil</p>
+          <div className="w-full md:w-36 flex-shrink-0 flex flex-col items-center md:items-start">
+            <p className="text-xs font-medium text-gray-500 mb-3 self-start md:self-auto">Foto Profil</p>
             <PhotoBox round label="Format JPG, PNG. Maks 2MB" />
             {/* Ubah Foto link below avatar */}
             <button className="mt-2 mx-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full justify-center">
@@ -168,7 +168,7 @@ export default function ProfilPage() {
           </div>
 
           {/* Right: Fields */}
-          <div className="flex-1 grid grid-cols-1 gap-4">
+          <div className="flex-1 grid grid-cols-1 gap-4 w-full">
             <InputField label="Nama Lengkap" value={nama} onChange={setNama} />
             <InputField label="Email" value={email} onChange={setEmail} type="email" />
             <InputField label="Nomor Telepon" value={telepon} onChange={setTelepon} type="tel" />
@@ -183,10 +183,10 @@ export default function ProfilPage() {
 
       {/* ---- EDIT ANGKOT ---- */}
       <Section title="Edit Angkot" subtitle="Informasi angkot yang Anda operasikan">
-        <div className="flex gap-8">
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8">
           {/* Left: Angkot Photo */}
-          <div className="w-44 flex-shrink-0">
-            <p className="text-xs font-medium text-gray-500 mb-3">Foto Angkot</p>
+          <div className="w-full md:w-44 flex-shrink-0 flex flex-col items-center md:items-start">
+            <p className="text-xs font-medium text-gray-500 mb-3 self-start md:self-auto">Foto Angkot</p>
             {/* Photo with bus illustration */}
             <div className="w-full h-32 rounded-xl bg-blue-50 overflow-hidden flex items-center justify-center border border-blue-100">
               <svg viewBox="0 0 200 100" className="w-full h-full p-2" xmlns="http://www.w3.org/2000/svg">
@@ -224,7 +224,7 @@ export default function ProfilPage() {
           </div>
 
           {/* Right: Angkot Fields */}
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 space-y-4 w-full">
             {/* Plat Nomor */}
             <div className="space-y-1.5">
               <label className="block text-xs font-medium text-gray-500">Plat Nomor</label>

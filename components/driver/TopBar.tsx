@@ -1,18 +1,22 @@
 "use client";
 
-export default function TopBar() {
+export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
-    <header className="h-[72px] bg-white border-b border-gray-100 flex items-center justify-between px-8 fixed top-0 left-[210px] right-0 z-20">
+    <header className="h-[72px] bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 fixed top-0 left-0 md:left-[210px] right-0 z-20">
       {/* Left: Hamburger + Greeting */}
       <div className="flex items-center gap-4">
-        <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500">
+        {/* Toggle Button for mobile screens */}
+        <button
+          onClick={onMenuClick}
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500 md:hidden"
+          aria-label="Open menu"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
+        
         <div>
-          <h1 className="text-lg font-bold text-gray-900 leading-tight">Selamat datang, Budi!</h1>
-          <p className="text-xs text-gray-500">Kelola operasional angkot Anda dengan mudah.</p>
         </div>
       </div>
 

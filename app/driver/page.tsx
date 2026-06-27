@@ -22,7 +22,7 @@ const Toggle = ({ enabled, onChange }: { enabled: boolean; onChange: () => void 
 const MapPlaceholder = () => (
   <div className="relative w-full h-[360px] rounded-2xl overflow-hidden bg-[#e8f0e8]">
     {/* Background map-like SVG */}
-    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg">
+    <svg className="absolute inset-0 w-full h-full object-cover" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg">
       {/* Base map background */}
       <rect width="760" height="360" fill="#e8efe8" />
 
@@ -169,33 +169,35 @@ export default function DashboardPage() {
   const [penumpangOn, setPenumpangOn] = useState(true);
 
   return (
-    <div className="bg-white p-6 space-y-5">
+    <div className="bg-white p-4 sm:p-6 space-y-5">
 
       {/* Status Cards Row */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Status Angkot */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-600 mb-4">Status Angkot</p>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M8 17H5a2 2 0 01-2-2V6a2 2 0 012-2h13a2 2 0 012 2v3M9 17h6M9 17v2m6-2v2M3 11h18" />
-                </svg>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-600 mb-4">Status Angkot</p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M8 17H5a2 2 0 01-2-2V6a2 2 0 012-2h13a2 2 0 012 2v3M9 17h6M9 17v2m6-2v2M3 11h18" />
+                  </svg>
+                </div>
+                <div>
+                  <p className={`text-base font-bold ${angkotOn ? "text-green-500" : "text-gray-400"}`}>
+                    {angkotOn ? "Beroperasi" : "Tidak Aktif"}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {angkotOn ? "Angkot sedang beroperasi" : "Angkot tidak beroperasi"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className={`text-base font-bold ${angkotOn ? "text-green-500" : "text-gray-400"}`}>
-                  {angkotOn ? "Beroperasi" : "Tidak Aktif"}
-                </p>
-                <p className="text-xs text-gray-400">
-                  {angkotOn ? "Angkot sedang beroperasi" : "Angkot tidak beroperasi"}
-                </p>
-              </div>
+              <Toggle enabled={angkotOn} onChange={() => setAngkotOn(!angkotOn)} />
             </div>
-            <Toggle enabled={angkotOn} onChange={() => setAngkotOn(!angkotOn)} />
           </div>
-          <div className={`rounded-xl px-4 py-3 flex items-center gap-2 ${angkotOn ? "bg-green-50" : "bg-gray-50"}`}>
+          <div className={`rounded-xl px-4 py-3 flex items-center gap-2 mt-2 ${angkotOn ? "bg-green-50" : "bg-gray-50"}`}>
             <svg className={`w-4 h-4 flex-shrink-0 ${angkotOn ? "text-green-500" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -209,28 +211,30 @@ export default function DashboardPage() {
         </div>
 
         {/* Status Penumpang */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-600 mb-4">Status Penumpang</p>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-600 mb-4">Status Penumpang</p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className={`text-base font-bold ${penumpangOn ? "text-green-500" : "text-gray-400"}`}>
+                    {penumpangOn ? "Available" : "Tidak Tersedia"}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {penumpangOn ? "Siap menerima penumpang" : "Tidak menerima penumpang"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className={`text-base font-bold ${penumpangOn ? "text-green-500" : "text-gray-400"}`}>
-                  {penumpangOn ? "Available" : "Tidak Tersedia"}
-                </p>
-                <p className="text-xs text-gray-400">
-                  {penumpangOn ? "Siap menerima penumpang" : "Tidak menerima penumpang"}
-                </p>
-              </div>
+              <Toggle enabled={penumpangOn} onChange={() => setPenumpangOn(!penumpangOn)} />
             </div>
-            <Toggle enabled={penumpangOn} onChange={() => setPenumpangOn(!penumpangOn)} />
           </div>
-          <div className={`rounded-xl px-4 py-3 flex items-center gap-2 ${penumpangOn ? "bg-green-50" : "bg-gray-50"}`}>
+          <div className={`rounded-xl px-4 py-3 flex items-center gap-2 mt-2 ${penumpangOn ? "bg-green-50" : "bg-gray-50"}`}>
             <svg className={`w-4 h-4 flex-shrink-0 ${penumpangOn ? "text-green-500" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -248,20 +252,20 @@ export default function DashboardPage() {
 
       {/* Route Info Bar */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4">
-        <div className="grid grid-cols-4 divide-x divide-gray-100">
-          <div className="pr-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-0 md:divide-x md:divide-gray-100">
+          <div className="md:pr-6">
             <p className="text-xs text-gray-400 mb-1">Kode Trayek</p>
             <span className="inline-block px-2.5 py-1 bg-blue-100 text-blue-700 text-sm font-bold rounded-lg">AL</span>
           </div>
-          <div className="px-6">
+          <div className="pl-2 md:px-6">
             <p className="text-xs text-gray-400 mb-1">Rute</p>
             <p className="text-sm font-semibold text-gray-800">Arjosari – Landungsari</p>
           </div>
-          <div className="px-6">
+          <div className="md:px-6">
             <p className="text-xs text-gray-400 mb-1">Plat Nomor</p>
             <p className="text-sm font-semibold text-gray-800">N 1234 AB</p>
           </div>
-          <div className="pl-6">
+          <div className="pl-2 md:pl-6">
             <p className="text-xs text-gray-400 mb-1">Angkot</p>
             <p className="text-sm font-semibold text-gray-800">AL – 23</p>
           </div>
@@ -273,9 +277,9 @@ export default function DashboardPage() {
 
       {/* Stats Row */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5">
-        <div className="grid grid-cols-3 divide-x divide-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-0 sm:divide-x divide-gray-100">
           {/* Durasi */}
-          <div className="pr-6 flex items-center gap-3">
+          <div className="sm:pr-6 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
               <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -289,7 +293,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Jarak */}
-          <div className="px-6 flex items-center gap-3">
+          <div className="sm:px-6 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
               <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -303,7 +307,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Penumpang */}
-          <div className="pl-6 flex items-center gap-3">
+          <div className="sm:pl-6 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
               <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

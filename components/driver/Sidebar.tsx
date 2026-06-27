@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
 
   const navItems = [
     {
-      href: "/dashboard",
+      href: "/driver",
       label: "Dashboard",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -18,7 +18,7 @@ export default function Sidebar() {
       ),
     },
     {
-      href: "/profil",
+      href: "/driver/profile",
       label: "Profil Saya",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,9 +30,13 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-[210px] min-h-screen bg-white border-r border-gray-100 flex flex-col fixed left-0 top-0 z-30">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-gray-100">
+    <aside
+      className={`w-[210px] h-screen bg-white border-r border-gray-100 flex flex-col fixed left-0 top-0 z-30 transition-transform duration-300 md:translate-x-0 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
+      {/* Logo Section */}
+      <div className="px-5 py-5 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -44,16 +48,31 @@ export default function Sidebar() {
             Angkot<span className="text-blue-600">Go</span>
           </span>
         </div>
+        
+        {/* Mobile close button */}
+        <button
+          onClick={onClose}
+          className="p-1 text-gray-400 hover:text-gray-600 transition-colors md:hidden"
+          aria-label="Close sidebar"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      {/* Nav */}
+      {/* Nav Link List */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          const active =
+            item.href === "/driver"
+              ? pathname === "/driver"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 active
                   ? "bg-blue-600 text-white shadow-sm shadow-blue-200"

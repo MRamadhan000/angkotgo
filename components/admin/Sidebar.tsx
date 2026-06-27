@@ -1,158 +1,202 @@
 "use client";
 
-import React from "react";
-import {
-  FaTachometerAlt,
-  FaRoute,
-  FaUserTie,
-  FaBus,
-  FaMapSigns,
-  FaMoneyBillWave,
-  FaChartBar,
-  FaUsers,
-  FaCog,
-  FaBell,
-} from "react-icons/fa";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-const menuItems = [
-  {
-    icon: <FaTachometerAlt />,
-    label: "Dashboard",
-    href: "/admin/dashboard",
-    section: "main",
-  },
-  {
-    icon: <FaRoute />,
-    label: "Manajemen Rute",
-    href: "#",
-    badge: "12",
-    section: "main",
-  },
-  {
-    icon: <FaUserTie />,
-    label: "Manajemen Driver",
-    href: "#",
-    section: "main",
-  },
-//   { icon: <FaBus />, label: "Manajemen Angkot", href: "#", section: "main" },
-//   { icon: <FaMapSigns />, label: "Halte & Trayek", href: "#", section: "main" },
-//   {
-//     icon: <FaMoneyBillWave />,
-//     label: "Tarif & Pembayaran",
-//     href: "#",
-//     section: "finance",
-//   },
-//   {
-//     icon: <FaChartBar />,
-//     label: "Laporan & Analitik",
-//     href: "#",
-//     section: "finance",
-//   },
-//   { icon: <FaUsers />, label: "Pengguna", href: "#", section: "system" },
-//   {
-//     icon: <FaBell />,
-//     label: "Notifikasi",
-//     href: "#",
-//     badge: "3",
-//     badgeRed: true,
-//     section: "system",
-//   },
-//   { icon: <FaCog />, label: "Pengaturan", href: "#", section: "system" },
-];
+export default function Sidebar({
+  isOpen,
+  onClose,
+}: {
+  isOpen?: boolean;
+  onClose?: () => void;
+}) {
+  const pathname = usePathname();
 
-interface SidebarProps {
-  activeMenu?: string;
-}
+  const navItems = [
+    {
+      href: "/admin",
+      label: "Dashboard",
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+          />
+        </svg>
+      ),
+    },
+    {
+      href: "/admin/driver",
+      label: "Driver",
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+          />
+        </svg>
+      ),
+    },
+    {
+      href: "/admin/rute",
+      label: "Manajemen Rute",
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+          />
+        </svg>
+      ),
+    },
+  ];
 
-export default function Sidebar({ activeMenu = "Dashboard" }: SidebarProps) {
   return (
-    <div className="w-60 min-w-[240px] bg-gradient-to-b from-[#1E40AF] to-[#1a3a7a] flex flex-col h-screen fixed left-0 top-0 z-50">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white/15 rounded-[10px] flex items-center justify-center font-extrabold text-sm text-white tracking-tight">
-            AG
-          </div>
-          <div>
-            <div className="text-[15px] font-bold text-white tracking-tight">
-              AngkotGo
-            </div>
-            <div className="text-[11px] text-white/50 mt-0.5">Admin Panel</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <div className="flex-1 overflow-y-auto py-3 px-2.5">
-        {/* Main Menu */}
-        <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.8px] px-2.5 py-2">
-          Menu Utama
-        </p>
-        {menuItems
-          .filter((i) => i.section === "main")
-          .map((item, idx) => (
-            <NavItem key={idx} item={item} active={item.label === activeMenu} />
-          ))}
-      </div>
-
-      {/* Footer User */}
-      <div className="px-2.5 py-3 border-t border-white/10">
-        <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-[8px] cursor-pointer hover:bg-white/8 transition-colors">
-          <div className="w-8 h-8 bg-white/20 rounded-[8px] flex items-center justify-center font-bold text-xs text-white">
-            AG
-          </div>
-          <div>
-            <div className="text-[12px] font-semibold text-white">
-              Admin AngkotGo
-            </div>
-            <div className="text-[10px] text-white/50">Super Admin</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface NavItemProps {
-  item: {
-    href: string;
-    icon: React.ReactNode;
-    label: string;
-    badge?: string;
-    badgeRed?: boolean;
-  };
-  active: boolean;
-}
-
-function NavItem({ item, active }: NavItemProps) {
-  return (
-    <a
-      href={item.href}
-      className={`relative mb-0.5 flex items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-[13px] transition-all ${
-        active
-          ? "bg-white/15 font-semibold text-white"
-          : "text-white/70 hover:bg-white/8 hover:text-white"
+    <aside
+      className={`w-[210px] h-screen bg-white border-r border-gray-100 flex flex-col fixed left-0 top-0 z-30 transition-transform duration-300 md:translate-x-0 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
-      {active && (
-        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-white" />
-      )}
+      {/* Logo Section */}
+      <div className="px-5 py-5 border-b border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg
+              className="w-5 h-5 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 17H5a2 2 0 01-2-2V6a2 2 0 012-2h13a2 2 0 012 2v3M9 17h6M9 17v2m6-2v2M3 11h18M9 11V9m6 2V9"
+              />
+            </svg>
+          </div>
+          <span className="text-lg font-bold text-gray-900">
+            Angkot<span className="text-blue-600">Go</span>
+          </span>
+        </div>
 
-      <span className="w-[18px] text-center text-[15px] opacity-80">
-        {item.icon}
-      </span>
-
-      <span className="flex-1">{item.label}</span>
-
-      {item.badge && (
-        <span
-          className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-            item.badgeRed ? "bg-red-500 text-white" : "bg-white/20 text-white"
-          }`}
+        {/* Mobile close button */}
+        <button
+          onClick={onClose}
+          className="p-1 text-gray-400 hover:text-gray-600 transition-colors md:hidden"
+          aria-label="Close sidebar"
         >
-          {item.badge}
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* Nav Link List */}
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {navItems.map((item) => {
+          const active =
+            item.href === "/admin"
+              ? pathname === "/admin"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onClose}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                active
+                  ? "bg-blue-600 text-white shadow-sm shadow-blue-200"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              }`}
+            >
+              <span className={active ? "text-white" : "text-gray-400"}>
+                {item.icon}
+              </span>
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Driver Profile */}
+      <div className="px-4 py-5 border-t border-gray-100">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center">
+              {/* Avatar placeholder */}
+              <svg
+                className="w-8 h-8 text-blue-400"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+              </svg>
+            </div>
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-800 truncate">
+              Budi Santoso
+            </p>
+            <p className="text-xs text-gray-500">Driver Angkot</p>
+          </div>
+        </div>
+        <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+          AL – 23
         </span>
-      )}
-    </a>
+      </div>
+
+      {/* Keluar */}
+      <div className="px-3 pb-5">
+        <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            />
+          </svg>
+          Keluar
+        </button>
+      </div>
+    </aside>
   );
 }
