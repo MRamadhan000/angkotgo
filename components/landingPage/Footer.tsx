@@ -5,12 +5,12 @@ import { FaBus, FaInstagram, FaTwitter, FaFacebookF } from 'react-icons/fa';
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-slate-100 pt-16 pb-8">
+    <footer id="contact" className="bg-white border-t border-slate-100 pt-16 pb-8 scroll-mt-12">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-y-12 gap-x-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-12 gap-x-8">
           
           {/* Logo & Tagline */}
-          <div className="lg:col-span-1">
+          <div className="sm:col-span-2 md:col-span-3 lg:col-span-1">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#1E40AF' }}>
                 <FaBus className="text-white text-xl" />
@@ -19,7 +19,7 @@ export default function Footer() {
                 AngkotGo
               </span>
             </div>
-            <p className="text-sm text-slate-600 leading-relaxed max-w-[220px]">
+            <p className="text-sm text-slate-600 leading-relaxed max-w-sm lg:max-w-[220px]">
               Solusi transportasi cerdas untuk perjalanan yang lebih mudah di Kota Malang.
             </p>
           </div>
@@ -28,11 +28,11 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-slate-900 mb-4">Navigasi</h4>
             <ul className="space-y-2.5 text-sm text-slate-600">
-              <li><a href="#beranda" className="hover:text-blue-600 transition-colors">Beranda</a></li>
-              <li><a href="#benefits" className="hover:text-blue-600 transition-colors">Benefits</a></li>
-              <li><a href="#fitur" className="hover:text-blue-600 transition-colors">Fitur</a></li>
-              <li><a href="#about" className="hover:text-blue-600 transition-colors">About Us</a></li>
-              <li><a href="#contact" className="hover:text-blue-600 transition-colors">Contact</a></li>
+              <li><a href="/#beranda" className="hover:text-blue-600 transition-colors">Beranda</a></li>
+              <li><a href="/#benefits" className="hover:text-blue-600 transition-colors">Benefits</a></li>
+              <li><a href="/#fitur" className="hover:text-blue-600 transition-colors">Fitur</a></li>
+              <li><a href="/#about" className="hover:text-blue-600 transition-colors">About Us</a></li>
+              <li><a href="/#contact" className="hover:text-blue-600 transition-colors">Contact</a></li>
             </ul>
           </div>
 

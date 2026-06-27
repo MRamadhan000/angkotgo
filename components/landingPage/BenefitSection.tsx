@@ -285,7 +285,7 @@ export default function BenefitsSection() {
   return (
     <section
       id="benefits"
-      className="relative overflow-hidden bg-white py-12 md:py-16"
+      className="relative overflow-hidden bg-white py-16 md:py-24"
     >
       {/* LEFT DECORATION */}
       <div className="pointer-events-none absolute left-0 top-0 hidden h-full w-[220px] lg:block xl:w-[300px]">
