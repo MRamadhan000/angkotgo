@@ -15,6 +15,8 @@ import {
 
 // 1. Import mandatory Mapbox CSS
 import "mapbox-gl/dist/mapbox-gl.css";
+import { cariRuteAngkot } from "@/services/routeService";
+import { mapAngkotToCleanData } from "@/util/angkotMapper";
 
 // 2. Dynamic Imports
 const SearchBoxDynamic = dynamic(
@@ -169,9 +171,13 @@ const currentUser = {
   name: "Zam",
   currentLocation: { lat: -7.9526, lng: 112.6142 },
 };
+import { useSocket } from "@/context/SocketContext";
 
 // ==================== COMPONENT ====================
 export default function SearchRoutePage() {
+  const { socket, isConnected } = useSocket();
+  const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
+
   const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
   const mapRef = useRef<any>(null);
 
@@ -179,7 +185,9 @@ export default function SearchRoutePage() {
   const [originLocation, setOriginLocation] = useState<string>("");
   const [destinationLocation, setDestinationLocation] = useState<string>("");
   const [originCoords, setOriginCoords] = useState<Location | null>(null);
-  const [destinationCoords, setDestinationCoords] = useState<Location | null>(null);
+  const [destinationCoords, setDestinationCoords] = useState<Location | null>(
+    null,
+  );
 
   const [viewState, setViewState] = useState({
     latitude: -7.982611,
@@ -198,6 +206,94 @@ export default function SearchRoutePage() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
 
+  // fetcg data
+  const [loading, setLoading] = useState(false);
+  const [route, setRoute] = useState<any>(null);
+
+  const fetchRouteData = async (origin: Location, destination: Location) => {
+    setLoading(true);
+    try {
+      const data = await cariRuteAngkot({
+        lngA: origin.lng,
+        latA: origin.lat,
+        lngB: destination.lng,
+        latB: destination.lat,
+      });
+      if (data.success && data.found) {
+        const dataBersih = mapAngkotToCleanData(data.data);
+        setRoute(dataBersih);
+        console.log("Data rute berhasil diambil:", dataBersih);
+      }
+    } catch (error) {
+      console.error("Error fetching route data:", error);
+      alert("Gagal mengambil data rute. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!socket || !selectedRoute?.id) {
+      setLiveVehicles([]);
+      return;
+    }
+
+    const kodeAngkot = selectedRoute.id; // "AL", "AG", "GA", dll.
+
+    // === SUBSCRIBE KE ROOM ===
+    socket.emit("subscribe_route", { kodeAngkot });
+    console.log(`[WS] Subscribed to route: ${kodeAngkot}`);
+
+    // === HANDLER INITIAL LOCATIONS (saat baru masuk room) ===
+    const handleInitialLocations = (data: any) => {
+      console.log("[WS] initial_angkot_locations:", data);
+
+      let vehicles: any[] = [];
+      if (Array.isArray(data)) {
+        vehicles = data;
+      } else if (data && Array.isArray(data.locations)) {
+        vehicles = data.locations;
+      } else if (data && Array.isArray(data.data)) {
+        vehicles = data.data;
+      }
+
+      setLiveVehicles(vehicles);
+    };
+
+    // === HANDLER UPDATE REAL-TIME ===
+    const handleLocationUpdate = (data: any) => {
+      console.log("[WS] angkot_location_update:", data);
+
+      setLiveVehicles((prev) => {
+        const vehicleId = data.vehicleId || data.id;
+        const idx = prev.findIndex((v) => (v.vehicleId || v.id) === vehicleId);
+
+        if (idx !== -1) {
+          // Update kendaraan yang sudah ada
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], ...data };
+          return updated;
+        } else {
+          // Tambah kendaraan baru
+          return [...prev, data];
+        }
+      });
+    };
+
+    // Daftarkan listener
+    socket.on("initial_angkot_locations", handleInitialLocations);
+    socket.on("angkot_location_update", handleLocationUpdate);
+
+    // === CLEANUP ===
+    return () => {
+      socket.off("initial_angkot_locations", handleInitialLocations);
+      socket.off("angkot_location_update", handleLocationUpdate);
+      socket.emit("unsubscribe_route", { kodeAngkot });
+      setLiveVehicles([]);
+      console.log(`[WS] Unsubscribed from route: ${kodeAngkot}`);
+    };
+  }, [socket, selectedRoute?.id]); // Penting: pakai .id biar tidak re-render berlebih
+
   // Smooth camera move
   const moveMapCamera = (lat: number, lng: number, zoomLevel = 15) => {
     if (mapRef.current) {
@@ -208,7 +304,12 @@ export default function SearchRoutePage() {
         duration: 2000,
       });
     } else {
-      setViewState((prev) => ({ ...prev, latitude: lat, longitude: lng, zoom: zoomLevel }));
+      setViewState((prev) => ({
+        ...prev,
+        latitude: lat,
+        longitude: lng,
+        zoom: zoomLevel,
+      }));
     }
   };
 
@@ -258,7 +359,7 @@ export default function SearchRoutePage() {
         if (error.code === 1) setShowPermissionModal(true);
         else alert("Gagal mendeteksi lokasi. Silakan masukkan manual.");
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   };
 
@@ -271,7 +372,9 @@ export default function SearchRoutePage() {
   const handleOriginRetrieve = (res: any) => {
     if (!res?.features?.length) return;
     const coords = res.features[0].geometry.coordinates;
-    const name = res.features[0].properties.full_address || res.features[0].properties.name;
+    const name =
+      res.features[0].properties.full_address ||
+      res.features[0].properties.name;
     const lat = coords[1];
     const lng = coords[0];
     setOriginCoords({ lat, lng });
@@ -282,7 +385,9 @@ export default function SearchRoutePage() {
   const handleDestinationRetrieve = (res: any) => {
     if (!res?.features?.length) return;
     const coords = res.features[0].geometry.coordinates;
-    const name = res.features[0].properties.full_address || res.features[0].properties.name;
+    const name =
+      res.features[0].properties.full_address ||
+      res.features[0].properties.name;
     const lat = coords[1];
     const lng = coords[0];
     setDestinationCoords({ lat, lng });
@@ -292,6 +397,8 @@ export default function SearchRoutePage() {
 
   // ==================== FLOW HANDLERS ====================
   const handleFindRoute = () => {
+    fetchRouteData(originCoords!, destinationCoords!);
+
     if (!originCoords || !destinationCoords) return;
 
     setAvailableRoutes(dummyRoutes);
@@ -361,13 +468,21 @@ export default function SearchRoutePage() {
           >
             <FaArrowLeft /> Kembali ke Beranda
           </Link>
-          <h1 className="font-bold text-3xl sm:text-4xl tracking-[-1px] mb-2" style={{ color: COLORS.textDark }}>
+          <h1
+            className="font-bold text-3xl sm:text-4xl tracking-[-1px] mb-2"
+            style={{ color: COLORS.textDark }}
+          >
             {step === 3 ? "Tracking Angkot Real-time" : "Cari Rute Angkot"}
           </h1>
-          <p className="text-sm sm:text-base" style={{ color: COLORS.textSecondary }}>
-            {step === 1 && "Masukkan lokasi awal dan tujuan untuk menemukan trayek angkot terbaik di Malang."}
+          <p
+            className="text-sm sm:text-base"
+            style={{ color: COLORS.textSecondary }}
+          >
+            {step === 1 &&
+              "Masukkan lokasi awal dan tujuan untuk menemukan trayek angkot terbaik di Malang."}
             {step === 2 && "Pilih salah satu trayek angkot yang tersedia."}
-            {step === 3 && "Pantau posisi angkot secara real-time hingga tiba di tujuan."}
+            {step === 3 &&
+              "Pantau posisi angkot secara real-time hingga tiba di tujuan."}
           </p>
         </div>
 
@@ -381,8 +496,12 @@ export default function SearchRoutePage() {
                 {/* Origin */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <label className="text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.textDark }}>
-                      <FaMapMarkerAlt style={{ color: "#60a5fa" }} /> Lokasi Awal
+                    <label
+                      className="text-sm font-semibold flex items-center gap-2"
+                      style={{ color: COLORS.textDark }}
+                    >
+                      <FaMapMarkerAlt style={{ color: "#60a5fa" }} /> Lokasi
+                      Awal
                     </label>
                     <button
                       type="button"
@@ -390,7 +509,9 @@ export default function SearchRoutePage() {
                       disabled={loadingGPS}
                       className="text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition disabled:opacity-50"
                     >
-                      <FaCrosshairs className={loadingGPS ? "animate-spin" : ""} />
+                      <FaCrosshairs
+                        className={loadingGPS ? "animate-spin" : ""}
+                      />
                       {loadingGPS ? "Mencari GPS..." : "Gunakan GPS Saya"}
                     </button>
                   </div>
@@ -400,15 +521,22 @@ export default function SearchRoutePage() {
                       value={originLocation}
                       onRetrieve={handleOriginRetrieve}
                       placeholder="Ketik lokasi awal (contoh: Stasiun Malang)..."
-                      options={{ country: "ID", proximity: [112.630875, -7.982611] }}
+                      options={{
+                        country: "ID",
+                        proximity: [112.630875, -7.982611],
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* Destination */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.textDark }}>
-                    <FaMapMarkerAlt style={{ color: COLORS.accent }} /> Lokasi Tujuan
+                  <label
+                    className="block text-sm font-semibold flex items-center gap-2"
+                    style={{ color: COLORS.textDark }}
+                  >
+                    <FaMapMarkerAlt style={{ color: COLORS.accent }} /> Lokasi
+                    Tujuan
                   </label>
                   <div className="relative style-mapbox-search">
                     <SearchBoxDynamic
@@ -416,7 +544,10 @@ export default function SearchRoutePage() {
                       value={destinationLocation}
                       onRetrieve={handleDestinationRetrieve}
                       placeholder="Ketik tujuan (contoh: Universitas Brawijaya)..."
-                      options={{ country: "ID", proximity: [112.630875, -7.982611] }}
+                      options={{
+                        country: "ID",
+                        proximity: [112.630875, -7.982611],
+                      }}
                     />
                   </div>
                 </div>
@@ -430,7 +561,9 @@ export default function SearchRoutePage() {
                     style={{ backgroundColor: COLORS.primary }}
                   >
                     <FaSearch className="text-sm" />
-                    <span className={TYPOGRAPHY.button}>Cari Trayek Angkot</span>
+                    <span className={TYPOGRAPHY.button}>
+                      Cari Trayek Angkot
+                    </span>
                   </button>
                 </div>
               </>
@@ -441,21 +574,33 @@ export default function SearchRoutePage() {
               <>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-xl">Daftar Trayek Angkot</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Ditemukan {availableRoutes.length} trayek sesuai tujuan Anda</p>
+                    <h3 className="font-semibold text-xl">
+                      Daftar Trayek Angkot
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Ditemukan {availableRoutes.length} trayek sesuai tujuan
+                      Anda
+                    </p>
                   </div>
-                  <button onClick={() => setStep(1)} className="text-sm text-primary hover:underline flex items-center gap-1">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="text-sm text-primary hover:underline flex items-center gap-1"
+                  >
                     <FaArrowLeft className="text-xs" /> Ubah Lokasi
                   </button>
                 </div>
 
                 <div className="space-y-4 max-h-[520px] overflow-auto pr-1 custom-scroll">
                   {availableRoutes.map((route) => {
-                    const routeVehicles = dummyVehicles.filter((v) => v.routeId === route.id);
-                    const etaPickup = routeVehicles.length > 0 
-                      ? Math.min(...routeVehicles.map((v) => v.etaPickup)) 
-                      : 8;
-                    const activeCount = routeVehicles.length || route.activeVehicles;
+                    const routeVehicles = dummyVehicles.filter(
+                      (v) => v.routeId === route.id,
+                    );
+                    const etaPickup =
+                      routeVehicles.length > 0
+                        ? Math.min(...routeVehicles.map((v) => v.etaPickup))
+                        : 8;
+                    const activeCount =
+                      routeVehicles.length || route.activeVehicles;
 
                     return (
                       <div
@@ -466,29 +611,53 @@ export default function SearchRoutePage() {
                         <div className="flex items-start justify-between">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-black text-3xl tracking-[-2px]" style={{ color: COLORS.primary }}>{route.id}</span>
-                              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">{activeCount} aktif</span>
+                              <span
+                                className="font-black text-3xl tracking-[-2px]"
+                                style={{ color: COLORS.primary }}
+                              >
+                                {route.id}
+                              </span>
+                              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                                {activeCount} aktif
+                              </span>
                             </div>
-                            <div className="font-semibold text-lg mt-1 leading-tight">{route.name}</div>
-                            <div className="text-sm text-slate-500">{route.destination}</div>
+                            <div className="font-semibold text-lg mt-1 leading-tight">
+                              {route.name}
+                            </div>
+                            <div className="text-sm text-slate-500">
+                              {route.destination}
+                            </div>
                           </div>
                         </div>
 
                         <div className="mt-4 flex items-end justify-between">
                           <div>
-                            <div className="text-[10px] text-slate-500">Estimasi Penjemputan</div>
-                            <div className="text-2xl font-semibold tabular-nums">{etaPickup} <span className="text-sm font-normal">menit</span></div>
+                            <div className="text-[10px] text-slate-500">
+                              Estimasi Penjemputan
+                            </div>
+                            <div className="text-2xl font-semibold tabular-nums">
+                              {etaPickup}{" "}
+                              <span className="text-sm font-normal">menit</span>
+                            </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-bold text-xl" style={{ color: COLORS.primary }}>
+                            <div
+                              className="font-bold text-xl"
+                              style={{ color: COLORS.primary }}
+                            >
                               Rp{route.fare.toLocaleString("id-ID")}
                             </div>
-                            <div className="text-xs text-slate-500">{route.transit} transit</div>
+                            <div className="text-xs text-slate-500">
+                              {route.transit} transit
+                            </div>
                           </div>
                         </div>
 
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleSelectRoute(route); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectRoute(route);
+                          }}
                           className="mt-5 w-full py-3 rounded-full text-white text-sm font-semibold transition active:scale-[0.985]"
                           style={{ backgroundColor: COLORS.primary }}
                         >
@@ -504,16 +673,28 @@ export default function SearchRoutePage() {
             {/* STEP 3: Tracking */}
             {step === 3 && selectedRoute && selectedVehicle && trackingData && (
               <div className="space-y-5">
-                <button onClick={() => setStep(2)} className="flex items-center gap-1.5 text-sm text-primary hover:underline">
+                <button
+                  onClick={() => setStep(2)}
+                  className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                >
                   <FaArrowLeft /> Kembali ke Daftar Angkot
                 </button>
 
                 {/* Route Header */}
                 <div className="flex items-center gap-3">
-                  <div className="text-4xl font-black tracking-[-2.5px]" style={{ color: COLORS.primary }}>{selectedRoute.id}</div>
+                  <div
+                    className="text-4xl font-black tracking-[-2.5px]"
+                    style={{ color: COLORS.primary }}
+                  >
+                    {selectedRoute.id}
+                  </div>
                   <div className="leading-none">
-                    <div className="font-semibold text-xl">{selectedRoute.name}</div>
-                    <div className="text-xs text-slate-500">Menuju {selectedRoute.destination}</div>
+                    <div className="font-semibold text-xl">
+                      {selectedRoute.name}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Menuju {selectedRoute.destination}
+                    </div>
                   </div>
                 </div>
 
@@ -521,27 +702,39 @@ export default function SearchRoutePage() {
                 <div className="bg-slate-50 rounded-2xl p-5 space-y-4">
                   <div className="flex justify-between">
                     <div>
-                      <div className="text-xs tracking-[1px] text-slate-500">ESTIMASI DIJEMPUT</div>
+                      <div className="text-xs tracking-[1px] text-slate-500">
+                        ESTIMASI DIJEMPUT
+                      </div>
                       <div className="text-3xl font-semibold tabular-nums mt-0.5">
-                        {selectedVehicle.etaPickup} <span className="text-base font-normal">menit</span>
+                        {selectedVehicle.etaPickup}{" "}
+                        <span className="text-base font-normal">menit</span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs tracking-[1px] text-slate-500">ESTIMASI SAMPAI</div>
+                      <div className="text-xs tracking-[1px] text-slate-500">
+                        ESTIMASI SAMPAI
+                      </div>
                       <div className="text-3xl font-semibold tabular-nums mt-0.5">
-                        {selectedVehicle.etaDestination} <span className="text-base font-normal">menit</span>
+                        {selectedVehicle.etaDestination}{" "}
+                        <span className="text-base font-normal">menit</span>
                       </div>
                     </div>
                   </div>
                   <div className="h-px bg-slate-200" />
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-slate-500">Jarak Angkot</span><br />
-                      <span className="font-semibold">{selectedVehicle.distanceToPassenger} km</span>
+                      <span className="text-slate-500">Jarak Angkot</span>
+                      <br />
+                      <span className="font-semibold">
+                        {selectedVehicle.distanceToPassenger} km
+                      </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-slate-500">Sisa Perjalanan</span><br />
-                      <span className="font-semibold">{selectedVehicle.distanceRemaining} km</span>
+                      <span className="text-slate-500">Sisa Perjalanan</span>
+                      <br />
+                      <span className="font-semibold">
+                        {selectedVehicle.distanceRemaining} km
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -549,7 +742,10 @@ export default function SearchRoutePage() {
                 {/* Fare */}
                 <div className="flex justify-between items-center bg-white border border-slate-100 rounded-2xl px-5 py-4">
                   <div className="text-sm text-slate-600">Tarif</div>
-                  <div className="font-bold text-2xl" style={{ color: COLORS.primary }}>
+                  <div
+                    className="font-bold text-2xl"
+                    style={{ color: COLORS.primary }}
+                  >
                     Rp{selectedRoute.fare.toLocaleString("id-ID")}
                   </div>
                 </div>
@@ -559,19 +755,49 @@ export default function SearchRoutePage() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="font-semibold text-sm flex items-center gap-2">
                       Informasi Kendaraan
-                      <span className="text-[10px] px-2 py-px bg-emerald-100 text-emerald-600 rounded-full font-medium">LIVE</span>
+                      <span className="text-[10px] px-2 py-px bg-emerald-100 text-emerald-600 rounded-full font-medium">
+                        LIVE
+                      </span>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-y-3 text-sm">
-                    <div><span className="text-slate-500">Plat Nomor</span><br /><span className="font-medium">{selectedVehicle.plateNumber}</span></div>
-                    <div><span className="text-slate-500">Supir</span><br /><span className="font-medium">{selectedVehicle.driver}</span></div>
-                    <div><span className="text-slate-500">Kecepatan</span><br /><span className="font-medium">{selectedVehicle.speed} km/jam</span></div>
-                    <div><span className="text-slate-500">Status</span><br /><span className="font-medium text-emerald-600">{selectedVehicle.status}</span></div>
+                    <div>
+                      <span className="text-slate-500">Plat Nomor</span>
+                      <br />
+                      <span className="font-medium">
+                        {selectedVehicle.plateNumber}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Supir</span>
+                      <br />
+                      <span className="font-medium">
+                        {selectedVehicle.driver}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Kecepatan</span>
+                      <br />
+                      <span className="font-medium">
+                        {selectedVehicle.speed} km/jam
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Status</span>
+                      <br />
+                      <span className="font-medium text-emerald-600">
+                        {selectedVehicle.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => alert("Demo: Data tracking akan diperbarui otomatis via WebSocket di production.")}
+                  onClick={() =>
+                    alert(
+                      "Demo: Data tracking akan diperbarui otomatis via WebSocket di production.",
+                    )
+                  }
                   className="w-full py-3 rounded-full border border-slate-300 text-sm font-medium hover:bg-slate-50 active:bg-slate-100 transition"
                 >
                   Refresh Tracking (Demo)
@@ -594,7 +820,11 @@ export default function SearchRoutePage() {
 
               {/* Origin / User Marker */}
               {originCoords && (
-                <MarkerDynamic latitude={originCoords.lat} longitude={originCoords.lng} anchor="bottom">
+                <MarkerDynamic
+                  latitude={originCoords.lat}
+                  longitude={originCoords.lng}
+                  anchor="bottom"
+                >
                   <div className="flex flex-col items-center">
                     <div className="bg-blue-600 text-white text-[10px] px-2.5 py-0.5 rounded-md font-bold shadow mb-1 whitespace-nowrap">
                       {step === 3 ? "🧍 Anda" : "Origin"}
@@ -606,7 +836,11 @@ export default function SearchRoutePage() {
 
               {/* Destination Marker */}
               {destinationCoords && (
-                <MarkerDynamic latitude={destinationCoords.lat} longitude={destinationCoords.lng} anchor="bottom">
+                <MarkerDynamic
+                  latitude={destinationCoords.lat}
+                  longitude={destinationCoords.lng}
+                  anchor="bottom"
+                >
                   <div className="flex flex-col items-center">
                     <div className="bg-red-500 text-white text-[10px] px-2.5 py-0.5 rounded-md font-bold shadow mb-1 whitespace-nowrap">
                       {step === 3 ? "📍 Tujuan" : "Destination"}
@@ -618,7 +852,11 @@ export default function SearchRoutePage() {
 
               {/* Vehicle Marker (only in tracking) */}
               {step === 3 && trackingData && (
-                <MarkerDynamic latitude={trackingData.vehicle.lat} longitude={trackingData.vehicle.lng} anchor="bottom">
+                <MarkerDynamic
+                  latitude={trackingData.vehicle.lat}
+                  longitude={trackingData.vehicle.lng}
+                  anchor="bottom"
+                >
                   <div className="flex flex-col items-center">
                     <div className="bg-emerald-600 text-white text-[10px] px-2.5 py-0.5 rounded-md font-bold shadow mb-1 flex items-center gap-1 whitespace-nowrap">
                       🚐 {trackingData.vehicle.id}
@@ -632,7 +870,8 @@ export default function SearchRoutePage() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-8">
-          Powered by AngkotGo • Data dummy untuk demo (siap dihubungkan ke backend + WebSocket)
+          Powered by AngkotGo • Data dummy untuk demo (siap dihubungkan ke
+          backend + WebSocket)
         </p>
       </div>
 
@@ -640,16 +879,24 @@ export default function SearchRoutePage() {
       {showPermissionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 relative shadow-xl border border-slate-100 text-center">
-            <button onClick={() => setShowPermissionModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+            <button
+              onClick={() => setShowPermissionModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+            >
               <FaTimes />
             </button>
             <div className="mx-auto w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 text-2xl mb-4">
               <FaExclamationTriangle />
             </div>
             <h3 className="font-bold text-lg">Akses GPS Diblokir</h3>
-            <p className="text-sm text-slate-500 mt-2">AngkotGo membutuhkan izin lokasi untuk hasil rute yang akurat.</p>
+            <p className="text-sm text-slate-500 mt-2">
+              AngkotGo membutuhkan izin lokasi untuk hasil rute yang akurat.
+            </p>
             <button
-              onClick={() => { setShowPermissionModal(false); getUserGPSLocation(); }}
+              onClick={() => {
+                setShowPermissionModal(false);
+                getUserGPSLocation();
+              }}
               className="mt-6 w-full py-3 rounded-full text-white font-medium text-sm"
               style={{ backgroundColor: COLORS.primary }}
             >
@@ -673,8 +920,13 @@ export default function SearchRoutePage() {
           border-color: ${COLORS.primary} !important;
           outline: none !important;
         }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 3px;
+        }
       `}</style>
     </main>
   );
