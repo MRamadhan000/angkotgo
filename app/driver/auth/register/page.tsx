@@ -22,130 +22,57 @@ const poppins = Poppins({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type RouteStatus = "tersedia" | "penuh";
-
-interface ActiveRoute {
-  name: string;
-  status: RouteStatus;
-  color: "green" | "amber" | "red";
-}
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const ACTIVE_ROUTES: ActiveRoute[] = [
-  { name: "Landungsari – Dinoyo", status: "tersedia", color: "green" },
-  { name: "Arjosari – UB", status: "tersedia", color: "amber" },
-  { name: "Gadang – Sawojajar", status: "penuh", color: "red" },
-  { name: "Terminal – Soekarno Hatta", status: "tersedia", color: "green" },
-];
-
-const DOT_COLORS: Record<ActiveRoute["color"], string> = {
-  green: "#97C459",
-  amber: "#EF9F27",
-  red: "#F09595",
-};
-
-// ─── Components ───────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: RouteStatus }) {
-  const isAvail = status === "tersedia";
-
-  return (
-    <span
-      className={`ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded ${
-        isAvail
-          ? "bg-green-500/20 text-green-200"
-          : "bg-red-400/20 text-red-200"
-      }`}
-    >
-      {isAvail ? "Tersedia" : "Penuh"}
-    </span>
-  );
-}
-
-function RouteDot({ color }: { color: ActiveRoute["color"] }) {
-  return (
-    <span
-      className="w-2 h-2 rounded-full flex-shrink-0"
-      style={{ backgroundColor: DOT_COLORS[color] }}
-    />
-  );
-}
-
 function Sidebar() {
   return (
-    <aside className="hidden lg:flex w-full flex-col bg-gradient-to-br from-blue-600 to-cyan-500 px-8 py-10 relative overflow-hidden">
+    <aside className="hidden lg:flex w-full flex-col bg-gradient-to-br from-blue-600 to-cyan-500 px-8 py-10 relative overflow-hidden h-full justify-between">
       {/* Decorative */}
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/10" />
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/10 pointer-events-none" />
+      <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-black/5 pointer-events-none" />
 
-      <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-black/5" />
-
-      {/* Logo */}
-      <div className="relative z-10 flex items-center gap-3 mb-12">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-400 to-cyan-300 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg shadow-blue-400/30">
-          <FaBus className="text-2xl text-white" />
-        </div>
-
-        <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
-            AngkotGo
-          </h1>
-
-          <p className="text-blue-100 text-sm">
-            Smart Transportation Platform
-          </p>
-        </div>
-      </div>
-
-      {/* Hero */}
-      <div className="relative z-10 max-w-lg">
-        <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium text-white mb-6">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          Driver Registration
-        </div>
-
-        <h2 className="text-5xl font-extrabold text-white leading-tight tracking-tight">
+      {/* Hero Content */}
+      <div className="relative z-10 max-w-lg my-auto">
+        <h2 className="text-4xl xl:text-5xl font-extrabold text-white leading-tight tracking-tight">
           Bergabung Menjadi
           <span className="text-[#C8E6FF]"> Driver AngkotGo</span>
         </h2>
 
-        <p className="mt-6 text-blue-100 text-lg leading-relaxed">
+        <p className="mt-6 text-blue-500 bg-blue-50/90 backdrop-blur-sm px-4 py-2 rounded-full text-xs xl:text-sm font-medium inline-flex items-center gap-2 mb-6">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          Sistem Navigasi Real-time
+        </p>
+
+        <p className="mt-2 text-blue-100 text-base xl:text-lg leading-relaxed opacity-95">
           Daftarkan dirimu sebagai driver dan mulai aktifkan tracking armada
           secara real-time untuk membantu penumpang menemukan angkot lebih
           mudah.
         </p>
 
         {/* Features */}
-        <div className="mt-10 space-y-4">
-          <div className="flex items-start gap-4 bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl p-4">
-            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+        <div className="mt-8 xl:mt-10 space-y-4">
+          <div className="flex items-start gap-4 bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl p-4 transition-all hover:bg-white/15">
+            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
               <FaCheckCircle className="text-lg text-green-300" />
             </div>
-
             <div>
-              <h3 className="font-bold text-lg text-white">
+              <h3 className="font-bold text-base xl:text-lg text-white">
                 Registrasi Mudah
               </h3>
-
-              <p className="text-blue-100 text-sm mt-1">
-                Hanya membutuhkan data dasar untuk proses pendaftaran driver.
+              <p className="text-blue-100 text-xs xl:text-sm mt-1 opacity-90">
+                Hanya membutuhkan data dasar untuk proses pendaftaran driver
+                tanpa ribet.
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-4 bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl p-4">
-            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+          <div className="flex items-start gap-4 bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl p-4 transition-all hover:bg-white/15">
+            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
               <FaBus className="text-lg text-white" />
             </div>
-
             <div>
-              <h3 className="font-bold text-lg text-white">
+              <h3 className="font-bold text-base xl:text-lg text-white">
                 Tracking Real-time
               </h3>
-
-              <p className="text-blue-100 text-sm mt-1">
+              <p className="text-blue-100 text-xs xl:text-sm mt-1 opacity-90">
                 Driver dapat mengaktifkan mode narik dan membagikan lokasi
                 armada secara langsung.
               </p>
@@ -154,6 +81,11 @@ function Sidebar() {
         </div>
       </div>
 
+      {/* Footer Branding info */}
+      <div className="relative z-10 text-xs text-blue-200/70 border-t border-white/10 pt-4 mt-auto flex items-center justify-between">
+        <p>© 2026 AngkotGo Team</p>
+        <p>V1.2.0</p>
+      </div>
     </aside>
   );
 }
@@ -172,10 +104,9 @@ export default function DriverRegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setError("");
 
-    if (!fullName || !phone || !email) {
+    if (!fullName.trim() || !phone.trim() || !email.trim()) {
       setError("Semua field wajib diisi.");
       return;
     }
@@ -183,7 +114,6 @@ export default function DriverRegisterPage() {
     setIsLoading(true);
 
     // TODO: API REGISTER
-
     setTimeout(() => {
       router.push("/driver/auth/login");
     }, 1200);
@@ -191,59 +121,52 @@ export default function DriverRegisterPage() {
 
   return (
     <main
-      className={`${poppins.className} min-h-screen relative overflow-hidden`}
+      className={`${poppins.className} min-h-screen relative overflow-x-hidden`}
       style={{
         background:
           "linear-gradient(135deg, #e6f1fb 0%, #f8fafc 50%, #eaf3de 100%)",
       }}
     >
-      {/* Background */}
-      <div className="absolute inset-0 overflow-hidden -z-10">
-        <div className="absolute top-[-120px] left-[-120px] w-[320px] h-[320px] bg-blue-200/40 rounded-full blur-3xl" />
-
-        <div className="absolute bottom-[-120px] right-[-120px] w-[320px] h-[320px] bg-green-200/40 rounded-full blur-3xl" />
-
+      {/* Background Decorative Blobs */}
+      <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
+        <div className="absolute top-[-120px] left-[-120px] w-[280px] sm:w-[320px] h-[280px] sm:h-[320px] bg-blue-200/40 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-[-120px] right-[-120px] w-[280px] sm:w-[320px] h-[280px] sm:h-[320px] bg-green-200/40 rounded-full blur-3xl" />
         <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] bg-[size:38px_38px]" />
       </div>
 
-      <div className="grid lg:grid-cols-2 min-h-screen">
+      <div className="grid grid-cols-1 lg:grid-cols-2 min-h-screen items-stretch">
         {/* LEFT SIDE */}
-        <section className="hidden lg:flex">
+        <section className="hidden lg:flex h-full">
           <Sidebar />
         </section>
 
         {/* RIGHT SIDE */}
-        <section className="flex items-center justify-center px-4 py-8 sm:px-6 md:px-8 lg:px-10">
-          <div className="w-full max-w-md">
-            {/* Mobile Logo */}
-            <div className="lg:hidden text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 shadow-lg shadow-cyan-400/30">
-                <FaBus className="text-white text-2xl" />
+        <section className="flex flex-col items-center justify-center px-4 py-8 sm:px-6 md:px-12 lg:px-10 xl:px-16 w-full h-full">
+          <div className="w-full max-w-md mx-auto">
+            {/* Mobile & Tablet Logo Header (Hanya tampil di layar < lg) */}
+            <div className="lg:hidden text-center mb-6 sm:mb-8">
+              <div className="relative inline-flex items-center justify-center">
+                <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
+                <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-[0_15px_30px_rgba(37,99,235,0.25)]">
+                  <FaBus className="text-white text-xl" />
+                </div>
               </div>
-
-              <h1 className="mt-5 text-3xl font-extrabold text-slate-900">
+              <h1 className="mt-4 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                 AngkotGo
               </h1>
-
-              <p className="text-slate-500 mt-2 text-sm">
-                Smart Transportation Platform
+              <p className="mt-1 text-xs sm:text-sm text-slate-500">
+                Driver Registration System
               </p>
             </div>
 
-            {/* Card */}
-            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl p-5 sm:p-7 lg:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
-              {/* Header */}
-              <div className="mb-7">
-                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-                  Portal Registrasi Driver
-                </div>
-
-                <h2 className="mt-5 text-3xl font-extrabold text-slate-900 leading-tight">
+            {/* Registration Card */}
+            <div className="bg-white/75 backdrop-blur-2xl border border-white/60 rounded-2xl sm:rounded-[28px] p-5 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
+              {/* Card Header */}
+              <div className="mb-5 sm:mb-6 text-center lg:text-left">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
                   Daftar Driver Baru
                 </h2>
-
-                <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed">
                   Lengkapi data berikut untuk membuat akun driver AngkotGo.
                 </p>
               </div>
@@ -252,104 +175,100 @@ export default function DriverRegisterPage() {
               <form onSubmit={handleRegister} className="space-y-4">
                 {/* Full Name */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-600 mb-2">
-                    Full Name
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
+                    Nama Lengkap
                   </label>
-
-                  <div className="relative">
-                    <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-
+                  <div className="group relative">
+                    <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm group-focus-within:text-blue-600 transition-colors" />
                     <input
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Masukkan nama lengkap"
-                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
+                      className="w-full h-11 sm:h-13 rounded-xl sm:rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-xs sm:text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 hover:border-slate-300"
                     />
                   </div>
                 </div>
 
                 {/* Phone */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-600 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
                     Nomor Telepon
                   </label>
-
-                  <div className="relative">
-                    <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-
+                  <div className="group relative">
+                    <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm group-focus-within:text-blue-600 transition-colors" />
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="08xxxxxxxxxx"
-                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
+                      className="w-full h-11 sm:h-13 rounded-xl sm:rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-xs sm:text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 hover:border-slate-300"
                     />
                   </div>
                 </div>
 
                 {/* Email */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-600 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
                     Email
                   </label>
-
-                  <div className="relative">
-                    <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-
+                  <div className="group relative">
+                    <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm group-focus-within:text-blue-600 transition-colors" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="contoh@email.com"
-                      className="w-full h-13 sm:h-14 rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
+                      className="w-full h-11 sm:h-13 rounded-xl sm:rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-xs sm:text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 hover:border-slate-300"
                     />
                   </div>
                 </div>
 
-                {/* Error */}
+                {/* Error Box */}
                 {error && (
-                  <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3">
+                  <div className="bg-red-50 border border-red-100 text-red-600 text-xs sm:text-sm rounded-xl px-4 py-2.5 animate-pulse">
                     {error}
                   </div>
                 )}
 
-                {/* Button */}
+                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group mt-3 sm:mt-2 w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold text-xs sm:text-sm transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 sm:gap-3"
+                  className="group mt-2 w-full h-11 sm:h-13 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold text-xs sm:text-sm transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <>
-                      <FaSpinner className="animate-spin text-sm" />
-                      Memproses...
+                      <FaSpinner className="animate-spin text-xs sm:text-sm" />
+                      <span>Memproses...</span>
                     </>
                   ) : (
                     <>
-                      Daftar Sekarang
-                      <FaArrowRight className="group-hover:translate-x-1 transition" />
+                      <span>Daftar Sekarang</span>
+                      <FaArrowRight className="group-hover:translate-x-1 transition text-xs sm:text-sm" />
                     </>
                   )}
                 </button>
               </form>
 
-              {/* Bottom */}
-              <div className="mt-6 bg-green-50 border border-green-100 rounded-2xl p-4">
-                <p className="flex items-start gap-2 text-xs text-green-700 leading-relaxed">
-                  <FaInfoCircle className="mt-0.5 flex-shrink-0" />
-                  Setelah registrasi, akun driver akan diverifikasi oleh admin
-                  sebelum dapat digunakan sepenuhnya.
+              {/* Bottom Notice */}
+              <div className="mt-5 bg-green-50 border border-green-100 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                <p className="flex items-start gap-2 text-[11px] sm:text-xs text-green-700 leading-relaxed">
+                  <FaInfoCircle className="mt-0.5 flex-shrink-0 text-green-600" />
+                  <span>
+                    Setelah registrasi, akun driver akan diverifikasi oleh admin
+                    sebelum dapat digunakan sepenuhnya.
+                  </span>
                 </p>
               </div>
 
-              {/* Login */}
-              <div className="mt-6 text-center">
-                <p className="text-sm text-slate-500">
+              {/* Login Redirect Link */}
+              <div className="mt-5 text-center">
+                <p className="text-xs sm:text-sm text-slate-500">
                   Sudah punya akun?{" "}
                   <Link
                     href="/driver/auth/login"
-                    className="text-blue-700 font-bold hover:text-blue-800"
+                    className="text-blue-600 font-bold hover:text-blue-800 transition-colors inline-block"
                   >
                     Masuk sekarang
                   </Link>

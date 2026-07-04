@@ -89,7 +89,7 @@ export default function AdminLoginPage() {
           {/* Main Container */}
           <div className="relative z-10 flex flex-col justify-between p-8 xl:p-14 text-white w-full gap-8">
             {/* BRAND LOGO */}
-            <div className="flex items-center gap-4">
+            {/* <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
                 <div className="absolute inset-0 bg-white/20 blur-2xl rounded-3xl" />
                 <div className="relative w-14 h-14 xl:w-16 xl:h-16 rounded-2xl xl:rounded-3xl bg-white/15 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-lg">
@@ -104,16 +104,11 @@ export default function AdminLoginPage() {
                   Admin Management System
                 </p>
               </div>
-            </div>
+            </div> */}
 
             {/* HERO CONTENT */}
             <div className="max-w-xl my-auto py-4">
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full text-xs xl:text-sm font-medium mb-6">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                Secure Administration Panel
-              </div>
-
-              <h2 className="text-4xl xl:text-6xl font-extrabold leading-tight tracking-tight">
+                        <h2 className="text-4xl xl:text-6xl font-extrabold leading-tight tracking-tight">
                 Kelola Sistem
                 <br />
                 Transportasi
@@ -157,25 +152,6 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* STATS COUNTER */}
-            <div className="grid grid-cols-3 gap-3 xl:gap-4">
-              <div className="bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl p-4 xl:p-5">
-                <h3 className="text-2xl xl:text-3xl font-extrabold">120+</h3>
-                <p className="text-blue-100/80 text-xs mt-1">Armada Aktif</p>
-              </div>
-
-              <div className="bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl p-4 xl:p-5">
-                <h3 className="text-2xl xl:text-3xl font-extrabold">24/7</h3>
-                <p className="text-blue-100/80 text-xs mt-1">Monitoring</p>
-              </div>
-
-              <div className="bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl p-4 xl:p-5">
-                <h3 className="text-2xl xl:text-3xl font-extrabold text-ellipsis overflow-hidden">
-                  Realtime
-                </h3>
-                <p className="text-blue-100/80 text-xs mt-1">Analytics</p>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -185,7 +161,7 @@ export default function AdminLoginPage() {
         <section className="flex items-center justify-center px-4 py-8 sm:px-6 md:py-12 lg:px-12 xl:px-16 h-full min-h-screen">
           <div className="w-full max-w-md mx-auto">
             {/* MOBILE LOGO (Hanya muncul di layar < lg) */}
-            <div className="lg:hidden text-center mb-6 sm:mb-8">
+            {/* <div className="lg:hidden text-center mb-6 sm:mb-8">
               <div className="relative inline-flex items-center justify-center">
                 <div className="absolute inset-0 bg-blue-500/30 blur-2xl rounded-full" />
                 <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#0C447C] via-[#185FA5] to-[#378ADD] flex items-center justify-center shadow-[0_15px_30px_rgba(12,68,124,0.3)]">
@@ -198,7 +174,7 @@ export default function AdminLoginPage() {
               <p className="mt-1 text-xs sm:text-sm text-slate-500">
                 Admin Management System
               </p>
-            </div>
+            </div> */}
 
             {/* LOGIN CARD */}
             <div className="relative overflow-hidden rounded-2xl sm:rounded-[36px] border border-white/60 bg-white/75 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.05)] p-5 sm:p-8 lg:p-10">
@@ -209,10 +185,7 @@ export default function AdminLoginPage() {
 
               {/* CARD HEADER */}
               <div className="text-center mb-6 sm:mb-8">
-                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  Secure Admin Access
-                </div>
+             
 
                 <h2 className="mt-4 text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                   Admin Login
