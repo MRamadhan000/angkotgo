@@ -8,16 +8,16 @@ import Link from "next/link";
 interface RoutePoint {
   id: number;
   sequence: number;
-  latitude: number;
-  longitude: number;
+  latitude: string | number;
+  longitude: string | number;
 }
 
 interface RouteStop {
   id: number;
   name: string;
   sequence: number;
-  latitude: number;
-  longitude: number;
+  latitude: string | number;
+  longitude: string | number;
   radiusMeter: number;
   isTerminal: boolean;
 }
@@ -28,122 +28,83 @@ interface Route {
   name: string;
   direction: "GO" | "RETURN";
   color: string;
-  distanceKm: number;
-  estimatedDurationMinutes: number;
+  distanceKm: number | string | null;
+  estimatedDurationMinutes: number | null;
   isActive: boolean;
-  points: RoutePoint[];
-  stops: RouteStop[];
   createdAt: string;
   updatedAt: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-// --- Mock Data Fallback ---
-const mockRoutes: Route[] = [
-  {
-    id: 1,
-    code: "AG",
-    name: "Arjosari – Gadang",
-    direction: "GO",
-    color: "#10b981", // emerald green
-    distanceKm: 14.50,
-    estimatedDurationMinutes: 45,
-    isActive: true,
-    points: [
-      { id: 1, sequence: 1, latitude: -7.935400, longitude: 112.635800 },
-      { id: 2, sequence: 2, latitude: -7.942100, longitude: 112.638900 },
-      { id: 3, sequence: 3, latitude: -7.950200, longitude: 112.630200 },
-      { id: 4, sequence: 4, latitude: -7.962500, longitude: 112.628100 },
-      { id: 5, sequence: 5, latitude: -7.985900, longitude: 112.632400 },
-    ],
-    stops: [
-      { id: 1, name: "Terminal Arjosari (Titik Awal)", sequence: 1, latitude: -7.935400, longitude: 112.635800, radiusMeter: 100, isTerminal: true },
-      { id: 2, name: "Halte Ciliwung", sequence: 2, latitude: -7.950200, longitude: 112.630200, radiusMeter: 50, isTerminal: false },
-      { id: 3, name: "Halte Pasar Besar", sequence: 3, latitude: -7.962500, longitude: 112.628100, radiusMeter: 60, isTerminal: false },
-      { id: 4, name: "Terminal Gadang (Titik Akhir)", sequence: 4, latitude: -7.985900, longitude: 112.632400, radiusMeter: 100, isTerminal: true },
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    code: "AL",
-    name: "Arjosari – Landungsari",
-    direction: "RETURN",
-    color: "#3b82f6", // blue
-    distanceKm: 16.20,
-    estimatedDurationMinutes: 50,
-    isActive: true,
-    points: [
-      { id: 6, sequence: 1, latitude: -7.935400, longitude: 112.635800 },
-      { id: 7, sequence: 2, latitude: -7.938200, longitude: 112.620100 },
-      { id: 8, sequence: 3, latitude: -7.945100, longitude: 112.605300 },
-      { id: 9, sequence: 4, latitude: -7.952900, longitude: 112.592100 },
-    ],
-    stops: [
-      { id: 5, name: "Terminal Arjosari (Titik Awal)", sequence: 1, latitude: -7.935400, longitude: 112.635800, radiusMeter: 100, isTerminal: true },
-      { id: 6, name: "Halte Blimbing", sequence: 2, latitude: -7.938200, longitude: 112.620100, radiusMeter: 60, isTerminal: false },
-      { id: 7, name: "Terminal Landungsari (Titik Akhir)", sequence: 3, latitude: -7.952900, longitude: 112.592100, radiusMeter: 100, isTerminal: true },
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    code: "ADL",
-    name: "Arjosari – Dinoyo – Landungsari",
-    direction: "GO",
-    color: "#8b5cf6", // purple
-    distanceKm: 18.00,
-    estimatedDurationMinutes: 60,
-    isActive: false,
-    points: [],
-    stops: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export default function RouteDetailPage() {
   const params = useParams();
   const router = useRouter();
+  
   const [routeData, setRouteData] = useState<Route | null>(null);
+  const [points, setPoints] = useState<RoutePoint[]>([]);
+  const [stops, setStops] = useState<RouteStop[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeStop, setActiveStop] = useState<RouteStop | null>(null);
 
+  // Bulk modal state
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  const [showStopsModal, setShowStopsModal] = useState(false);
+  const [bulkInput, setBulkInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const pathLineRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
 
-  // Fetch route details
-  useEffect(() => {
-    const fetchRouteDetail = async () => {
-      setIsLoading(true);
-      const targetId = parseInt(params.id as string) || 0;
-      try {
-        const response = await fetch(`${API_URL}/admin/dashboard/route`);
-        if (!response.ok) {
-          throw new Error("Gagal load API");
-        }
-        const data = await response.json();
-        const found = data.find((r: Route) => r.id === targetId);
-        setRouteData(found || null);
-      } catch (err) {
-        console.warn("Menggunakan data simulasi lokal (Demo Mode).");
-        const foundMock = mockRoutes.find((r) => r.id === targetId);
-        setRouteData(foundMock || null);
-      } finally {
-        setIsLoading(false);
+  const targetId = parseInt(params.id as string) || 0;
+
+  // Fetch data
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch Route Info
+      const routeRes = await fetch(`${API_URL}/routes`);
+      if (!routeRes.ok) throw new Error("Gagal load rute");
+      const routes: Route[] = await routeRes.json();
+      const foundRoute = routes.find(r => r.id === targetId);
+
+      if (!foundRoute) {
+        setRouteData(null);
+        return;
       }
-    };
-    fetchRouteDetail();
-  }, [params.id]);
+      setRouteData(foundRoute);
 
-  // Load Leaflet and initialize map on client side only
+      // Fetch Points
+      const pointsRes = await fetch(`${API_URL}/routes/${targetId}/points`);
+      if (pointsRes.ok) {
+        const pointsData = await pointsRes.json();
+        setPoints(pointsData);
+      }
+
+      // Fetch Stops
+      const stopsRes = await fetch(`${API_URL}/routes/${targetId}/stops`);
+      if (stopsRes.ok) {
+        const stopsData = await stopsRes.json();
+        setStops(stopsData);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetId]);
+
+  // Handle Leaflet Map Initialization and updates
   useEffect(() => {
     if (isLoading || !routeData || !mapContainerRef.current) return;
 
-    // 1. Inject Leaflet CSS stylesheet dynamically
     if (!document.getElementById("leaflet-css")) {
       const link = document.createElement("link");
       link.id = "leaflet-css";
@@ -152,48 +113,51 @@ export default function RouteDetailPage() {
       document.head.appendChild(link);
     }
 
-    let map: any = null;
+    let map = mapInstanceRef.current;
 
-    // 2. Load Leaflet package dynamically
-    const initMap = async () => {
+    const renderMap = async () => {
       const L = (await import("leaflet")).default;
 
-      const points = routeData.points || [];
-      const stops = routeData.stops || [];
-
-      // Determine default coordinates
       let centerLat = -7.983908;
-      let centerLng = 112.621391; // Malang default
+      let centerLng = 112.621391;
       if (points.length > 0) {
         centerLat = Number(points[0].latitude);
         centerLng = Number(points[0].longitude);
+      } else if (stops.length > 0) {
+        centerLat = Number(stops[0].latitude);
+        centerLng = Number(stops[0].longitude);
       }
 
-      // Initialize map instance
-      map = L.map(mapContainerRef.current!).setView([centerLat, centerLng], 13);
-      mapInstanceRef.current = map;
+      if (!map) {
+        map = L.map(mapContainerRef.current!).setView([centerLat, centerLng], 13);
+        mapInstanceRef.current = map;
 
-      // Add CartoDB Positron clean map tiles
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd",
-        maxZoom: 20,
-      }).addTo(map);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+          subdomains: "abcd",
+          maxZoom: 20,
+        }).addTo(map);
+      }
 
-      // Draw polyline route path
-      const latlngs = points.map(p => L.latLng(Number(p.latitude), Number(p.longitude)));
+      // Clear existing layers if any
+      if (pathLineRef.current) {
+        map.removeLayer(pathLineRef.current);
+      }
+      markersRef.current.forEach(m => map.removeLayer(m));
+      markersRef.current = [];
+
+      // Draw polyline
+      const latlngs = [...points].sort((a, b) => a.sequence - b.sequence).map(p => L.latLng(Number(p.latitude), Number(p.longitude)));
       if (latlngs.length > 0) {
-        const pathLine = L.polyline(latlngs, {
+        pathLineRef.current = L.polyline(latlngs, {
           color: routeData.color || "#10b981",
           weight: 4.5,
           opacity: 0.85,
         }).addTo(map);
-
-        // Auto zoom & fits bounds
-        map.fitBounds(pathLine.getBounds(), { padding: [50, 50] });
+        map.fitBounds(pathLineRef.current.getBounds(), { padding: [50, 50] });
       }
 
-      // Draw stop markers
+      // Draw markers
       stops.forEach(stop => {
         const markerColor = stop.isTerminal ? "#ef4444" : "#3b82f6";
         const stopMarker = L.marker([Number(stop.latitude), Number(stop.longitude)], {
@@ -205,24 +169,17 @@ export default function RouteDetailPage() {
           }),
         }).addTo(map);
 
-        // Wire mouse-hover actions to update details overlay
         stopMarker.on("mouseover", () => {
           setActiveStop(stop);
         });
+
+        markersRef.current.push(stopMarker);
       });
     };
 
-    initMap();
+    renderMap();
+  }, [isLoading, routeData, points, stops]);
 
-    // Clean up map instance on component unmount
-    return () => {
-      if (map) {
-        map.remove();
-      }
-    };
-  }, [isLoading, routeData]);
-
-  // Handler to center map on clicked sidebar stop
   const handleStopClick = async (stop: RouteStop) => {
     setActiveStop(stop);
     if (mapInstanceRef.current) {
@@ -234,7 +191,39 @@ export default function RouteDetailPage() {
     }
   };
 
-  if (isLoading) {
+  const handleBulkSubmit = async (type: "points" | "stops") => {
+    try {
+      const payload = JSON.parse(bulkInput);
+      setIsSubmitting(true);
+      
+      const endpoint = type === "points" 
+        ? `${API_URL}/routes/${targetId}/points/bulk` 
+        : `${API_URL}/routes/${targetId}/stops/bulk`;
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        throw new Error("Gagal menyimpan data bulk.");
+      }
+
+      alert("Data berhasil disimpan!");
+      setBulkInput("");
+      setShowPointsModal(false);
+      setShowStopsModal(false);
+      
+      fetchData();
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading && !routeData) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-500">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-blue-600 mb-4" />
@@ -257,13 +246,11 @@ export default function RouteDetailPage() {
     );
   }
 
-  const stops = routeData.stops || [];
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col font-sans">
       
-      {/* Clean & Bright Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm z-10">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm z-10">
         <div className="flex items-center gap-4">
           <Link
             href="/admin/dashboard/route"
@@ -282,15 +269,28 @@ export default function RouteDetailPage() {
           </div>
         </div>
 
-        {/* Stats Summary */}
         <div className="flex items-center gap-6">
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowPointsModal(true)}
+              className="text-xs font-semibold bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition"
+            >
+              + Bulk Points
+            </button>
+            <button 
+              onClick={() => setShowStopsModal(true)}
+              className="text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition"
+            >
+              + Bulk Halte
+            </button>
+          </div>
           <div className="text-right">
             <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider">Jarak Tempuh</span>
-            <span className="text-sm font-bold text-gray-800">{routeData.distanceKm} Km</span>
+            <span className="text-sm font-bold text-gray-800">{routeData.distanceKm ?? "-"} Km</span>
           </div>
           <div className="text-right">
             <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider">Estimasi Waktu</span>
-            <span className="text-sm font-bold text-gray-800">{routeData.estimatedDurationMinutes} Menit</span>
+            <span className="text-sm font-bold text-gray-800">{routeData.estimatedDurationMinutes ?? "-"} Menit</span>
           </div>
           <div className="text-right">
             <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider">Status Rute</span>
@@ -301,34 +301,30 @@ export default function RouteDetailPage() {
         </div>
       </div>
 
-      {/* Main Workspace split */}
+      {/* Main Workspace */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         {/* Left Side: Map Visualizer */}
         <div className="flex-1 p-6 flex flex-col justify-between relative overflow-hidden bg-white/40">
-          
-          {/* Subtle light grid background overlay */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none opacity-80" />
 
-          {/* Heading info */}
           <div className="z-10 flex justify-between items-start mb-4 gap-4">
-            <div className="bg-white/95 border border-gray-100 rounded-2xl px-4 py-3 shadow-sm backdrop-blur-md">
-              <h2 className="text-sm font-bold text-gray-900">Visualisasi Peta Rute</h2>
-              <p className="text-[10px] text-gray-400 mt-0.5">Peta interaktif berbasis koordinat OpenStreetMap & Leaflet</p>
+            <div className="bg-white/95 border border-gray-100 rounded-2xl px-4 py-3 shadow-sm backdrop-blur-md flex gap-4 items-center">
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">Visualisasi Peta Rute</h2>
+                <p className="text-[10px] text-gray-400 mt-0.5">Peta interaktif berbasis koordinat OpenStreetMap & Leaflet</p>
+              </div>
+              <div className="w-px h-8 bg-gray-200"></div>
+              <div className="text-center">
+                <p className="text-xs font-bold">{points.length}</p>
+                <p className="text-[9px] text-gray-500 uppercase tracking-widest">Points</p>
+              </div>
             </div>
           </div>
 
-          {/* Leaflet Dynamic Geographic Map Canvas */}
           <div className="flex-1 w-full bg-white rounded-3xl border border-gray-150 overflow-hidden z-0 relative shadow-sm min-h-[500px]">
-            
-            {/* The Map Mount Point */}
-            <div 
-              ref={mapContainerRef} 
-              className="w-full h-full"
-              style={{ minHeight: "100%", zIndex: 1 }}
-            />
+            <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: "100%", zIndex: 1 }} />
 
-            {/* Tooltip Overlay placed INSIDE the map visualization container */}
             {activeStop && (
               <div className="absolute top-4 right-4 bg-white/95 border border-blue-200 rounded-2xl px-4 py-3 max-w-xs shadow-md z-[1000] pointer-events-none animate-in fade-in zoom-in-95 duration-150">
                 <p className="text-[9px] text-blue-600 font-bold uppercase tracking-wider">
@@ -342,7 +338,6 @@ export default function RouteDetailPage() {
             )}
           </div>
 
-          {/* Foot note / Legend */}
           <div className="z-10 mt-4 flex items-center gap-6 text-[10px] text-gray-500 bg-white/70 border border-gray-100 rounded-xl px-4 py-2 self-start shadow-2xs">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
@@ -359,17 +354,14 @@ export default function RouteDetailPage() {
           </div>
         </div>
 
-        {/* Right Side: Sidebar Stops Sequence */}
+        {/* Right Side: Sidebar Stops */}
         <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-150 flex flex-col shadow-sm z-10">
           <div className="p-5 border-b border-gray-100 bg-gray-50/50">
             <h3 className="text-sm font-bold text-gray-900">Daftar Halte & Terminal</h3>
             <p className="text-[10px] text-gray-400 mt-0.5">Rangkaian urutan pemberhentian angkot ({stops.length} Lokasi)</p>
           </div>
 
-          <div 
-            className="flex-1 overflow-y-auto p-5 space-y-4"
-            onMouseLeave={() => setActiveStop(null)}
-          >
+          <div className="flex-1 overflow-y-auto p-5 space-y-4" onMouseLeave={() => setActiveStop(null)}>
             {stops.length === 0 ? (
               <div className="text-gray-400 text-center py-12 text-xs">
                 Tidak ada halte yang terdaftar untuk rute ini.
@@ -384,9 +376,7 @@ export default function RouteDetailPage() {
                       key={stop.id}
                       onClick={() => handleStopClick(stop)}
                       onMouseEnter={() => {
-                        if (activeStop?.id !== stop.id) {
-                          setActiveStop(stop);
-                        }
+                        if (activeStop?.id !== stop.id) setActiveStop(stop);
                       }}
                       className={`relative flex gap-4 p-3 rounded-2xl border transition-all cursor-pointer ${
                         isCurrent
@@ -394,7 +384,6 @@ export default function RouteDetailPage() {
                           : "bg-white border-gray-200/60 hover:bg-gray-50 hover:border-gray-300"
                       }`}
                     >
-                      {/* Sequence indicator timeline bullet */}
                       <div className="flex flex-col items-center flex-shrink-0">
                         <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold ${
                           stop.isTerminal 
@@ -403,11 +392,9 @@ export default function RouteDetailPage() {
                         }`}>
                           {stop.sequence}
                         </div>
-                        {/* Connecting timeline stem */}
                         <div className="w-0.5 flex-1 bg-gray-100 my-2" />
                       </div>
 
-                      {/* Info details */}
                       <div className="min-w-0">
                         <h4 className={`text-xs font-bold truncate ${isCurrent ? "text-blue-900" : "text-gray-800"}`}>
                           {stop.name}
@@ -430,6 +417,60 @@ export default function RouteDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Bulk Input Modals */}
+      {(showPointsModal || showStopsModal) && (
+        <div className="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 w-full max-w-2xl overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h3 className="font-bold text-gray-900">
+                {showPointsModal ? "Bulk Tambah Route Points" : "Bulk Tambah Halte (Stops)"}
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowPointsModal(false);
+                  setShowStopsModal(false);
+                  setBulkInput("");
+                }}
+                className="text-gray-400 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 flex-1">
+              <p className="text-xs text-gray-500 mb-3">Paste array JSON di bawah ini. Pastikan format valid sesuai dengan standar API.</p>
+              <textarea
+                value={bulkInput}
+                onChange={(e) => setBulkInput(e.target.value)}
+                className="w-full h-64 p-4 text-xs font-mono text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                placeholder={showPointsModal ? `[\n  {\n    "sequence": 1,\n    "latitude": -7.9242269,\n    "longitude": 112.6034436\n  }\n]` : `[\n  {\n    "name": "Halte Awal (Maksud)",\n    "sequence": 1,\n    "latitude": -7.9242269,\n    "longitude": 112.6034436,\n    "radiusMeter": 50,\n    "isTerminal": true\n  }\n]`}
+              />
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
+              <button
+                onClick={() => {
+                  setShowPointsModal(false);
+                  setShowStopsModal(false);
+                  setBulkInput("");
+                }}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleBulkSubmit(showPointsModal ? "points" : "stops")}
+                disabled={isSubmitting || !bulkInput.trim()}
+                className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition shadow-sm"
+              >
+                {isSubmitting ? "Menyimpan..." : "Simpan Data"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
