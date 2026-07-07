@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 
 // --- Types ---
 interface Driver {
@@ -291,12 +292,13 @@ export default function SchedulesPage() {
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Supir</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Kendaraan</th>
                     <th className="text-center px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Jumlah Trip</th>
+                    <th className="text-center px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-5 py-12 text-center text-gray-400 text-sm">
+                      <td colSpan={6} className="px-5 py-12 text-center text-gray-400 text-sm">
                         Tidak ada jadwal yang cocok dengan pencarian Anda.
                       </td>
                     </tr>
@@ -330,6 +332,11 @@ export default function SchedulesPage() {
                           <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 font-bold text-sm">
                             {schedule.trips?.length || 0}
                           </span>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <Link href={`/admin/dashboard/schedules/${schedule.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            Detail
+                          </Link>
                         </td>
                       </tr>
                     ))
