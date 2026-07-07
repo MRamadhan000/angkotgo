@@ -14,7 +14,7 @@ export default function Sidebar({
 
   const navItems = [
     {
-      href: "/admin",
+      href: "/admin/dashboard",
       label: "Dashboard",
       icon: (
         <svg
@@ -33,8 +33,8 @@ export default function Sidebar({
       ),
     },
     {
-      href: "/admin/driver",
-      label: "Driver",
+      href: "/admin/dashboard/driver",
+      label: "Pengemudi",
       icon: (
         <svg
           className="w-5 h-5"
@@ -52,8 +52,27 @@ export default function Sidebar({
       ),
     },
     {
-      href: "/admin/rute",
-      label: "Manajemen Rute",
+      href: "/admin/dashboard/kendaraan",
+      label: "Kendaraan",
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10h10zm0 0h4l4-4v-4h-8v8z"
+          />
+        </svg>
+      ),
+    },
+    {
+      href: "/admin/dashboard/route",
+      label: "Route",
       icon: (
         <svg
           className="w-5 h-5"
@@ -127,8 +146,8 @@ export default function Sidebar({
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
           const active =
-            item.href === "/admin"
-              ? pathname === "/admin"
+            item.href === "/admin/dashboard"
+              ? pathname === "/admin/dashboard"
               : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
