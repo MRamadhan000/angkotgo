@@ -78,6 +78,10 @@ export default function TripDetailPage() {
   const [updateMode, setUpdateMode] = useState<"auto" | "manual">("auto");
   const [manualCurrentSeq, setManualCurrentSeq] = useState<number | null>(null);
   const [manualNextSeq, setManualNextSeq] = useState<number | null>(null);
+  // Opsional: kecepatan (km/h) & arah (derajat) untuk mode manual,
+  // dikirim ke endpoint POST /live-sessions/:id/locations
+  const [manualSpeedKmh, setManualSpeedKmh] = useState<string>("");
+  const [manualHeadingDegrees, setManualHeadingDegrees] = useState<string>("");
 
   // === STATE TOAST/POPUP ===
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -107,7 +111,11 @@ export default function TripDetailPage() {
       try {
         if (!opts?.silent) setLoading(true);
 
-        const tripRes = await fetch(`http://localhost:3000/trips/${tripId}`);
+        // cache: "no-store" supaya tidak kena cache browser, jadi
+        // data yang diambil selalu yang paling baru dari server
+        const tripRes = await fetch(`http://localhost:3000/trips/${tripId}`, {
+          cache: "no-store",
+        });
         if (!tripRes.ok) throw new Error("Gagal mengambil data detail trip");
         const tripData: TripDetail = await tripRes.json();
         setTrip(tripData);
@@ -115,6 +123,7 @@ export default function TripDetailPage() {
         if (tripData.route && tripData.route.id) {
           const stopsRes = await fetch(
             `http://localhost:3000/routes/${tripData.route.id}/stops`,
+            { cache: "no-store" },
           );
           if (stopsRes.ok) {
             const stopsData: RouteStop[] = await stopsRes.json();
@@ -212,6 +221,45 @@ export default function TripDetailPage() {
     }
   };
 
+  // === KIRIM TITIK LOKASI (lat/lng) KE live-sessions/:id/locations ===
+  // Dipanggil setelah currentSequence/nextSequence berhasil di-update,
+  // dengan lat/lng diambil otomatis dari stop yang jadi posisi baru.
+  // Kalau gagal, tidak menggagalkan keseluruhan proses update lokasi
+  // (cukup ditampilkan sebagai toast error terpisah), karena posisi
+  // sequence-nya sendiri sudah berhasil tersimpan.
+  const postLiveLocation = async (
+    sessionId: number,
+    latitude: number,
+    longitude: number,
+    speedKmh?: number,
+    headingDegrees?: number,
+  ) => {
+    try {
+      const body: Record<string, number> = { latitude, longitude };
+      if (speedKmh !== undefined && !Number.isNaN(speedKmh)) {
+        body.speedKmh = speedKmh;
+      }
+      if (headingDegrees !== undefined && !Number.isNaN(headingDegrees)) {
+        body.headingDegrees = headingDegrees;
+      }
+
+      const response = await fetch(
+        `http://localhost:3000/live-sessions/${sessionId}/locations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Gagal mengirim titik lokasi (lat/lng)");
+      }
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal mengirim titik lokasi");
+    }
+  };
+
   // === UPDATE LOKASI (OTOMATIS & MANUAL) ===
   const handleUpdateLocation = async (
     mode: "auto" | "manual",
@@ -290,6 +338,33 @@ export default function TripDetailPage() {
 
       if (!response.ok) throw new Error("Gagal memperbarui lokasi");
 
+      // Kirim juga titik lokasi (lat/lng) dari halte yang jadi posisi baru,
+      // ke endpoint POST /live-sessions/:id/locations. Lat/lng diambil
+      // otomatis dari data stop yang dipilih (currentStop), bukan input manual.
+      if (currentStop) {
+        const lat = parseFloat(currentStop.latitude);
+        const lng = parseFloat(currentStop.longitude);
+
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          const speedKmh =
+            mode === "manual" && manualSpeedKmh !== ""
+              ? Number(manualSpeedKmh)
+              : undefined;
+          const headingDegrees =
+            mode === "manual" && manualHeadingDegrees !== ""
+              ? Number(manualHeadingDegrees)
+              : undefined;
+
+          await postLiveLocation(
+            activeSession.id,
+            lat,
+            lng,
+            speedKmh,
+            headingDegrees,
+          );
+        }
+      }
+
       // Ambil ulang data trip terbaru dari server, bukan cuma
       // mengandalkan body response PATCH. Ini yang memastikan
       // UI (progress bar, daftar halte, dsb) benar-benar ter-refresh.
@@ -298,6 +373,8 @@ export default function TripDetailPage() {
       if (mode === "manual") {
         setManualCurrentSeq(newCurrentSeq);
         setManualNextSeq(newNextSeq);
+        setManualSpeedKmh("");
+        setManualHeadingDegrees("");
       }
 
       showToast("success", "Lokasi bus berhasil diperbarui");
@@ -704,6 +781,54 @@ export default function TripDetailPage() {
                             </select>
                           </div>
                         </div>
+
+                        {/* Opsional: kecepatan & arah, dikirim bersama lat/lng
+                            ke endpoint POST /live-sessions/:id/locations */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                              🚀 Kecepatan (km/h){" "}
+                              <span className="font-normal text-slate-400">
+                                — opsional
+                              </span>
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={manualSpeedKmh}
+                              onChange={(e) =>
+                                setManualSpeedKmh(e.target.value)
+                              }
+                              placeholder="cth. 40"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                              🧭 Arah / Heading (derajat){" "}
+                              <span className="font-normal text-slate-400">
+                                — opsional
+                              </span>
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={359}
+                              value={manualHeadingDegrees}
+                              onChange={(e) =>
+                                setManualHeadingDegrees(e.target.value)
+                              }
+                              placeholder="cth. 90"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                            />
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-slate-400">
+                          📍 Lat/Lng akan diambil otomatis dari halte "Posisi
+                          Saat Ini" yang dipilih di atas.
+                        </p>
 
                         <button
                           onClick={() =>

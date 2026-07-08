@@ -36,205 +36,34 @@ interface RouteInfo {
 
 interface FindBusResponse {
   route_info: RouteInfo;
-  stops: { id: number; name: string; sequence: number; latitude: string; longitude: string; radiusMeter: number; isTerminal: boolean }[];
+  stops: {
+    id: number;
+    name: string;
+    sequence: number;
+    latitude: string;
+    longitude: string;
+    radiusMeter: number;
+    isTerminal: boolean;
+  }[];
   polyline_points: { latitude: string; longitude: string }[];
-  filterd_buses: BusInfo[]; // Typo from backend: 'filterd_buses' without 'e'
+  filtered_buses: BusInfo[]; // Typo from backend: 'filterd_buses' without 'e'
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-// --- Silent Fallback Mock Data DB ---
-const mockStopsDb: StopSearchResult[] = [
-  { stop_id: 1, stop_name: "Terminal Arjosari", latitude: "-7.935400", longitude: "112.635800" },
-  { stop_id: 2, stop_name: "Halte Ciliwung", latitude: "-7.950200", longitude: "112.630200" },
-  { stop_id: 3, stop_name: "Halte Pasar Besar", latitude: "-7.962500", longitude: "112.628100" },
-  { stop_id: 4, stop_name: "Terminal Gadang", latitude: "-7.985900", longitude: "112.632400" },
-  { stop_id: 5, stop_name: "Terminal Landungsari", latitude: "-7.92801630", longitude: "112.60288440" },
-  { stop_id: 6, stop_name: "Halte Blimbing", latitude: "-7.938200", longitude: "112.620100" }
-];
-
-const mockFindBusDb = (originId: number, destId: number): FindBusResponse | null => {
-  if (originId === 1 && destId === 4) {
-    return {
-      route_info: {
-        id: 1,
-        code: "AG",
-        name: "Arjosari - Gadang",
-        direction: "GO",
-        color: "#10b981",
-        distanceKm: 14.5,
-        estimatedDurationMinutes: 45,
-        isActive: true
-      },
-      stops: [
-        { id: 1, name: "Terminal Arjosari", sequence: 1, latitude: "-7.935400", longitude: "112.635800", radiusMeter: 100, isTerminal: true },
-        { id: 2, name: "Halte Ciliwung", sequence: 2, latitude: "-7.950200", longitude: "112.630200", radiusMeter: 50, isTerminal: false },
-        { id: 3, name: "Halte Pasar Besar", sequence: 3, latitude: "-7.962500", longitude: "112.628100", radiusMeter: 60, isTerminal: false },
-        { id: 4, name: "Terminal Gadang", sequence: 4, latitude: "-7.985900", longitude: "112.632400", radiusMeter: 100, isTerminal: true }
-      ],
-      polyline_points: [
-        { latitude: "-7.935400", longitude: "112.635800" },
-        { latitude: "-7.942100", longitude: "112.638900" },
-        { latitude: "-7.950200", longitude: "112.630200" },
-        { latitude: "-7.962500", longitude: "112.628100" },
-        { latitude: "-7.985900", longitude: "112.632400" }
-      ],
-      filterd_buses: [
-        { trip_id: 1, vehicle_code: "VH001", plate_number: "N 1201 XA", driver_name: "Budi Santoso", ll_latitude: "-7.945000", ll_longitude: "112.635000", speed_kmh: 26, heading_degrees: 172, updated_at: new Date().toISOString() },
-        { trip_id: 2, vehicle_code: "VH002", plate_number: "N 1202 XA", driver_name: "Andi Pratama", ll_latitude: "-7.958000", ll_longitude: "112.629000", speed_kmh: 24, heading_degrees: 172, updated_at: new Date().toISOString() }
-      ]
-    };
-  }
-  
-  return {
-    route_info: {
-      id: 2,
-      code: "AL",
-      name: "Arjosari - Landungsari",
-      direction: "GO",
-      color: "#2196F3",
-      distanceKm: 16.2,
-      estimatedDurationMinutes: 50,
-      isActive: true
-    },
-    stops: [
-      { id: 2, name: "Stop 30", sequence: 30, latitude: "-7.90623090", longitude: "112.58415460", radiusMeter: 40, isTerminal: false },
-      { id: 3, name: "Stop 60", sequence: 60, latitude: "-7.91302560", longitude: "112.59019380", radiusMeter: 40, isTerminal: false }
-    ],
-    polyline_points: [
-      { latitude: "-7.90186910", longitude: "112.58426080" },
-      { latitude: "-7.90193430", longitude: "112.58398300" },
-      { latitude: "-7.90195610", longitude: "112.58368980" },
-      { latitude: "-7.90197060", longitude: "112.58325730" },
-      { latitude: "-7.90199970", longitude: "112.58267810" },
-      { latitude: "-7.90201420", longitude: "112.58213560" },
-      { latitude: "-7.90201420", longitude: "112.58173240" },
-      { latitude: "-7.90201420", longitude: "112.58143920" },
-      { latitude: "-7.90201420", longitude: "112.58126330" },
-      { latitude: "-7.90225380", longitude: "112.58124860" },
-      { latitude: "-7.90245710", longitude: "112.58122660" },
-      { latitude: "-7.90264590", longitude: "112.58121930" },
-      { latitude: "-7.90291460", longitude: "112.58118260" },
-      { latitude: "-7.90319780", longitude: "112.58112400" },
-      { latitude: "-7.90341560", longitude: "112.58116060" },
-      { latitude: "-7.90364070", longitude: "112.58120460" },
-      { latitude: "-7.90382950", longitude: "112.58136590" },
-      { latitude: "-7.90398200", longitude: "112.58151250" },
-      { latitude: "-7.90416350", longitude: "112.58169580" },
-      { latitude: "-7.90436150", longitude: "112.58193160" },
-      { latitude: "-7.90447930", longitude: "112.58210460" },
-      { latitude: "-7.90463620", longitude: "112.58227720" },
-      { latitude: "-7.90476500", longitude: "112.58247740" },
-      { latitude: "-7.90493730", longitude: "112.58270700" },
-      { latitude: "-7.90511070", longitude: "112.58292030" },
-      { latitude: "-7.90531540", longitude: "112.58315230" },
-      { latitude: "-7.90559910", longitude: "112.58346240" },
-      { latitude: "-7.90561080", longitude: "112.60215650" },
-      { latitude: "-7.90586660", longitude: "112.58377130" },
-      { latitude: "-7.90604280", longitude: "112.58396330" },
-      { latitude: "-7.90623090", longitude: "112.58415460" },
-      { latitude: "-7.90643550", longitude: "112.58438660" },
-      { latitude: "-7.90663510", longitude: "112.58464450" },
-      { latitude: "-7.90687730", longitude: "112.58485300" },
-      { latitude: "-7.90709260", longitude: "112.58507260" },
-      { latitude: "-7.90733320", longitude: "112.58525800" },
-      { latitude: "-7.90753030", longitude: "112.58541380" },
-      { latitude: "-7.90774010", longitude: "112.58561990" },
-      { latitude: "-7.90795340", longitude: "112.58577690" },
-      { latitude: "-7.90817230", longitude: "112.58594750" },
-      { latitude: "-7.90833310", longitude: "112.58611050" },
-      { latitude: "-7.90855630", longitude: "112.58631100" },
-      { latitude: "-7.90884870", longitude: "112.58654620" },
-      { latitude: "-7.90919120", longitude: "112.58680800" },
-      { latitude: "-7.90945390", longitude: "112.58704760" },
-      { latitude: "-7.90975810", longitude: "112.58725400" },
-      { latitude: "-7.91003050", longitude: "112.58743590" },
-      { latitude: "-7.91032290", longitude: "112.58767100" },
-      { latitude: "-7.91049590", longitude: "112.58784480" },
-      { latitude: "-7.91074760", longitude: "112.58705730" },
-      { latitude: "-7.91095580", longitude: "112.58824020" },
-      { latitude: "-7.91123590", longitude: "112.58846460" },
-      { latitude: "-7.91142120", longitude: "112.58864920" },
-      { latitude: "-7.91162340", longitude: "112.58877910" },
-      { latitude: "-7.91179920", longitude: "112.58895970" },
-      { latitude: "-7.91201140", longitude: "112.58913310" },
-      { latitude: "-7.91218050", longitude: "112.58931640" },
-      { latitude: "-7.91234010", longitude: "112.58949580" },
-      { latitude: "-7.91250090", longitude: "112.58965880" },
-      { latitude: "-7.91278060", longitude: "112.58997850" },
-      { latitude: "-7.91302560", longitude: "112.59019380" },
-      { latitude: "-7.91318800", longitude: "112.59037990" },
-      { latitude: "-7.9132150", longitude: "112.59051470" },
-      { latitude: "-7.91358540", longitude: "112.59073790" },
-      { latitude: "-7.91375960", longitude: "112.59089530" },
-      { latitude: "-7.91393660", longitude: "112.59105950" },
-      { latitude: "-7.91407920", longitude: "112.59115880" },
-      { latitude: "-7.91439330", longitude: "112.59140870" },
-      { latitude: "-7.91467540", longitude: "112.59156820" },
-      { latitude: "-7.91495700", longitude: "112.59178600" },
-      { latitude: "-7.91521590", longitude: "112.59194840" },
-      { latitude: "-7.91543450", longitude: "112.59211680" },
-      { latitude: "-7.91576560", longitude: "112.59232480" },
-      { latitude: "-7.91613380", longitude: "112.59257140" },
-      { latitude: "-7.91643750", longitude: "112.59279080" },
-      { latitude: "-7.91680790", longitude: "112.59306890" },
-      { latitude: "-7.91723050", longitude: "112.59342250" },
-      { latitude: "-7.91769570", longitude: "112.59380160" },
-      { latitude: "-7.91795790", longitude: "112.59410310" },
-      { latitude: "-7.91831110", longitude: "112.59499640" },
-      { latitude: "-7.91862120", longitude: "112.59481040" },
-      { latitude: "-7.91885120", longitude: "112.59519020" },
-      { latitude: "-7.91901710", longitude: "112.59559660" },
-      { latitude: "-7.91922340", longitude: "112.59599700" },
-      { latitude: "-7.91944790", longitude: "112.59638980" },
-      { latitude: "-7.91957990", longitude: "112.59671310" },
-      { latitude: "-7.91980880", longitude: "112.59716890" },
-      { latitude: "-7.91998770", longitude: "112.59758080" },
-      { latitude: "-7.92016110", longitude: "112.59800570" },
-      { latitude: "-7.92046320", longitude: "112.59843100" },
-      { latitude: "-7.92065760", longitude: "112.59875000" },
-      { latitude: "-7.92088160", longitude: "112.59908900" },
-      { latitude: "-7.92105240", longitude: "112.59942860" },
-      { latitude: "-7.92132110", longitude: "112.59982460" },
-      { latitude: "-7.92150420", longitude: "112.60011580" },
-      { latitude: "-7.92173040", longitude: "112.60048630" },
-      { latitude: "-7.92206960", longitude: "112.60095030" },
-      { latitude: "-7.92230330", longitude: "112.60133930" },
-      { latitude: "-7.92255100", longitude: "112.60165760" },
-      { latitude: "-7.92291180", longitude: "112.60206940" },
-      { latitude: "-7.92323910", longitude: "112.60245190" },
-      { latitude: "-7.92387820", longitude: "112.60312600" },
-      { latitude: "-7.92404930", longitude: "112.60296840" },
-      { latitude: "-7.92427160", longitude: "112.60277860" },
-      { latitude: "-7.92461540", longitude: "112.60262470" },
-      { latitude: "-7.92490600", longitude: "112.60247140" },
-      { latitude: "-7.92525900", longitude: "112.60231370" },
-      { latitude: "-7.92597670", longitude: "112.60200420" },
-      { latitude: "-7.92621940", longitude: "112.60183840" },
-      { latitude: "-7.92637380", longitude: "112.60166610" },
-      { latitude: "-7.92657460", longitude: "112.60189590" },
-      { latitude: "-7.92685300", longitude: "112.60215820" },
-      { latitude: "-7.92708340", longitude: "112.60240810" },
-      { latitude: "-7.92739670", longitude: "112.60267750" },
-      { latitude: "-7.92769390", longitude: "112.60280240" },
-      { latitude: "-7.92801630", longitude: "112.60288440" }
-    ],
-    filterd_buses: [
-      { trip_id: 1, vehicle_code: "VH001", plate_number: "N 1201 XA", driver_name: "Budi Santoso", ll_latitude: "-7.90795340", ll_longitude: "112.58577690", speed_kmh: 26, heading_degrees: 172, updated_at: new Date().toISOString() },
-      { trip_id: 3, vehicle_code: "VH002", plate_number: "N 1202 XA", driver_name: "Andi Pratama", ll_latitude: "-7.90833310", ll_longitude: "112.58611050", speed_kmh: 26, heading_degrees: 172, updated_at: new Date().toISOString() }
-    ]
-  };
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export default function RutePage() {
   const [originQuery, setOriginQuery] = useState("");
   const [destQuery, setDestQuery] = useState("");
-  
+
   const [originResults, setOriginResults] = useState<StopSearchResult[]>([]);
   const [destResults, setDestResults] = useState<StopSearchResult[]>([]);
-  
-  const [selectedOrigin, setSelectedOrigin] = useState<StopSearchResult | null>(null);
-  const [selectedDest, setSelectedDest] = useState<StopSearchResult | null>(null);
+
+  const [selectedOrigin, setSelectedOrigin] = useState<StopSearchResult | null>(
+    null,
+  );
+  const [selectedDest, setSelectedDest] = useState<StopSearchResult | null>(
+    null,
+  );
 
   const [routeResult, setRouteResult] = useState<FindBusResponse | null>(null);
   const [selectedBus, setSelectedBus] = useState<BusInfo | null>(null);
@@ -266,7 +95,7 @@ export default function RutePage() {
 
     const initMap = async () => {
       if (!mapContainerRef.current) return;
-      
+
       if ((mapContainerRef.current as any)._leaflet_id) return;
 
       const L = (await import("leaflet")).default;
@@ -278,11 +107,15 @@ export default function RutePage() {
       mapInstanceRef.current = map;
 
       // Add clean Mapbox-style tile layer (CartoDB Positron)
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd",
-        maxZoom: 20,
-      }).addTo(map);
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          subdomains: "abcd",
+          maxZoom: 20,
+        },
+      ).addTo(map);
     };
 
     initMap();
@@ -304,7 +137,7 @@ export default function RutePage() {
       const L = (await import("leaflet")).default;
 
       // Clear previous layers
-      mapLayersRef.current.forEach(layer => map.removeLayer(layer));
+      mapLayersRef.current.forEach((layer) => map.removeLayer(layer));
       mapLayersRef.current = [];
 
       if (!routeResult) {
@@ -316,8 +149,10 @@ export default function RutePage() {
 
       // 1. Draw polyline points route path
       const points = routeResult.polyline_points || [];
-      const latlngs = points.map(pt => L.latLng(parseFloat(pt.latitude), parseFloat(pt.longitude)));
-      
+      const latlngs = points.map((pt) =>
+        L.latLng(parseFloat(pt.latitude), parseFloat(pt.longitude)),
+      );
+
       if (latlngs.length > 0) {
         const polyline = L.polyline(latlngs, {
           color: routeResult.route_info.color || "#3b82f6",
@@ -332,17 +167,20 @@ export default function RutePage() {
 
       // 2. Draw stops markers
       const stops = routeResult.stops || [];
-      stops.forEach(stop => {
+      stops.forEach((stop) => {
         const isTerminal = stop.isTerminal;
         const color = isTerminal ? "#ef4444" : "#3b82f6";
-        const marker = L.marker([parseFloat(stop.latitude), parseFloat(stop.longitude)], {
-          icon: L.divIcon({
-            className: "custom-stop-marker",
-            html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 8px; font-weight: bold; color: white;">${stop.sequence}</div>`,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10],
-          }),
-        }).addTo(map);
+        const marker = L.marker(
+          [parseFloat(stop.latitude), parseFloat(stop.longitude)],
+          {
+            icon: L.divIcon({
+              className: "custom-stop-marker",
+              html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 8px; font-weight: bold; color: white;">${stop.sequence}</div>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+            }),
+          },
+        ).addTo(map);
 
         marker.bindTooltip(`
           <div style="font-family: sans-serif; font-size: 11px; padding: 2px;">
@@ -356,16 +194,19 @@ export default function RutePage() {
       });
 
       // 3. Draw active buses from 'filterd_buses' array (typo guard)
-      const buses = routeResult.filterd_buses || [];
-      buses.forEach(bus => {
-        const busMarker = L.marker([parseFloat(bus.ll_latitude), parseFloat(bus.ll_longitude)], {
-          icon: L.divIcon({
-            className: "custom-bus-marker",
-            html: `<div style="background-color: #f59e0b; width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 14px;">🚌</div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-          }),
-        }).addTo(map);
+      const buses = routeResult.filtered_buses || [];
+      buses.forEach((bus) => {
+        const busMarker = L.marker(
+          [parseFloat(bus.ll_latitude), parseFloat(bus.ll_longitude)],
+          {
+            icon: L.divIcon({
+              className: "custom-bus-marker",
+              html: `<div style="background-color: #f59e0b; width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 14px;">🚌</div>`,
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+            }),
+          },
+        ).addTo(map);
 
         busMarker.bindTooltip(`
           <div style="font-family: sans-serif; font-size: 11px; padding: 4px;">
@@ -392,7 +233,9 @@ export default function RutePage() {
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/passenger/stops?search=${encodeURIComponent(query)}`);
+      const response = await fetch(
+        `${API_URL}/api/passenger/stops?search=${encodeURIComponent(query)}`,
+      );
       if (!response.ok) {
         throw new Error("Gagal mengambil data halte.");
       }
@@ -405,10 +248,6 @@ export default function RutePage() {
       }
     } catch (err: any) {
       console.warn("API stops error, falling back silently:", err.message);
-      const queryLower = query.toLowerCase();
-      const filtered = mockStopsDb.filter(s => s.stop_name.toLowerCase().includes(queryLower));
-      if (type === "origin") setOriginResults(filtered);
-      else setDestResults(filtered);
     } finally {
       setIsLoadingStops(false);
     }
@@ -422,7 +261,9 @@ export default function RutePage() {
     setSelectedBus(null);
 
     if (!selectedOrigin || !selectedDest) {
-      setErrorMessage("Harap cari dan pilih Halte Naik & Halte Turun terlebih dahulu.");
+      setErrorMessage(
+        "Harap cari dan pilih Halte Naik & Halte Turun terlebih dahulu.",
+      );
       return;
     }
 
@@ -448,17 +289,16 @@ export default function RutePage() {
       if (!response.ok) {
         throw new Error("Gagal mencari rute bus.");
       }
-
       const resData = await response.json();
       if (resData.status === "success" && resData.data) {
+        console.log(`API find-bus response status: ${resData.data}`);
         setRouteResult(resData.data);
       } else {
         setRouteResult(null);
       }
     } catch (err: any) {
       console.warn("API find-bus error, falling back silently:", err.message);
-      const mockResult = mockFindBusDb(selectedOrigin.stop_id, selectedDest.stop_id);
-      setRouteResult(mockResult);
+      setRouteResult(null);
     } finally {
       setIsLoadingRoutes(false);
     }
@@ -470,10 +310,14 @@ export default function RutePage() {
     const map = mapInstanceRef.current;
     if (map) {
       const L = (await import("leaflet")).default;
-      map.flyTo(L.latLng(parseFloat(bus.ll_latitude), parseFloat(bus.ll_longitude)), 16, {
-        animate: true,
-        duration: 1.2,
-      });
+      map.flyTo(
+        L.latLng(parseFloat(bus.ll_latitude), parseFloat(bus.ll_longitude)),
+        16,
+        {
+          animate: true,
+          duration: 1.2,
+        },
+      );
     }
   };
 
@@ -499,30 +343,55 @@ export default function RutePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-indigo-50/40 font-sans py-10 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        
         {/* Modern Glassmorphic Top Nav Header */}
         <header className="bg-white/80 border border-slate-100/80 rounded-2xl px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm backdrop-blur-md mb-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                />
               </svg>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-extrabold text-gray-900 leading-none">Angkot<span className="text-blue-600">Go</span></h1>
-                <span className="bg-blue-50 text-blue-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-100">Live Tracker</span>
+                <h1 className="text-lg font-extrabold text-gray-900 leading-none">
+                  Angkot<span className="text-blue-600">Go</span>
+                </h1>
+                <span className="bg-blue-50 text-blue-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-100">
+                  Live Tracker
+                </span>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">Sistem Informasi Pencarian Rute & Angkutan Umum Malang</p>
+              <p className="text-[10px] text-gray-400 mt-1">
+                Sistem Informasi Pencarian Rute & Angkutan Umum Malang
+              </p>
             </div>
           </div>
-          
+
           <Link
             href="/"
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md shadow-slate-950/10 transition-all hover:scale-[1.02] active:scale-98 text-center"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+              />
             </svg>
             Kembali ke Beranda
           </Link>
@@ -530,19 +399,32 @@ export default function RutePage() {
 
         {/* Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          
           {/* LEFT PANEL: Form and Bus List */}
           <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/50 border border-slate-100 flex flex-col justify-between min-h-[550px]">
             <div>
               <div className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900">Pencarian Rute</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Masukkan lokasi naik dan tujuan untuk mencari angkot terdekat</p>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Pencarian Rute
+                </h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Masukkan lokasi naik dan tujuan untuk mencari angkot terdekat
+                </p>
               </div>
 
               {errorMessage && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-700 text-xs rounded-2xl font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-5 h-5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   {errorMessage}
                 </div>
@@ -552,16 +434,21 @@ export default function RutePage() {
               <div className="space-y-6">
                 {/* Halte Naik Input */}
                 <div className="relative">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Halte Naik (Jemput)</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Halte Naik (Jemput)
+                  </label>
                   {selectedOrigin ? (
                     <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200/50 rounded-2xl px-4 py-3.5 text-sm font-bold text-blue-700 animate-in zoom-in-95 duration-150">
                       <span className="truncate flex items-center gap-2">
                         <span className="text-blue-500">📍</span>
                         {selectedOrigin.stop_name}
                       </span>
-                      <button 
-                        type="button" 
-                        onClick={() => { setSelectedOrigin(null); setOriginResults([]); }} 
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOrigin(null);
+                          setOriginResults([]);
+                        }}
                         className="w-6 h-6 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center justify-center font-bold text-xs transition"
                       >
                         ✕
@@ -570,7 +457,9 @@ export default function RutePage() {
                   ) : (
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">📍</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                          📍
+                        </span>
                         <input
                           type="text"
                           value={originQuery}
@@ -592,10 +481,13 @@ export default function RutePage() {
                   {/* Origin Suggestions drop-down list */}
                   {!selectedOrigin && originResults.length > 0 && (
                     <div className="absolute left-0 right-0 mt-2 border border-slate-100 rounded-2xl shadow-xl max-h-40 overflow-y-auto bg-white divide-y divide-slate-50 z-30 animate-in fade-in slide-in-from-top-2 duration-150">
-                      {originResults.map(stop => (
-                        <div 
+                      {originResults.map((stop) => (
+                        <div
                           key={`orig-res-${stop.stop_id}`}
-                          onClick={() => { setSelectedOrigin(stop); setOriginResults([]); }}
+                          onClick={() => {
+                            setSelectedOrigin(stop);
+                            setOriginResults([]);
+                          }}
                           className="px-4 py-3 text-xs font-bold text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 cursor-pointer transition flex items-center gap-2"
                         >
                           <span>📍</span>
@@ -608,16 +500,21 @@ export default function RutePage() {
 
                 {/* Halte Turun Input */}
                 <div className="relative">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Halte Turun (Tujuan)</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Halte Turun (Tujuan)
+                  </label>
                   {selectedDest ? (
                     <div className="flex items-center justify-between bg-red-50/70 border border-red-200/50 rounded-2xl px-4 py-3.5 text-sm font-bold text-red-700 animate-in zoom-in-95 duration-150">
                       <span className="truncate flex items-center gap-2">
                         <span className="text-red-500">🚩</span>
                         {selectedDest.stop_name}
                       </span>
-                      <button 
-                        type="button" 
-                        onClick={() => { setSelectedDest(null); setDestResults([]); }} 
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDest(null);
+                          setDestResults([]);
+                        }}
                         className="w-6 h-6 rounded-full bg-red-100 hover:bg-red-200 text-red-700 flex items-center justify-center font-bold text-xs transition"
                       >
                         ✕
@@ -626,7 +523,9 @@ export default function RutePage() {
                   ) : (
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🚩</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                          🚩
+                        </span>
                         <input
                           type="text"
                           value={destQuery}
@@ -648,10 +547,13 @@ export default function RutePage() {
                   {/* Destination Suggestions drop-down list */}
                   {!selectedDest && destResults.length > 0 && (
                     <div className="absolute left-0 right-0 mt-2 border border-slate-100 rounded-2xl shadow-xl max-h-40 overflow-y-auto bg-white divide-y divide-slate-50 z-30 animate-in fade-in slide-in-from-top-2 duration-150">
-                      {destResults.map(stop => (
-                        <div 
+                      {destResults.map((stop) => (
+                        <div
                           key={`dest-res-${stop.stop_id}`}
-                          onClick={() => { setSelectedDest(stop); setDestResults([]); }}
+                          onClick={() => {
+                            setSelectedDest(stop);
+                            setDestResults([]);
+                          }}
                           className="px-4 py-3 text-xs font-bold text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 cursor-pointer transition flex items-center gap-2"
                         >
                           <span>🚩</span>
@@ -701,27 +603,35 @@ export default function RutePage() {
             {hasSearched && routeResult && (
               <div className="mt-8 pt-8 border-t border-slate-100 flex-1 overflow-hidden flex flex-col">
                 <div className="mb-4">
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hasil Rencana Perjalanan</h3>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Hasil Rencana Perjalanan
+                  </h3>
                   <div className="mt-2.5 flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3">
                     <span className="bg-blue-600 text-white px-2.5 py-1 rounded-xl font-bold text-[10px] tracking-wider uppercase shadow-xs">
                       {routeResult.route_info.code}
                     </span>
-                    <span className="font-extrabold text-xs text-slate-800 truncate">{routeResult.route_info.name}</span>
+                    <span className="font-extrabold text-xs text-slate-800 truncate">
+                      {routeResult.route_info.name}
+                    </span>
                   </div>
                 </div>
 
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Daftar Armada Angkot Terdekat</h4>
-                
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                  Daftar Armada Angkot Terdekat
+                </h4>
+
                 {/* List Scroll wrapper */}
                 <div className="space-y-3 overflow-y-auto max-h-64 pr-1 scrollbar-thin">
-                  {!routeResult.filterd_buses || routeResult.filterd_buses.length === 0 ? (
+                  {!routeResult.filtered_buses ||
+                  routeResult.filtered_buses.length === 0 ? (
                     <div className="text-center py-8 border border-dashed border-slate-200 rounded-3xl bg-slate-50/50 text-xs text-slate-400 font-bold">
                       Tidak ada armada angkot aktif saat ini.
                     </div>
                   ) : (
-                    routeResult.filterd_buses.map((bus) => {
+                    routeResult.filtered_buses.map((bus) => {
                       const isCurrentBus = selectedBus?.trip_id === bus.trip_id;
-                      const eta = routeResult.route_info.estimatedDurationMinutes || 15;
+                      const eta =
+                        routeResult.route_info.estimatedDurationMinutes || 15;
 
                       return (
                         <div
@@ -734,9 +644,12 @@ export default function RutePage() {
                           }`}
                         >
                           {/* Visual accent left line */}
-                          <div 
-                            className="absolute left-0 top-0 bottom-0 w-1" 
-                            style={{ backgroundColor: routeResult.route_info.color || "#2196F3" }} 
+                          <div
+                            className="absolute left-0 top-0 bottom-0 w-1"
+                            style={{
+                              backgroundColor:
+                                routeResult.route_info.color || "#2196F3",
+                            }}
                           />
 
                           <div className="min-w-0 pl-1.5">
@@ -749,7 +662,10 @@ export default function RutePage() {
                               </span>
                             </div>
                             <p className="text-xs text-slate-500 mt-1">
-                              Sopir: <span className="font-bold text-slate-700">{bus.driver_name}</span>
+                              Sopir:{" "}
+                              <span className="font-bold text-slate-700">
+                                {bus.driver_name}
+                              </span>
                             </p>
                             <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                               <span>⚡ {bus.speed_kmh} km/jam</span>
@@ -757,7 +673,9 @@ export default function RutePage() {
                           </div>
 
                           <div className="text-right flex-shrink-0">
-                            <span className="block text-[8px] text-slate-400 uppercase font-bold tracking-wider">Estimasi Tiba</span>
+                            <span className="block text-[8px] text-slate-400 uppercase font-bold tracking-wider">
+                              Estimasi Tiba
+                            </span>
                             <span className="text-xs font-black text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 inline-block mt-0.5 shadow-2xs">
                               {eta} Min
                             </span>
@@ -773,16 +691,19 @@ export default function RutePage() {
 
           {/* RIGHT PANEL: Map Container */}
           <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-150 overflow-hidden shadow-xl shadow-slate-100/50 flex flex-col relative h-[550px] lg:h-auto">
-            
             {/* Map Header Floating Overlay */}
             <div className="absolute top-4 left-4 bg-white/95 border border-slate-100 rounded-2xl px-4 py-3 shadow-sm backdrop-blur-md z-[1000] pointer-events-none">
-              <h2 className="text-xs font-bold text-slate-900 leading-none">Peta Visualisasi Lintasan</h2>
-              <p className="text-[9px] text-slate-400 mt-1">Live tracking armada & rute lintasan halte</p>
+              <h2 className="text-xs font-bold text-slate-900 leading-none">
+                Peta Visualisasi Lintasan
+              </h2>
+              <p className="text-[9px] text-slate-400 mt-1">
+                Live tracking armada & rute lintasan halte
+              </p>
             </div>
 
             {/* Map wrapper */}
-            <div 
-              ref={mapContainerRef} 
+            <div
+              ref={mapContainerRef}
               className="w-full h-full z-0"
               style={{ minHeight: "100%", zIndex: 0 }}
             />
@@ -799,15 +720,15 @@ export default function RutePage() {
                   <span>Terminal</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-white shadow-2xs flex items-center justify-center text-[7px] text-white">🚌</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-white shadow-2xs flex items-center justify-center text-[7px] text-white">
+                    🚌
+                  </span>
                   <span>Posisi Angkot</span>
                 </div>
               </div>
             )}
           </div>
-
         </div>
-
       </div>
     </div>
   );
