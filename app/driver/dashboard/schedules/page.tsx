@@ -193,26 +193,40 @@ export default function DriverSchedulesPage() {
   const [search, setSearch] = useState("");
 
   // Modal state untuk update status trip
+  const [driverId, setDriverId] = useState<number | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [isSavingStatus, setIsSavingStatus] = useState(false);
 
   // Ganti dengan cara kamu ambil user ID (context, token decode, dll)
-  const userId = 1; // ← TODO: Ambil dari auth context
+  useEffect(() => {
+    const id = localStorage.getItem("driverId");
+
+    if (!id) {
+      router.replace("/driver/auth/login");
+      return;
+    }
+
+    setDriverId(Number(id));
+  }, [router]);
 
   useEffect(() => {
-    fetchSchedules();
-  }, []);
+    if (driverId !== null) {
+      fetchSchedules(driverId);
+    }
+  }, [driverId]);
 
-  const fetchSchedules = async () => {
+  const fetchSchedules = async (userId: number) => {
     setIsLoading(true);
+
     try {
       const res = await fetch(`${API_URL}/schedules/user/${userId}`);
+
       if (res.ok) {
         const data = await res.json();
         setSchedules(data);
       }
     } catch (error) {
-      console.error("Error fetching driver schedules:", error);
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
