@@ -97,7 +97,7 @@ export default function DriverRegisterPage() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -106,17 +106,36 @@ export default function DriverRegisterPage() {
     e.preventDefault();
     setError("");
 
-    if (!fullName.trim() || !phone.trim() || !email.trim()) {
+    if (!fullName.trim() || !phone.trim() || !licenseNumber.trim()) {
       setError("Semua field wajib diisi.");
       return;
     }
 
     setIsLoading(true);
 
-    // TODO: API REGISTER
-    setTimeout(() => {
+    try {
+      const response = await fetch("http://localhost:3000/drivers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: fullName,
+          phone: phone,
+          licenseNumber: licenseNumber,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal mendaftar, silakan coba lagi.");
+      }
+
       router.push("/driver/auth/login");
-    }, 1200);
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan, coba lagi.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -207,17 +226,17 @@ export default function DriverRegisterPage() {
                   </div>
                 </div>
 
-                {/* Email */}
+                {/* Nomor SIM */}
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                    Email
+                    Nomor SIM (Contoh: A1234567)
                   </label>
                   <div className="group relative">
                     <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm group-focus-within:text-blue-600 transition-colors" />
                     <input
                       type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={licenseNumber}
+                      onChange={(e) => setLicenseNumber(e.target.value)}
                       placeholder="contoh@email.com"
                       className="w-full h-11 sm:h-13 rounded-xl sm:rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-xs sm:text-sm text-slate-900 outline-none transition-all focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 hover:border-slate-300"
                     />

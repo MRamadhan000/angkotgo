@@ -25,7 +25,6 @@ const poppins = Poppins({
 export default function DriverLoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,15 +33,38 @@ export default function DriverLoginPage() {
     e.preventDefault();
     setError("");
 
-    if (!phone.trim() || !password.trim()) {
-      setError("Nomor HP dan password wajib diisi.");
+    if (!phone.trim()) {
+      setError("Nomor HP wajib diisi.");
       return;
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      router.push("/driver");
-    }, 900);
+    try {
+      const response = await fetch("http://localhost:3000/drivers/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal login, periksa kembali nomor HP Anda.");
+      }
+
+      const data = await response.json();
+      
+      // Simpan id ke localStorage
+      if (data && data.id) {
+        localStorage.setItem("driverId", data.id.toString());
+      }
+      
+      router.push("/driver/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan, coba lagi.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -181,7 +203,7 @@ export default function DriverLoginPage() {
                   </div>
                 </div>
 
-                {/* Password Field */}
+                {/* Password Field
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
                     Password
@@ -196,7 +218,7 @@ export default function DriverLoginPage() {
                       className="w-full h-11 sm:h-13 rounded-xl sm:rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-xs sm:text-sm text-slate-900 outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 hover:border-slate-300"
                     />
                   </div>
-                </div>
+                </div> */}
 
                 {/* Remember & Forgot Row */}
                 <div className="flex items-center justify-between gap-2 pt-1 text-xs sm:text-sm">
