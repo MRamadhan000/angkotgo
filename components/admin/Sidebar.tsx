@@ -52,7 +52,7 @@ export default function Sidebar({
       ),
     },
     {
-      href: "/admin/dashboard/kendaraan",
+      href: "/admin/dashboard/vehicle",
       label: "Kendaraan",
       icon: (
         <svg
