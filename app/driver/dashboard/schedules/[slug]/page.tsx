@@ -74,14 +74,35 @@ export default function TripDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // === STATE UPDATE LOKASI ===
+  // === STATE UPDATE LOKASI (SEQUENCE) ===
   const [updateMode, setUpdateMode] = useState<"auto" | "manual">("auto");
   const [manualCurrentSeq, setManualCurrentSeq] = useState<number | null>(null);
   const [manualNextSeq, setManualNextSeq] = useState<number | null>(null);
-  // Opsional: kecepatan (km/h) & arah (derajat) untuk mode manual,
-  // dikirim ke endpoint POST /live-sessions/:id/locations
   const [manualSpeedKmh, setManualSpeedKmh] = useState<string>("");
   const [manualHeadingDegrees, setManualHeadingDegrees] = useState<string>("");
+
+  // === STATE GPS & ADD LIVE LOCATION ===
+  const [currentGPS, setCurrentGPS] = useState<{
+    lat: number;
+    lng: number;
+    accuracy: number;
+    timestamp: number;
+  } | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+
+  const [addLocMode, setAddLocMode] = useState<"auto" | "manual">("auto");
+  const [manualLocInputMode, setManualLocInputMode] = useState<
+    "input" | "select"
+  >("input");
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
+  const [selectedStopForLoc, setSelectedStopForLoc] = useState<number | null>(
+    null,
+  );
+  const [addLocSpeed, setAddLocSpeed] = useState("");
+  const [addLocHeading, setAddLocHeading] = useState("");
+  const [addingLocation, setAddingLocation] = useState(false);
 
   // === STATE TOAST/POPUP ===
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -90,7 +111,6 @@ export default function TripDetailPage() {
   const showToast = useCallback((type: ToastType, message: string) => {
     const id = ++toastIdRef.current;
     setToasts((prev) => [...prev, { id, type, message }]);
-    // auto dismiss setelah 4 detik
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
@@ -100,19 +120,13 @@ export default function TripDetailPage() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // === FETCH TRIP + STOPS (dipakai saat mount & untuk refresh ulang) ===
-  // Dijadikan fungsi terpisah (bukan cuma di dalam useEffect) supaya bisa
-  // dipanggil lagi setiap kali ada aksi yang berhasil (start/toggle/update),
-  // sehingga data yang tampil selalu diambil ulang langsung dari server
-  // dan tidak bergantung sepenuhnya pada bentuk response PATCH/POST.
+  // === FETCH TRIP + STOPS ===
   const fetchTripData = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!tripId) return;
       try {
         if (!opts?.silent) setLoading(true);
 
-        // cache: "no-store" supaya tidak kena cache browser, jadi
-        // data yang diambil selalu yang paling baru dari server
         const tripRes = await fetch(`http://localhost:3000/trips/${tripId}`, {
           cache: "no-store",
         });
@@ -142,13 +156,12 @@ export default function TripDetailPage() {
     [tripId, showToast],
   );
 
-  // Fetch pertama kali saat halaman dibuka
+  // Fetch pertama kali
   useEffect(() => {
     fetchTripData();
   }, [fetchTripData]);
 
-  // Setiap kali ada live session aktif & pindah ke mode manual,
-  // isi default pilihan manual berdasarkan posisi sesi saat ini
+  // Set default manual sequence dari live session
   useEffect(() => {
     if (trip?.liveSessions?.[0]) {
       const session = trip.liveSessions[0];
@@ -157,77 +170,49 @@ export default function TripDetailPage() {
     }
   }, [trip?.liveSessions]);
 
-  // === HANDLE START LIVE SESSION ===
-  const handleStartLiveSession = async () => {
-    if (!trip) return;
-    try {
-      setSubmitting(true);
-      const response = await fetch("http://localhost:3000/live-sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tripId: trip.id,
-          currentStopId: 1,
-          currentSequence: 1,
-          nextStopId: 2,
-          nextSequence: 2,
-          isAtStop: true,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Gagal memulai live session baru");
-
-      // Refetch ulang dari server supaya data (termasuk field turunan
-      // seperti status/updatedAt) benar-benar sinkron dengan backend
-      await fetchTripData({ silent: true });
-      showToast("success", "Live session berhasil dimulai");
-    } catch (err: any) {
-      showToast("error", err.message || "Gagal membuat session");
-    } finally {
-      setSubmitting(false);
+  // === GET CURRENT GPS ===
+  const getCurrentGPS = useCallback(() => {
+    if (!navigator.geolocation) {
+      const msg = "Browser tidak mendukung Geolocation API";
+      setGpsError(msg);
+      showToast("error", msg);
+      return;
     }
-  };
 
-  // === TOGGLE STATUS AKTIF LIVE SESSION (isActive: true/false) ===
-  const handleToggleActive = async (nextIsAtStop: boolean) => {
-    if (!activeSession) return;
+    setGpsLoading(true);
+    setGpsError(null);
 
-    try {
-      setSubmitting(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCurrentGPS({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: position.timestamp,
+        });
+        setGpsLoading(false);
+        showToast("success", "Posisi GPS berhasil diperbarui");
+      },
+      (err) => {
+        let msg = "Gagal mendapatkan posisi GPS";
+        if (err.code === 1) msg = "Izin akses lokasi ditolak oleh pengguna";
+        else if (err.code === 2) msg = "Posisi tidak tersedia";
+        else if (err.code === 3) msg = "Timeout saat mengambil lokasi";
 
-      const response = await fetch(
-        `http://localhost:3000/live-sessions/${activeSession.id}/stop`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            isAtStop: !activeSession.isAtStop,
-          }),
-        },
-      );
+        setGpsError(msg);
+        setGpsLoading(false);
+        showToast("error", msg);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      },
+    );
+  }, [showToast]);
 
-      if (!response.ok) {
-        throw new Error("Gagal memperbarui status live session");
-      }
-
-      await fetchTripData({ silent: true });
-      showToast("success", "Status live session berhasil diperbarui");
-    } catch (err: any) {
-      showToast("error", err.message || "Gagal mengubah status");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // === KIRIM TITIK LOKASI (lat/lng) KE live-sessions/:id/locations ===
-  // Dipanggil setelah currentSequence/nextSequence berhasil di-update,
-  // dengan lat/lng diambil otomatis dari stop yang jadi posisi baru.
-  // Kalau gagal, tidak menggagalkan keseluruhan proses update lokasi
-  // (cukup ditampilkan sebagai toast error terpisah), karena posisi
-  // sequence-nya sendiri sudah berhasil tersimpan.
-  const postLiveLocation = async (
+  // === POST LIVE LOCATION (Endpoint baru sesuai permintaan) ===
+  const postAddLiveLocation = async (
     sessionId: number,
     latitude: number,
     longitude: number,
@@ -253,14 +238,150 @@ export default function TripDetailPage() {
       );
 
       if (!response.ok) {
-        throw new Error("Gagal mengirim titik lokasi (lat/lng)");
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || "Gagal mengirim live location");
       }
     } catch (err: any) {
-      showToast("error", err.message || "Gagal mengirim titik lokasi");
+      throw err;
     }
   };
 
-  // === UPDATE LOKASI (OTOMATIS & MANUAL) ===
+  // === HANDLE ADD LIVE LOCATION (GPS) ===
+  const handleAddLiveLocation = async () => {
+    if (!activeSession) return;
+
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    if (addLocMode === "auto") {
+      if (!currentGPS) {
+        showToast("error", "Silakan ambil posisi GPS terlebih dahulu");
+        return;
+      }
+      lat = currentGPS.lat;
+      lng = currentGPS.lng;
+    } else {
+      if (manualLocInputMode === "input") {
+        lat = parseFloat(manualLat);
+        lng = parseFloat(manualLng);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+          showToast("error", "Latitude dan Longitude harus diisi dengan benar");
+          return;
+        }
+      } else {
+        if (!selectedStopForLoc) {
+          showToast("error", "Silakan pilih halte terlebih dahulu");
+          return;
+        }
+        const stop = stops.find((s) => s.sequence === selectedStopForLoc);
+        if (!stop) {
+          showToast("error", "Data halte tidak ditemukan");
+          return;
+        }
+        lat = parseFloat(stop.latitude);
+        lng = parseFloat(stop.longitude);
+      }
+    }
+
+    if (
+      lat === null ||
+      lng === null ||
+      Number.isNaN(lat) ||
+      Number.isNaN(lng)
+    ) {
+      showToast("error", "Koordinat tidak valid");
+      return;
+    }
+
+    const speed = addLocSpeed !== "" ? Number(addLocSpeed) : undefined;
+    const heading = addLocHeading !== "" ? Number(addLocHeading) : undefined;
+
+    setAddingLocation(true);
+    try {
+      await postAddLiveLocation(activeSession.id, lat, lng, speed, heading);
+      showToast("success", "Live location berhasil dikirim ke server");
+
+      // Reset form
+      if (addLocMode === "manual") {
+        setManualLat("");
+        setManualLng("");
+        setSelectedStopForLoc(null);
+      }
+      setAddLocSpeed("");
+      setAddLocHeading("");
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal mengirim live location");
+    } finally {
+      setAddingLocation(false);
+    }
+  };
+
+  // === HANDLE START LIVE SESSION ===
+  const handleStartLiveSession = async () => {
+    if (!trip) return;
+
+    if (stops.length < 2) {
+      showToast("error", "Data halte tidak cukup untuk memulai live session");
+      return;
+    }
+
+    const firstStop = stops[0];
+    const secondStop = stops[1];
+
+    try {
+      setSubmitting(true);
+      const response = await fetch("http://localhost:3000/live-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tripId: trip.id,
+          currentStopId: firstStop.id,
+          currentSequence: firstStop.sequence,
+          nextStopId: secondStop.id,
+          nextSequence: secondStop.sequence,
+          isAtStop: true,
+        }),
+      });
+      if (!response.ok) throw new Error("Gagal memulai live session baru");
+      await fetchTripData({ silent: true });
+      showToast("success", "Live session berhasil dimulai");
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal membuat session");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // === TOGGLE IS AT STOP ===
+  const handleToggleIsAtStop = async () => {
+    if (!activeSession) return;
+    try {
+      setSubmitting(true);
+      const newIsAtStop = !activeSession.isAtStop;
+
+      const response = await fetch(
+        `http://localhost:3000/live-sessions/${activeSession.id}/stop`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isAtStop: newIsAtStop }),
+        },
+      );
+      if (!response.ok) throw new Error("Gagal memperbarui status");
+
+      await fetchTripData({ silent: true });
+      showToast(
+        "success",
+        `Status diubah menjadi ${newIsAtStop ? "Berhenti di Halte" : "Sedang Jalan"}`,
+      );
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal mengubah status");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // === UPDATE LOKASI (OTOMATIS & MANUAL SEQUENCE) - KEEP AS IS ===
   const handleUpdateLocation = async (
     mode: "auto" | "manual",
     targetCurrentSeq?: number,
@@ -276,21 +397,15 @@ export default function TripDetailPage() {
 
     if (mode === "auto") {
       newCurrentSeq = activeSession.nextSequence;
-
       const currentIndex = stops.findIndex((s) => s.sequence === newCurrentSeq);
       if (currentIndex === -1) {
-        showToast(
-          "error",
-          "Halte untuk sequence ini tidak ditemukan di daftar rute",
-        );
+        showToast("error", "Halte untuk sequence ini tidak ditemukan");
         return;
       }
-
       if (currentIndex >= stops.length - 1) {
         showToast("error", "Bus sudah berada di halte terakhir!");
         return;
       }
-
       newNextSeq = stops[currentIndex + 1].sequence;
     } else {
       if (!targetCurrentSeq || !targetNextSeq) {
@@ -314,13 +429,11 @@ export default function TripDetailPage() {
 
     const currentStop = stops.find((s) => s.sequence === newCurrentSeq);
     const nextStop = stops.find((s) => s.sequence === newNextSeq);
-
     const currentStopId = currentStop?.id || newCurrentSeq;
     const nextStopId = nextStop?.id || newNextSeq;
 
     try {
       setSubmitting(true);
-
       const response = await fetch(
         `http://localhost:3000/live-sessions/${activeSession.id}`,
         {
@@ -335,16 +448,12 @@ export default function TripDetailPage() {
           }),
         },
       );
-
       if (!response.ok) throw new Error("Gagal memperbarui lokasi");
 
-      // Kirim juga titik lokasi (lat/lng) dari halte yang jadi posisi baru,
-      // ke endpoint POST /live-sessions/:id/locations. Lat/lng diambil
-      // otomatis dari data stop yang dipilih (currentStop), bukan input manual.
+      // Kirim juga titik lokasi (opsional)
       if (currentStop) {
         const lat = parseFloat(currentStop.latitude);
         const lng = parseFloat(currentStop.longitude);
-
         if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
           const speedKmh =
             mode === "manual" && manualSpeedKmh !== ""
@@ -354,8 +463,7 @@ export default function TripDetailPage() {
             mode === "manual" && manualHeadingDegrees !== ""
               ? Number(manualHeadingDegrees)
               : undefined;
-
-          await postLiveLocation(
+          await postAddLiveLocation(
             activeSession.id,
             lat,
             lng,
@@ -365,9 +473,6 @@ export default function TripDetailPage() {
         }
       }
 
-      // Ambil ulang data trip terbaru dari server, bukan cuma
-      // mengandalkan body response PATCH. Ini yang memastikan
-      // UI (progress bar, daftar halte, dsb) benar-benar ter-refresh.
       await fetchTripData({ silent: true });
 
       if (mode === "manual") {
@@ -376,7 +481,6 @@ export default function TripDetailPage() {
         setManualSpeedKmh("");
         setManualHeadingDegrees("");
       }
-
       showToast("success", "Lokasi bus berhasil diperbarui");
     } catch (err: any) {
       showToast("error", err.message || "Gagal update lokasi");
@@ -409,8 +513,8 @@ export default function TripDetailPage() {
     trip.liveSessions && trip.liveSessions.length > 0
       ? trip.liveSessions[0]
       : null;
-  const maxSequence = stops.length > 0 ? stops[stops.length - 1].sequence : 0;
 
+  const maxSequence = stops.length > 0 ? stops[stops.length - 1].sequence : 0;
   const currentStopIndex = activeSession
     ? stops.findIndex((s) => s.sequence === activeSession.currentSequence)
     : -1;
@@ -459,7 +563,7 @@ export default function TripDetailPage() {
       </div>
 
       <div className="max-w-6xl mx-auto space-y-5">
-        {/* HEADER */}
+        {/* ==================== HEADER + GPS ==================== */}
         <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -475,7 +579,6 @@ export default function TripDetailPage() {
             </div>
             <p className="text-slate-500 mt-1 text-sm">{trip.route.name}</p>
           </div>
-
           <span
             className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider w-fit ${
               trip.status === "ACTIVE"
@@ -485,6 +588,35 @@ export default function TripDetailPage() {
           >
             Status: {trip.status}
           </span>
+        </div>
+
+        {/* GPS STATUS BAR */}
+        <div className="bg-white border border-slate-200 rounded-2xl px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-slate-700">
+              📍 Posisi Perangkat (GPS)
+            </span>
+            {currentGPS ? (
+              <span className="font-mono text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg text-xs">
+                {currentGPS.lat.toFixed(6)}, {currentGPS.lng.toFixed(6)}
+                <span className="text-slate-400 ml-1.5">
+                  (±{Math.round(currentGPS.accuracy)}m)
+                </span>
+              </span>
+            ) : (
+              <span className="text-slate-400 text-xs">Belum diambil</span>
+            )}
+          </div>
+          <button
+            onClick={getCurrentGPS}
+            disabled={gpsLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-xl text-xs font-medium text-slate-700 transition disabled:opacity-60"
+          >
+            {gpsLoading ? "Mengambil posisi..." : "⟳ Perbarui Posisi GPS"}
+          </button>
+          {gpsError && (
+            <p className="text-red-500 text-xs mt-1 sm:mt-0">{gpsError}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -546,77 +678,54 @@ export default function TripDetailPage() {
               </h2>
 
               {activeSession ? (
-                <div className="space-y-5">
-                  {/* Status Live */}
-                  <div
-                    className={`flex items-center justify-between p-4 rounded-xl border ${
-                      activeSession.isActive
-                        ? "bg-blue-50 border-blue-100"
-                        : "bg-slate-100 border-slate-200"
-                    }`}
-                  >
+                <div className="space-y-6">
+                  {/* Status Live + Toggle isAtStop */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border bg-blue-50 border-blue-100">
                     <div>
-                      <p
-                        className={`text-xs font-semibold uppercase tracking-wider ${
-                          activeSession.isActive
-                            ? "text-blue-600"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        Status Live
+                      <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+                        Status Live Session
                       </p>
-                      <p
-                        className={`text-xl font-bold mt-0.5 ${
-                          activeSession.isActive
-                            ? "text-blue-900"
-                            : "text-slate-500"
-                        }`}
-                      >
+                      <p className="text-2xl font-bold text-blue-900 mt-0.5">
                         {activeSession.status}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      {activeSession.isActive ? (
-                        <span className="flex h-3 w-3 relative">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                        </span>
-                      ) : (
-                        <span className="h-3 w-3 rounded-full bg-slate-400"></span>
-                      )}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500">
+                          Angkot Saat Ini
+                        </p>
+                        <p
+                          className={`font-bold text-lg ${activeSession.isAtStop ? "text-emerald-600" : "text-amber-600"}`}
+                        >
+                          {activeSession.isAtStop
+                            ? "🛑 Berhenti di Halte"
+                            : "🚌 Sedang Jalan"}
+                        </p>
+                      </div>
 
-                      {/* Toggle Switch isActive */}
+                      {/* Toggle isAtStop */}
                       <button
-                        onClick={() =>
-                          handleToggleActive(!activeSession.isActive)
-                        }
+                        onClick={handleToggleIsAtStop}
                         disabled={submitting}
-                        aria-pressed={activeSession.isActive}
-                        aria-label="Toggle status aktif live session"
-                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                          activeSession.isActive
+                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all disabled:opacity-50 ${
+                          activeSession.isAtStop
                             ? "bg-emerald-500"
                             : "bg-slate-300"
                         }`}
                       >
                         <span
-                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                            activeSession.isActive
-                              ? "translate-x-6"
+                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-all ${
+                            activeSession.isAtStop
+                              ? "translate-x-7"
                               : "translate-x-1"
                           }`}
                         />
                       </button>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-400 -mt-3">
-                    {activeSession.isActive
-                      ? "🟢 Live session sedang aktif — bus terdeteksi live."
-                      : "⚪ Live session tidak aktif — bus tidak sedang di-tracking."}
-                  </p>
 
-                  {/* Progress bar rute */}
+                  {/* Progress bar */}
                   <div>
                     <div className="flex justify-between text-xs text-slate-400 mb-1.5">
                       <span>Progress Rute</span>
@@ -624,7 +733,7 @@ export default function TripDetailPage() {
                         Seq {activeSession.currentSequence} / {maxSequence}
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-blue-500 rounded-full transition-all duration-500"
                         style={{ width: `${progressPercent}%` }}
@@ -633,26 +742,26 @@ export default function TripDetailPage() {
                   </div>
 
                   {/* Info Sequence */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                       <p className="text-slate-400 text-xs">
                         Sequence Sekarang
                       </p>
-                      <p className="font-bold text-lg text-slate-800">
+                      <p className="font-bold text-3xl text-slate-800 mt-1">
                         {activeSession.currentSequence}
                       </p>
                     </div>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                       <p className="text-slate-400 text-xs">
                         Sequence Berikutnya
                       </p>
-                      <p className="font-bold text-lg text-slate-800">
+                      <p className="font-bold text-3xl text-slate-800 mt-1">
                         {activeSession.nextSequence}
                       </p>
                     </div>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 col-span-2 md:col-span-1">
-                      <p className="text-slate-400 text-xs">Posisi Bus</p>
-                      <p className="font-semibold text-slate-800 mt-1">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center">
+                      <p className="text-slate-400 text-xs">Status Posisi</p>
+                      <p className="font-semibold text-slate-800 mt-1 text-lg">
                         {activeSession.isAtStop
                           ? "🛑 Berhenti di Halte"
                           : "🚌 Sedang Jalan"}
@@ -660,29 +769,29 @@ export default function TripDetailPage() {
                     </div>
                   </div>
 
-                  {/* ==================== FITUR UPDATE LOKASI ==================== */}
-                  <div className="pt-4 border-t border-slate-100">
-                    <h3 className="font-semibold text-slate-700 mb-3">
-                      Update Lokasi Bus
+                  {/* ==================== FITUR TAMBAH LIVE LOCATION (GPS) ==================== */}
+                  <div className="pt-5 border-t border-slate-100">
+                    <h3 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      📡 Tambah Live Location (GPS Real-time)
                     </h3>
 
                     {/* Mode Switch */}
-                    <div className="flex border border-slate-200 rounded-xl overflow-hidden mb-4 w-fit bg-slate-50">
+                    <div className="flex border border-slate-200 rounded-2xl overflow-hidden mb-4 w-fit bg-slate-50">
                       <button
-                        onClick={() => setUpdateMode("auto")}
-                        className={`px-5 py-2 text-sm font-medium transition ${
-                          updateMode === "auto"
-                            ? "bg-blue-600 text-white shadow-sm"
+                        onClick={() => setAddLocMode("auto")}
+                        className={`px-6 py-2 text-sm font-medium transition ${
+                          addLocMode === "auto"
+                            ? "bg-emerald-600 text-white"
                             : "text-slate-600 hover:bg-slate-100"
                         }`}
                       >
-                        Otomatis
+                        Otomatis (GPS)
                       </button>
                       <button
-                        onClick={() => setUpdateMode("manual")}
-                        className={`px-5 py-2 text-sm font-medium transition ${
-                          updateMode === "manual"
-                            ? "bg-blue-600 text-white shadow-sm"
+                        onClick={() => setAddLocMode("manual")}
+                        className={`px-6 py-2 text-sm font-medium transition ${
+                          addLocMode === "manual"
+                            ? "bg-amber-600 text-white"
                             : "text-slate-600 hover:bg-slate-100"
                         }`}
                       >
@@ -690,30 +799,253 @@ export default function TripDetailPage() {
                       </button>
                     </div>
 
-                    {/* MODE OTOMATIS */}
+                    {/* MODE OTOMATIS - GPS */}
+                    {addLocMode === "auto" && (
+                      <div className="space-y-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl p-5">
+                        <div>
+                          <p className="text-sm text-slate-600 mb-2">
+                            Posisi akan diambil langsung dari GPS perangkat
+                            kamu.
+                          </p>
+                          {currentGPS ? (
+                            <div className="font-mono text-sm bg-white p-3 rounded-xl border border-emerald-200">
+                              Lat:{" "}
+                              <span className="font-bold">
+                                {currentGPS.lat.toFixed(6)}
+                              </span>
+                              <br />
+                              Lng:{" "}
+                              <span className="font-bold">
+                                {currentGPS.lng.toFixed(6)}
+                              </span>
+                              <br />
+                              <span className="text-xs text-emerald-600">
+                                Akurasi: ±{Math.round(currentGPS.accuracy)}{" "}
+                                meter
+                              </span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={getCurrentGPS}
+                              disabled={gpsLoading}
+                              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl"
+                            >
+                              {gpsLoading
+                                ? "Mengambil GPS..."
+                                : "📍 Ambil Posisi GPS Sekarang"}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Optional speed & heading */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">
+                              Kecepatan (km/h) — opsional
+                            </label>
+                            <input
+                              type="number"
+                              value={addLocSpeed}
+                              onChange={(e) => setAddLocSpeed(e.target.value)}
+                              placeholder="contoh: 35"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">
+                              Heading / Arah (derajat) — opsional
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={359}
+                              value={addLocHeading}
+                              onChange={(e) => setAddLocHeading(e.target.value)}
+                              placeholder="contoh: 180"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleAddLiveLocation}
+                          disabled={addingLocation || !currentGPS}
+                          className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white font-semibold rounded-2xl transition flex items-center justify-center gap-2"
+                        >
+                          {addingLocation
+                            ? "Mengirim..."
+                            : "🚀 Kirim Posisi GPS ke Live Tracking"}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* MODE MANUAL */}
+                    {addLocMode === "manual" && (
+                      <div className="space-y-4 bg-amber-50/60 border border-amber-100 rounded-2xl p-5">
+                        <p className="text-sm text-slate-600">
+                          Pilih cara input koordinat:
+                        </p>
+
+                        {/* Sub mode */}
+                        <div className="flex border border-amber-200 rounded-xl overflow-hidden w-fit text-sm">
+                          <button
+                            onClick={() => setManualLocInputMode("input")}
+                            className={`px-4 py-1.5 font-medium ${manualLocInputMode === "input" ? "bg-amber-600 text-white" : "bg-white text-amber-700"}`}
+                          >
+                            Input Manual
+                          </button>
+                          <button
+                            onClick={() => setManualLocInputMode("select")}
+                            className={`px-4 py-1.5 font-medium ${manualLocInputMode === "select" ? "bg-amber-600 text-white" : "bg-white text-amber-700"}`}
+                          >
+                            Pilih dari Halte
+                          </button>
+                        </div>
+
+                        {manualLocInputMode === "input" ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-slate-500 mb-1">
+                                Latitude
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                value={manualLat}
+                                onChange={(e) => setManualLat(e.target.value)}
+                                placeholder="-6.123456"
+                                className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-slate-500 mb-1">
+                                Longitude
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                value={manualLng}
+                                onChange={(e) => setManualLng(e.target.value)}
+                                placeholder="106.123456"
+                                className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                              Pilih Halte
+                            </label>
+                            <select
+                              value={selectedStopForLoc ?? ""}
+                              onChange={(e) =>
+                                setSelectedStopForLoc(Number(e.target.value))
+                              }
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white"
+                            >
+                              <option value="">-- Pilih Halte --</option>
+                              {stops.map((stop) => (
+                                <option key={stop.id} value={stop.sequence}>
+                                  Seq {stop.sequence} — {stop.name}{" "}
+                                  {stop.isTerminal ? "(Terminal)" : ""}
+                                </option>
+                              ))}
+                            </select>
+                            {selectedStopForLoc && (
+                              <p className="text-xs text-emerald-600 mt-1">
+                                Lat/Lng akan diambil otomatis dari halte yang
+                                dipilih.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Optional speed & heading */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">
+                              Kecepatan (km/h) — opsional
+                            </label>
+                            <input
+                              type="number"
+                              value={addLocSpeed}
+                              onChange={(e) => setAddLocSpeed(e.target.value)}
+                              placeholder="contoh: 40"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">
+                              Heading (derajat) — opsional
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={359}
+                              value={addLocHeading}
+                              onChange={(e) => setAddLocHeading(e.target.value)}
+                              placeholder="contoh: 90"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleAddLiveLocation}
+                          disabled={
+                            addingLocation ||
+                            (manualLocInputMode === "input" &&
+                              (!manualLat || !manualLng)) ||
+                            (manualLocInputMode === "select" &&
+                              !selectedStopForLoc)
+                          }
+                          className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white font-semibold rounded-2xl transition flex items-center justify-center gap-2"
+                        >
+                          {addingLocation
+                            ? "Mengirim..."
+                            : "📍 Kirim Koordinat Manual ke Live Tracking"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {/* ==================== AKHIR FITUR TAMBAH LIVE LOCATION ==================== */}
+
+                  {/* ==================== UPDATE SEQUENCE (KEEP ORIGINAL) ==================== */}
+                  <div className="pt-4 border-t border-slate-100">
+                    <h3 className="font-semibold text-slate-700 mb-3">
+                      Update Lokasi Bus (Sequence)
+                    </h3>
+
+                    <div className="flex border border-slate-200 rounded-xl overflow-hidden mb-4 w-fit bg-slate-50">
+                      <button
+                        onClick={() => setUpdateMode("auto")}
+                        className={`px-5 py-2 text-sm font-medium transition ${updateMode === "auto" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+                      >
+                        Otomatis
+                      </button>
+                      <button
+                        onClick={() => setUpdateMode("manual")}
+                        className={`px-5 py-2 text-sm font-medium transition ${updateMode === "manual" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+                      >
+                        Manual
+                      </button>
+                    </div>
+
+                    {/* MODE OTOMATIS SEQUENCE */}
                     {updateMode === "auto" && (
                       <div className="space-y-3 bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
                         <p className="text-sm text-slate-600">
-                          Bus akan bergerak satu langkah:{" "}
+                          Lanjutkan ke halte berikutnya:{" "}
                           <span className="font-semibold text-slate-800">
                             {stops.find(
                               (s) => s.sequence === activeSession.nextSequence,
                             )?.name ?? `Seq ${activeSession.nextSequence}`}
-                          </span>{" "}
-                          menjadi posisi sekarang, tujuan berikutnya otomatis{" "}
-                          <span className="font-semibold text-slate-800">
-                            {upcomingAfterNextStop
-                              ? upcomingAfterNextStop.name
-                              : isAtLastStop
-                                ? "(sudah halte terakhir)"
-                                : "-"}
                           </span>
-                          .
                         </p>
                         <button
                           onClick={() => handleUpdateLocation("auto")}
                           disabled={submitting || isAtLastStop}
-                          className="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          className="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl disabled:opacity-50"
                         >
                           {submitting
                             ? "Memperbarui..."
@@ -724,14 +1056,9 @@ export default function TripDetailPage() {
                       </div>
                     )}
 
-                    {/* MODE MANUAL */}
+                    {/* MODE MANUAL SEQUENCE */}
                     {updateMode === "manual" && (
                       <div className="space-y-4 bg-amber-50/50 border border-amber-100 rounded-xl p-4">
-                        <p className="text-sm text-slate-600">
-                          Pilih posisi bus saat ini dan tujuan berikutnya secara
-                          manual.
-                        </p>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1.5">
@@ -742,18 +1069,17 @@ export default function TripDetailPage() {
                               onChange={(e) =>
                                 setManualCurrentSeq(Number(e.target.value))
                               }
-                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white"
                             >
                               <option value="">-- Pilih Halte --</option>
                               {stops.map((stop) => (
                                 <option key={stop.id} value={stop.sequence}>
-                                  Seq {stop.sequence} — {stop.name}
-                                  {stop.isTerminal ? " (Terminal)" : ""}
+                                  Seq {stop.sequence} — {stop.name}{" "}
+                                  {stop.isTerminal ? "(Terminal)" : ""}
                                 </option>
                               ))}
                             </select>
                           </div>
-
                           <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1.5">
                               🎯 Tujuan Berikutnya
@@ -763,7 +1089,7 @@ export default function TripDetailPage() {
                               onChange={(e) =>
                                 setManualNextSeq(Number(e.target.value))
                               }
-                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white"
                             >
                               <option value="">-- Pilih Halte --</option>
                               {stops
@@ -774,42 +1100,32 @@ export default function TripDetailPage() {
                                 )
                                 .map((stop) => (
                                   <option key={stop.id} value={stop.sequence}>
-                                    Seq {stop.sequence} — {stop.name}
-                                    {stop.isTerminal ? " (Terminal)" : ""}
+                                    Seq {stop.sequence} — {stop.name}{" "}
+                                    {stop.isTerminal ? "(Terminal)" : ""}
                                   </option>
                                 ))}
                             </select>
                           </div>
                         </div>
 
-                        {/* Opsional: kecepatan & arah, dikirim bersama lat/lng
-                            ke endpoint POST /live-sessions/:id/locations */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1.5">
-                              🚀 Kecepatan (km/h){" "}
-                              <span className="font-normal text-slate-400">
-                                — opsional
-                              </span>
+                              🚀 Kecepatan (km/h) — opsional
                             </label>
                             <input
                               type="number"
-                              min={0}
                               value={manualSpeedKmh}
                               onChange={(e) =>
                                 setManualSpeedKmh(e.target.value)
                               }
                               placeholder="cth. 40"
-                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm"
                             />
                           </div>
-
                           <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1.5">
-                              🧭 Arah / Heading (derajat){" "}
-                              <span className="font-normal text-slate-400">
-                                — opsional
-                              </span>
+                              🧭 Heading (derajat) — opsional
                             </label>
                             <input
                               type="number"
@@ -820,15 +1136,10 @@ export default function TripDetailPage() {
                                 setManualHeadingDegrees(e.target.value)
                               }
                               placeholder="cth. 90"
-                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                              className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm"
                             />
                           </div>
                         </div>
-
-                        <p className="text-[11px] text-slate-400">
-                          📍 Lat/Lng akan diambil otomatis dari halte "Posisi
-                          Saat Ini" yang dipilih di atas.
-                        </p>
 
                         <button
                           onClick={() =>
@@ -841,7 +1152,7 @@ export default function TripDetailPage() {
                           disabled={
                             submitting || !manualCurrentSeq || !manualNextSeq
                           }
-                          className="w-full px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          className="w-full px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl disabled:opacity-50"
                         >
                           {submitting
                             ? "Memperbarui..."
@@ -850,7 +1161,6 @@ export default function TripDetailPage() {
                       </div>
                     )}
                   </div>
-                  {/* ==================== AKHIR FITUR UPDATE LOKASI ==================== */}
 
                   <p className="text-xs text-slate-400">
                     Ditinjau terakhir:{" "}
@@ -865,7 +1175,7 @@ export default function TripDetailPage() {
                   <button
                     onClick={handleStartLiveSession}
                     disabled={submitting}
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition disabled:opacity-50"
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl"
                   >
                     {submitting
                       ? "Membuat Session..."
@@ -883,10 +1193,9 @@ export default function TripDetailPage() {
                 Daftar Halte Rute
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Total terdapat {stops.length} halte pemberhentian
+                Total {stops.length} halte
               </p>
             </div>
-
             <div className="overflow-y-auto flex-1 pr-2 space-y-2">
               {stops.map((stop) => {
                 const isCurrentStop =
@@ -920,9 +1229,7 @@ export default function TripDetailPage() {
                               : "bg-slate-100 text-slate-600"
                         }`}
                       >
-                        <span className="text-[8px] opacity-75 font-normal">
-                          Seq
-                        </span>
+                        <span className="text-[8px] opacity-75">Seq</span>
                         <span className="-mt-1">{stop.sequence}</span>
                       </span>
                       <div>
@@ -942,15 +1249,14 @@ export default function TripDetailPage() {
                         </p>
                       </div>
                     </div>
-
                     <div className="flex flex-col items-end gap-1">
                       {isCurrentStop && (
-                        <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[9px] uppercase tracking-wide animate-pulse">
+                        <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[9px]">
                           Bus Sini
                         </span>
                       )}
                       {isNextStop && (
-                        <span className="px-2 py-0.5 rounded bg-amber-500 text-white font-bold text-[9px] uppercase tracking-wide">
+                        <span className="px-2 py-0.5 rounded bg-amber-500 text-white font-bold text-[9px]">
                           Berikutnya
                         </span>
                       )}
@@ -958,7 +1264,6 @@ export default function TripDetailPage() {
                   </div>
                 );
               })}
-
               {stops.length === 0 && (
                 <p className="text-sm text-slate-400 text-center py-6">
                   Tidak ada daftar halte.

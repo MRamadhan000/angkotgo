@@ -98,89 +98,6 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// ==================== UPDATE STATUS MODAL ====================
-interface UpdateStatusModalProps {
-  trip: Trip;
-  isSaving: boolean;
-  onClose: () => void;
-  onSave: (tripId: number, status: TripStatus) => void;
-}
-
-const UpdateStatusModal = ({
-  trip,
-  isSaving,
-  onClose,
-  onSave,
-}: UpdateStatusModalProps) => {
-  const [status, setStatus] = useState<TripStatus>(trip.status as TripStatus);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Update Status Trip
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              #{trip.tripNumber} · {trip.route.name}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-xs font-medium text-gray-500 mb-2">
-            Status Trip
-          </label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as TripStatus)}
-            className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {Object.values(TripStatus).map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            disabled={isSaving}
-            className="flex-1 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-2xl transition-colors"
-          >
-            Batal
-          </button>
-          <button
-            onClick={() => onSave(trip.id, status)}
-            disabled={isSaving || status === trip.status}
-            className="flex-1 py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-2xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {isSaving && (
-              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            )}
-            Simpan Perubahan
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // ==================== MAIN PAGE ====================
 export default function DriverSchedulesPage() {
   const router = useRouter();
@@ -188,8 +105,6 @@ export default function DriverSchedulesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [driverId, setDriverId] = useState<number | null>(null);
-  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
-  const [isSavingStatus, setIsSavingStatus] = useState(false);
 
   const todayDate = new Date().toISOString().split("T")[0];
 
@@ -281,40 +196,6 @@ export default function DriverSchedulesPage() {
   // Stats
   const totalTrips = allTrips.length;
   const todayTrips = allTrips.filter((t) => t.workDate === todayDate).length;
-
-  const handleOpenUpdateStatus = (e: React.MouseEvent, trip: Trip) => {
-    e.stopPropagation();
-    setSelectedTrip(trip);
-  };
-
-  const handleUpdateTripStatus = async (
-    tripId: number,
-    newStatus: TripStatus,
-  ) => {
-    setIsSavingStatus(true);
-    try {
-      const res = await fetch(`${API_URL}/trips/${tripId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!res.ok) throw new Error("Gagal update status");
-
-      setSchedules((prev) =>
-        prev.map((schedule) => ({
-          ...schedule,
-          trips: schedule.trips.map((trip) =>
-            trip.id === tripId ? { ...trip, status: newStatus } : trip,
-          ),
-        })),
-      );
-      setSelectedTrip(null);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSavingStatus(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -457,14 +338,7 @@ export default function DriverSchedulesPage() {
                             <span>{trip.vehicle.plateNumber}</span>
                           </div>
 
-                          <div className="flex gap-2">
-                            <button
-                              onClick={(e) => handleOpenUpdateStatus(e, trip)}
-                              className="px-4 py-1.5 rounded-xl border text-xs font-medium hover:bg-slate-50 transition-colors"
-                            >
-                              Update Status
-                            </button>
-                          </div>
+                          {/* Tombol Update Status DIHAPUS */}
                         </div>
                       </div>
                     ))}
@@ -475,15 +349,6 @@ export default function DriverSchedulesPage() {
           </div>
         )}
       </div>
-
-      {selectedTrip && (
-        <UpdateStatusModal
-          trip={selectedTrip}
-          isSaving={isSavingStatus}
-          onClose={() => setSelectedTrip(null)}
-          onSave={handleUpdateTripStatus}
-        />
-      )}
     </div>
   );
 }
