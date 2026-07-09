@@ -75,14 +75,14 @@ export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  
-  // States
+
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [shiftFilter, setShiftFilter] = useState("Semua Shift");
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Modal States
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -93,6 +93,9 @@ export default function SchedulesPage() {
     workDate: "",
     shift: "",
   });
+
+  // Selected Schedule for Edit
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -117,18 +120,14 @@ export default function SchedulesPage() {
     }
   };
 
+  // ==================== ADD SCHEDULE ====================
   const handleAddScheduleClick = () => {
-    setFormData({
-      driverId: "",
-      vehicleId: "",
-      workDate: "",
-      shift: "",
-    });
+    setFormData({ driverId: "", vehicleId: "", workDate: "", shift: "" });
     setFormError(null);
-    setIsModalOpen(true);
+    setIsAddModalOpen(true);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setFormError(null);
@@ -136,9 +135,7 @@ export default function SchedulesPage() {
     try {
       const response = await fetch(`${API_URL}/schedules`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           driverId: Number(formData.driverId),
           vehicleId: Number(formData.vehicleId),
@@ -147,50 +144,107 @@ export default function SchedulesPage() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Gagal menyimpan jadwal");
-      }
+      if (!response.ok) throw new Error("Gagal menyimpan jadwal");
 
-      setIsModalOpen(false);
+      setIsAddModalOpen(false);
       await fetchData();
     } catch (err: any) {
-      console.error(err);
       setFormError(err.message || "Terjadi kesalahan saat menyimpan jadwal.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // ==================== EDIT SCHEDULE ====================
+  const handleEditClick = (schedule: Schedule) => {
+    setSelectedSchedule(schedule);
+    setFormData({
+      driverId: schedule.driver.id.toString(),
+      vehicleId: schedule.vehicle.id.toString(),
+      workDate: schedule.workDate,
+      shift: schedule.shift.toString(),
+    });
+    setFormError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSchedule) return;
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/schedules/${selectedSchedule.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workDate: formData.workDate,
+          shift: Number(formData.shift),
+          // createdAt tidak di-update dari form (sesuai DTO)
+        }),
+      });
+
+      if (!response.ok) throw new Error("Gagal memperbarui jadwal");
+
+      setIsEditModalOpen(false);
+      setSelectedSchedule(null);
+      await fetchData();
+    } catch (err: any) {
+      setFormError(err.message || "Terjadi kesalahan saat memperbarui jadwal.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ==================== DELETE SCHEDULE ====================
+  const handleDeleteClick = async (scheduleId: number) => {
+    const confirmDelete = window.confirm("Apakah Anda yakin ingin menghapus jadwal ini?");
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch(`${API_URL}/schedules/${scheduleId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal menghapus jadwal");
+      }
+
+      await fetchData();
+    } catch (err: any) {
+      alert(err.message || "Terjadi kesalahan saat menghapus jadwal.");
+    }
+  };
+
+  // ==================== FILTER ====================
   const filtered = schedules.filter((s) => {
     const q = search.toLowerCase();
     const matchSearch =
       s.driver?.name.toLowerCase().includes(q) ||
       s.vehicle?.plateNumber.toLowerCase().includes(q) ||
       s.workDate.includes(q);
-      
+
     const matchShift = shiftFilter === "Semua Shift" || `Shift ${s.shift}` === shiftFilter;
     return matchSearch && matchShift;
   });
 
-  // Calculate dynamic stats
+  // Stats
   const totalSchedules = schedules.length;
   const todayDate = new Date().toISOString().split("T")[0];
-  const todaySchedulesCount = schedules.filter(s => s.workDate === todayDate).length;
+  const todaySchedulesCount = schedules.filter((s) => s.workDate === todayDate).length;
   const totalTrips = schedules.reduce((acc, curr) => acc + (curr.trips?.length || 0), 0);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Manajemen Jadwal</h1>
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Manajemen Jadwal</h1>
             <p className="text-sm text-gray-500 mt-1">Atur penugasan supir dan kendaraan harian</p>
           </div>
-          {/* Add Button */}
           <button
             onClick={handleAddScheduleClick}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
@@ -205,32 +259,20 @@ export default function SchedulesPage() {
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <StatCard
-            icon={
-              <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            }
+            icon={<svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
             label="Total Jadwal"
             value={totalSchedules}
             sub="Seluruh jadwal tercatat"
           />
           <StatCard
-            icon={
-              <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
+            icon={<svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
             label="Jadwal Hari Ini"
             value={todaySchedulesCount}
             sub="Jadwal untuk beroperasi hari ini"
             subColor="text-green-500"
           />
           <StatCard
-            icon={
-              <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            }
+            icon={<svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
             label="Total Trip (Berjalan)"
             value={totalTrips}
             sub="Keseluruhan trip supir"
@@ -240,25 +282,20 @@ export default function SchedulesPage() {
 
         {/* Table Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row gap-3 p-5 border-b border-gray-100">
-            {/* Search */}
             <div className="relative flex-1 min-w-0">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               <input
                 type="text"
                 placeholder="Cari berdasarkan tanggal, nama supir, atau plat kendaraan..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
               />
             </div>
 
             <div className="flex gap-2 flex-shrink-0">
-              {/* Filter */}
               <div className="relative">
                 <select
                   value={shiftFilter}
@@ -270,9 +307,7 @@ export default function SchedulesPage() {
                   <option>Shift 2</option>
                   <option>Shift 3</option>
                 </select>
-                <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </div>
           </div>
@@ -307,10 +342,7 @@ export default function SchedulesPage() {
                       <tr key={schedule.id} className="hover:bg-blue-50/30 transition-colors group">
                         <td className="px-5 py-4 font-medium text-gray-700">
                           {new Date(schedule.workDate).toLocaleDateString("id-ID", {
-                            weekday: "short",
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric"
+                            weekday: "short", day: "numeric", month: "short", year: "numeric"
                           })}
                         </td>
                         <td className="px-5 py-4">
@@ -334,9 +366,26 @@ export default function SchedulesPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <Link href={`/admin/dashboard/schedules/${schedule.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                            Detail
-                          </Link>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditClick(schedule)}
+                              className="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(schedule.id)}
+                              className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                            >
+                              Hapus
+                            </button>
+                            <Link
+                              href={`/admin/dashboard/schedules/${schedule.id}`}
+                              className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                              Detail
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -346,7 +395,6 @@ export default function SchedulesPage() {
             </div>
           )}
 
-          {/* Pagination Footer */}
           <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100">
             <p className="text-xs text-gray-400">
               Menampilkan {filtered.length} dari {totalSchedules} jadwal
@@ -355,107 +403,163 @@ export default function SchedulesPage() {
         </div>
       </div>
 
-      {/* --- ADD SCHEDULE MODAL --- */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-opacity">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 mx-4">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-800">Tambah Jadwal Baru</h2>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
+      {/* ==================== ADD MODAL ==================== */}
+      {isAddModalOpen && (
+        <Modal title="Tambah Jadwal Baru" onClose={() => setIsAddModalOpen(false)}>
+          <ScheduleForm
+            formData={formData}
+            setFormData={setFormData}
+            drivers={drivers}
+            vehicles={vehicles}
+            onSubmit={handleAddSubmit}
+            isSubmitting={isSubmitting}
+            formError={formError}
+            submitLabel="Simpan Jadwal"
+          />
+        </Modal>
+      )}
 
-            {formError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl font-medium">
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Supir</label>
-                <select
-                  required
-                  value={formData.driverId}
-                  onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
-                  className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <option value="" disabled>-- Pilih Supir --</option>
-                  {drivers.map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {driver.name} - {driver.licenseNumber}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Kendaraan</label>
-                <select
-                  required
-                  value={formData.vehicleId}
-                  onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
-                  className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <option value="" disabled>-- Pilih Kendaraan --</option>
-                  {vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.plateNumber} (Kap: {vehicle.capacity})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tanggal Kerja</label>
-                <input
-                  type="date"
-                  required
-                  value={formData.workDate}
-                  onChange={(e) => setFormData({ ...formData, workDate: e.target.value })}
-                  className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Shift</label>
-                <select
-                  required
-                  value={formData.shift}
-                  onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
-                  className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <option value="" disabled>-- Pilih Shift --</option>
-                  <option value="1">Shift 1 (Pagi)</option>
-                  <option value="2">Shift 2 (Siang)</option>
-                  <option value="3">Shift 3 (Malam)</option>
-                </select>
-              </div>
-
-              <div className="flex gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors text-sm"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm shadow-sm"
-                >
-                  {isSubmitting ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* ==================== EDIT MODAL ==================== */}
+      {isEditModalOpen && selectedSchedule && (
+        <Modal title="Edit Jadwal" onClose={() => { setIsEditModalOpen(false); setSelectedSchedule(null); }}>
+          <ScheduleForm
+            formData={formData}
+            setFormData={setFormData}
+            drivers={drivers}
+            vehicles={vehicles}
+            onSubmit={handleEditSubmit}
+            isSubmitting={isSubmitting}
+            formError={formError}
+            submitLabel="Simpan Perubahan"
+            isEditMode={true}
+          />
+        </Modal>
       )}
     </div>
+  );
+}
+
+// ==================== REUSABLE MODAL ====================
+function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 mx-4">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ==================== REUSABLE FORM ====================
+function ScheduleForm({
+  formData,
+  setFormData,
+  drivers,
+  vehicles,
+  onSubmit,
+  isSubmitting,
+  formError,
+  submitLabel,
+  isEditMode = false,
+}: {
+  formData: any;
+  setFormData: any;
+  drivers: Driver[];
+  vehicles: Vehicle[];
+  onSubmit: (e: React.FormEvent) => void;
+  isSubmitting: boolean;
+  formError: string | null;
+  submitLabel: string;
+  isEditMode?: boolean;
+}) {
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      {formError && (
+        <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl font-medium">
+          {formError}
+        </div>
+      )}
+
+      {!isEditMode && (
+        <>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Supir</label>
+            <select
+              required
+              value={formData.driverId}
+              onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
+              className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="" disabled>-- Pilih Supir --</option>
+              {drivers.map((driver) => (
+                <option key={driver.id} value={driver.id}>{driver.name} - {driver.licenseNumber}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Kendaraan</label>
+            <select
+              required
+              value={formData.vehicleId}
+              onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
+              className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="" disabled>-- Pilih Kendaraan --</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>{vehicle.plateNumber} (Kap: {vehicle.capacity})</option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+
+      <div>
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tanggal Kerja</label>
+        <input
+          type="date"
+          required
+          value={formData.workDate}
+          onChange={(e) => setFormData({ ...formData, workDate: e.target.value })}
+          className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Shift</label>
+        <select
+          required
+          value={formData.shift}
+          onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
+          className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          <option value="" disabled>-- Pilih Shift --</option>
+          <option value="1">Shift 1 (Pagi)</option>
+          <option value="2">Shift 2 (Siang)</option>
+          <option value="3">Shift 3 (Malam)</option>
+        </select>
+      </div>
+
+      <div className="flex gap-3 mt-8">
+        <button
+          type="button"
+          onClick={() => window.location.reload()} // simple close
+          className="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors text-sm"
+        >
+          Batal
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="flex-1 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm shadow-sm"
+        >
+          {isSubmitting ? "Menyimpan..." : submitLabel}
+        </button>
+      </div>
+    </form>
   );
 }
