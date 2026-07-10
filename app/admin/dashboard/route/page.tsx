@@ -234,7 +234,7 @@ export default function RouteDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manajemen Rute</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Kelola detail trayek langsung ke Server Titan Backend.
+            Kelola detail trayek langsung secara real-time.
           </p>
         </div>
         <button
