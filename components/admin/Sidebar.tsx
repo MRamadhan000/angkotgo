@@ -108,6 +108,32 @@ export default function Sidebar({
         </svg>
       ),
     },
+    {
+      href: "/admin/dashboard/live-route",
+      label: "Live Route",
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.553 2.724A1 1 0 0121 7.618v8.764a1 1 0 01-.553.894L15 20l-6-3z"
+          />
+          <circle cx="15" cy="9" r="2" strokeWidth={2} />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 11v4"
+          />
+        </svg>
+      ),
+    },
   ];
 
   return (
