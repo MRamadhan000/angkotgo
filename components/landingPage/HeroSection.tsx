@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { COLORS, TYPOGRAPHY } from "@/constants";
-import { FaArrowRight, FaMapMarkerAlt, FaUsers } from "react-icons/fa";
+import { FaArrowRight, FaMapMarkerAlt, FaUsers, FaCalendar } from "react-icons/fa";
 
 export default function HeroSection() {
   return (
@@ -28,10 +28,7 @@ export default function HeroSection() {
             >
               Jelajahi Kota Malang
               <br />
-              dengan{" "}
-              <span style={{ color: COLORS.primary }}>
-                AngkotGo
-              </span>
+              dengan <span style={{ color: COLORS.primary }}>AngkotGo</span>
             </h1>
 
             <p
@@ -47,32 +44,28 @@ export default function HeroSection() {
             {/* Buttons */}
             <div className="flex flex-wrap gap-4 pt-2">
               <Link
-                href="/rute"
+                href="/info-rute"
                 className="group flex items-center gap-2.5 rounded-full px-8 py-[15px] text-white transition hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   backgroundColor: COLORS.accent,
                 }}
               >
-                <span className={TYPOGRAPHY.button}>
-                  Lihat Rute
-                </span>
+                <span className={TYPOGRAPHY.button}>Lihat Rute</span>
 
                 <FaArrowRight className="transition-transform group-hover:translate-x-1" />
               </Link>
 
               <Link
-                href="/rute"
+                href="/schedule"
                 className="flex items-center gap-2.5 rounded-full border-2 bg-white/80 px-8 py-[15px] backdrop-blur transition hover:bg-white hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   borderColor: COLORS.primary,
                   color: COLORS.primary,
                 }}
               >
-                <FaMapMarkerAlt />
+                <FaCalendar />
 
-                <span className={TYPOGRAPHY.button}>
-                  Mulai Tracking
-                </span>
+                <span className={TYPOGRAPHY.button}>Lihat Jadwal</span>
               </Link>
             </div>
 
@@ -88,8 +81,8 @@ export default function HeroSection() {
                         num === 1
                           ? "#60a5fa"
                           : num === 2
-                          ? "#3b82f6"
-                          : "#1E40AF",
+                            ? "#3b82f6"
+                            : "#1E40AF",
                     }}
                   >
                     {num === 1 ? "R" : num === 2 ? "S" : "A"}
@@ -99,7 +92,6 @@ export default function HeroSection() {
 
               <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
                 <FaUsers className="text-slate-400" />
-
                 Dipercaya ribuan pengguna di Kota Malang
               </div>
             </div>
