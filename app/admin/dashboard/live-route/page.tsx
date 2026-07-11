@@ -142,7 +142,7 @@ export default function AdminTrackingPage() {
 
   // 1. Ambil daftar rute
   useEffect(() => {
-    fetch("http://localhost:3000/routes")
+    fetch("https://v1rpzn50-3000.asse.devtunnels.ms/routes")
       .then((res) => res.json())
       .then((data) => setRoutes(data))
       .catch((err) => console.error("Gagal memuat rute:", err));
@@ -154,13 +154,17 @@ export default function AdminTrackingPage() {
 
     const fetchRouteDetails = () => {
       // Stops
-      fetch(`http://localhost:3000/routes/${selectedRoute.id}/stops`)
+      fetch(
+        `https://v1rpzn50-3000.asse.devtunnels.ms/routes/${selectedRoute.id}/stops`,
+      )
         .then((res) => res.json())
         .then((data) => setStops(data))
         .catch((err) => console.error("Error fetch stops:", err));
 
       // Points (polyline)
-      fetch(`http://localhost:3000/routes/${selectedRoute.id}/points`)
+      fetch(
+        `https://v1rpzn50-3000.asse.devtunnels.ms/routes/${selectedRoute.id}/points`,
+      )
         .then((res) => res.json())
         .then((data) => setPoints(data))
         .catch((err) => console.error("Error fetch points:", err));
@@ -168,7 +172,7 @@ export default function AdminTrackingPage() {
 
     const fetchLiveSessions = () => {
       // === UPDATE: Tambah parameter direction ===
-      const url = `http://localhost:3000/live-sessions/active/by-code?code=${selectedRoute.code}&direction=${selectedRoute.direction}`;
+      const url = `https://v1rpzn50-3000.asse.devtunnels.ms/live-sessions/active/by-code?code=${selectedRoute.code}&direction=${selectedRoute.direction}`;
 
       fetch(url)
         .then((res) => res.json())
