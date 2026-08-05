@@ -31,32 +31,24 @@ export interface Driver {
   updatedAt: string | Date;
 }
 
-export interface UpdateDriverInput {
-  name?: string;
-  nik?: string;
-  email?: string;
-  phone?: string;
+export type UpdateDriverInput = Partial<
+  Omit<
+    Driver,
+    | "id"
+    | "averageRating"
+    | "totalTrips"
+    | "assignments"
+    | "createdAt"
+    | "updatedAt"
+  >
+> & {
   password?: string;
-  licenseNumber?: string;
-  licenseExpiryDate?: string;
-  address?: string | null;
-  photoUrl?: string | null;
-  isVerified?: boolean;
-  status?: DriverStatus;
-  bankAccountInfo?: {
-    bankName: string;
-    accountNumber: string;
-    accountHolderName: string;
-  } | null;
-}
+};
 
-export interface CreateDriverInput {
-  name: string;
-  nik: string;
-  email: string;
-  phone: string;
+export type CreateDriverInput = Pick<
+  Driver,
+  "name" | "nik" | "email" | "phone" | "licenseNumber" | "licenseExpiryDate"
+> & {
   password: string;
-  licenseNumber: string;
-  licenseExpiryDate: string;
   address?: string;
-}
+};
