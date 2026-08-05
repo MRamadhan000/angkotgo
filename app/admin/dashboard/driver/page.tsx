@@ -1,232 +1,127 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
+import { Driver, UpdateDriverInput } from "@/types/driver.type";
+import { useDrivers } from "@/hooks/useDrivers";
+import { EditDriverModal } from "@/components/driver/EditDriverModal";
+import {
+  FiRefreshCw,
+  FiPhone,
+  FiStar,
+  FiCheckCircle,
+  FiClock,
+  FiAlertCircle,
+  FiEdit3,
+} from "react-icons/fi";
 
-interface Driver {
-  id: number;
-  name: string;
-  phone: string;
-  licenseNumber: string;
-  status: "ACTIVE" | "INACTIVE";
+function extractDriverList(response: unknown): Driver[] {
+  if (Array.isArray(response)) return response;
+  if (response && typeof response === "object" && "data" in response) {
+    const maybeData = (response as { data: unknown }).data;
+    if (Array.isArray(maybeData)) return maybeData as Driver[];
+  }
+  return [];
 }
 
-interface Toast {
-  id: number;
-  message: string;
-  type: "success" | "error" | "info";
-}
-
-const BASE_URI = "https://v1rpzn50-3000.asse.devtunnels.ms";
+const TABLE_HEADERS = [
+  "Driver & Kontak",
+  "NIK",
+  "SIM & Expired",
+  "Alamat",
+  "Performa",
+  "Status Akun",
+  "Verifikasi",
+  "Aksi",
+];
 
 export default function DriverDashboardPage() {
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const { drivers, updateDriver, loading, error, refetch } = useDrivers();
 
-  // State untuk Tab Filter (Opsi: "ACTIVE" atau "INACTIVE")
-  const [activeTab, setActiveTab] = useState<"ACTIVE" | "INACTIVE">("ACTIVE");
+  const driverList: Driver[] = extractDriverList(drivers);
 
-  // State Modal CRUD
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingDriverId, setEditingDriverId] = useState<number | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<boolean>(true);
 
-  // State Formulir Pengemudi
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    licenseNumber: "",
-    status: "ACTIVE" as "ACTIVE" | "INACTIVE",
-  });
+  const [selectedDriverForEdit, setSelectedDriverForEdit] =
+    useState<Driver | null>(null);
 
-  const showToast = (
-    message: string,
-    type: "success" | "error" | "info" = "success",
-  ) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
-
-  // 1. GET DATA DRIVER
-  const fetchDrivers = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${BASE_URI}/drivers`, {
-        headers: {
-          "bypass-tunnel-reminder": "true",
-          "X-Tunnel-Skip-Anti-Phishing-Threshold": "true",
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDrivers(data);
-      } else {
-        console.error("Gagal load drivers, status:", res.status);
-      }
-    } catch (err) {
-      showToast("Gagal terhubung ke server backend drivers.", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDrivers();
-  }, []);
-
-  // Menyaring data pengemudi berdasarkan tab yang sedang aktif
-  const filteredDrivers = drivers.filter(
-    (driver) => driver.status === activeTab,
+  const filteredDrivers = driverList.filter(
+    (driver) => driver.isVerified === activeTab,
   );
 
-  const resetForm = () => {
-    setFormData({ name: "", phone: "", licenseNumber: "", status: "ACTIVE" });
-    setEditingDriverId(null);
+  const handleEdit = (driver: Driver) => {
+    setSelectedDriverForEdit(driver);
   };
 
-  const handleEditClick = (driver: Driver) => {
-    setEditingDriverId(driver.id);
-    setFormData({
-      name: driver.name,
-      phone: driver.phone,
-      licenseNumber: driver.licenseNumber || "",
-      status: driver.status,
-    });
-    setIsModalOpen(true);
-  };
-
-  // 2. POST / PATCH DATA DRIVER
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveEdit = async (updatedData: UpdateDriverInput) => {
+    if (!selectedDriverForEdit) return;
     try {
-      const isEditing = editingDriverId !== null;
-      const url = isEditing
-        ? `${BASE_URI}/drivers/${editingDriverId}`
-        : `${BASE_URI}/drivers`;
-      const method = isEditing ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-          "bypass-tunnel-reminder": "true",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        showToast(
-          isEditing
-            ? "Data pengemudi berhasil diperbarui!"
-            : "Pengemudi baru berhasil ditambahkan!",
-          "success",
-        );
-        setIsModalOpen(false);
-        resetForm();
-        fetchDrivers();
-      } else {
-        showToast(
-          `Gagal menyimpan data ke BE (Status: ${res.status})`,
-          "error",
-        );
-      }
+      await updateDriver(selectedDriverForEdit.id, updatedData);
+      setSelectedDriverForEdit(null);
+      refetch();
     } catch (err) {
-      showToast("Terjadi kesalahan jaringan.", "error");
-    }
-  };
-
-  // 3. DELETE DATA DRIVER
-  const executeDelete = async () => {
-    if (!deleteConfirmId) return;
-    try {
-      const res = await fetch(`${BASE_URI}/drivers/${deleteConfirmId}`, {
-        method: "DELETE",
-        headers: { "bypass-tunnel-reminder": "true" },
-      });
-      if (res.ok) {
-        showToast("Data pengemudi berhasil diproses.", "success");
-        fetchDrivers();
-      } else {
-        showToast("Gagal menghapus data di backend.", "error");
-      }
-    } catch (err) {
-      showToast("Kendala koneksi ke backend.", "error");
-    } finally {
-      setDeleteConfirmId(null);
+      console.error("Gagal mengupdate driver:", err);
     }
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6 relative">
-      {/* KUSTOM TOAST NOTIFICATION CONTAINER */}
-      <div className="fixed top-5 right-5 z-[9999] space-y-3 pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border text-sm font-semibold min-w-[280px] ${t.type === "success" ? "text-emerald-800 border-emerald-100 bg-emerald-50" : "text-rose-800 border-rose-100 bg-rose-50"}`}
-          >
-            <span>{t.type === "success" ? "✨" : "🛑"}</span>
-            <div className="flex-1">{t.message}</div>
-            <button
-              onClick={() =>
-                setToasts((prev) => prev.filter((item) => item.id !== t.id))
-              }
-              className="text-gray-400 hover:text-gray-600 ml-2"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
-
+    <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manajemen Driver</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Kelola data operasional, nomor SIM, dan status aktif driver angkot.
+            Kelola dan pantau status operasional driver AngkotGo.
           </p>
         </div>
         <button
-          onClick={() => {
-            resetForm();
-            setIsModalOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2"
+          onClick={refetch}
+          className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
         >
-          <span>+</span> Tambah Driver
+          <FiRefreshCw className="w-4 h-4" />
+          Refresh
         </button>
       </div>
 
-      {/* WIDGET SEGMENTED CONTROL / SEGMENTED TOUCH BAR */}
-      <div className="flex justify-start">
-        <div className="bg-gray-100 p-1 rounded-2xl flex gap-1 border border-gray-200/50">
-          <button
-            onClick={() => setActiveTab("ACTIVE")}
-            className={`px-5 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
-              activeTab === "ACTIVE"
-                ? "bg-gray-800 text-white shadow-sm" // Elemen terpilih menjadi gelap
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-            }`}
-          >
-            🟢 Driver Aktif (
-            {drivers.filter((d) => d.status === "ACTIVE").length})
-          </button>
-          <button
-            onClick={() => setActiveTab("INACTIVE")}
-            className={`px-5 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
-              activeTab === "INACTIVE"
-                ? "bg-gray-800 text-white shadow-sm" // Elemen terpilih menjadi gelap
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-            }`}
-          >
-            🔴 Tidak Aktif (
-            {drivers.filter((d) => d.status === "INACTIVE").length})
-          </button>
+      {/* ERROR MESSAGE */}
+      {error && (
+        <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
+          <FiAlertCircle className="w-5 h-5 shrink-0" />
+          <span>Gagal memuat data: {error}</span>
         </div>
+      )}
+
+      {/* WIDGET SEGMENTED CONTROL */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit border border-gray-200/50">
+        {[
+          {
+            label: "Terverifikasi",
+            value: true,
+            icon: FiCheckCircle,
+            count: driverList.filter((d) => d.isVerified).length,
+          },
+          {
+            label: "Belum Terverifikasi",
+            value: false,
+            icon: FiClock,
+            count: driverList.filter((d) => !d.isVerified).length,
+          },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={String(tab.value)}
+              onClick={() => setActiveTab(tab.value)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
+                activeTab === tab.value
+                  ? "bg-gray-800 text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label} ({tab.count})
+            </button>
+          );
+        })}
       </div>
 
       {/* TABLE DATA */}
@@ -235,62 +130,129 @@ export default function DriverDashboardPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <th className="py-4 px-6">Nama</th>
-                <th className="py-4 px-6">No. HP</th>
-                <th className="py-4 px-6">No. SIM</th>
-                <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6 text-center">Aksi</th>
+                {TABLE_HEADERS.map((header) => (
+                  <th key={header} className="py-4 px-6">
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
-              {loading && drivers.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-gray-400">
-                    Menghubungkan ke server driver...
+                  <td colSpan={8} className="py-12 text-center text-gray-400">
+                    <div className="flex justify-center items-center gap-2">
+                      <FiRefreshCw className="w-5 h-5 animate-spin" />
+                      <span>Memuat data driver...</span>
+                    </div>
                   </td>
                 </tr>
               ) : filteredDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-gray-400">
-                    Tidak ada data driver berstatus{" "}
-                    {activeTab === "ACTIVE" ? "Aktif" : "Tidak Aktif"}.
+                  <td colSpan={8} className="py-12 text-center text-gray-400">
+                    Tidak ada data driver untuk kategori ini.
                   </td>
                 </tr>
               ) : (
                 filteredDrivers.map((driver) => (
                   <tr
                     key={driver.id}
-                    className="hover:bg-gray-50/40 transition-colors"
+                    className="hover:bg-gray-50/40 transition-colors align-top"
                   >
-                    <td className="py-4 px-6 font-semibold text-gray-900">
-                      {driver.name}
-                    </td>
-                    <td className="py-4 px-6 text-gray-500">
-                      {driver.phone || "-"}
-                    </td>
-                    <td className="py-4 px-6 font-mono text-xs text-gray-400">
-                      {driver.licenseNumber || "-"}
-                    </td>
+                    {/* Driver & Kontak */}
                     <td className="py-4 px-6">
+                      <div className="font-semibold text-gray-900">
+                        {driver.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {driver.email}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-mono text-gray-400 mt-1">
+                        <FiPhone className="w-3 h-3" />
+                        <span>{driver.phone || "-"}</span>
+                      </div>
+                    </td>
+
+                    {/* NIK */}
+                    <td className="py-4 px-6 font-mono text-xs text-gray-600">
+                      {driver.nik || "-"}
+                    </td>
+
+                    {/* SIM & Expired */}
+                    <td className="py-4 px-6">
+                      <div className="font-mono text-xs text-gray-800 font-semibold">
+                        {driver.licenseNumber || "-"}
+                      </div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">
+                        Exp:{" "}
+                        {driver.licenseExpiryDate
+                          ? new Date(
+                              driver.licenseExpiryDate,
+                            ).toLocaleDateString("id-ID")
+                          : "-"}
+                      </div>
+                    </td>
+
+                    {/* Alamat */}
+                    <td className="py-4 px-6 text-xs text-gray-500 max-w-xs truncate">
+                      {driver.address || "-"}
+                    </td>
+
+                    {/* Performa */}
+                    <td className="py-4 px-6 text-xs text-gray-600 whitespace-nowrap">
+                      <div className="flex items-center gap-1 font-semibold text-amber-600">
+                        <FiStar className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span>{driver.averageRating ?? 0}</span>
+                      </div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">
+                        {driver.totalTrips ?? 0} total trip
+                      </div>
+                    </td>
+
+                    {/* Status Akun */}
+                    <td className="py-4 px-6 whitespace-nowrap">
                       <span
-                        className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold ${driver.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                        className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-bold ${
+                          driver.status === "ACTIVE"
+                            ? "bg-blue-50 text-blue-700"
+                            : driver.status === "OFF_DUTY"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-rose-50 text-rose-700"
+                        }`}
                       >
                         {driver.status}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-center space-x-2">
-                      <button
-                        onClick={() => handleEditClick(driver)}
-                        className="text-gray-400 hover:text-blue-600 p-1"
+
+                    {/* Verifikasi */}
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold ${
+                          driver.isVerified
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
                       >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirmId(driver.id)}
-                        className="text-gray-400 hover:text-red-600 p-1"
-                      >
-                        🗑️
-                      </button>
+                        {driver.isVerified ? (
+                          <FiCheckCircle className="w-3 h-3" />
+                        ) : (
+                          <FiClock className="w-3 h-3" />
+                        )}
+                        {driver.isVerified ? "Verified" : "Unverified"}
+                      </span>
+                    </td>
+
+                    {/* Aksi (Edit Saja) */}
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEdit(driver)}
+                          title="Edit Driver"
+                          className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                        >
+                          <FiEdit3 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -300,148 +262,13 @@ export default function DriverDashboardPage() {
         </div>
       </div>
 
-      {/* MODAL FORM TAMBAH / EDIT */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-xl border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold text-gray-900">
-                {editingDriverId ? "Edit Data Driver" : "Tambah Driver Baru"}
-              </h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
-                }}
-                className="text-gray-400 text-sm hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  Nama Lengkap *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Budi Santoso"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  No. HP / WhatsApp *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: 08123456789"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  No. SIM
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: 1234-5678-9012"
-                  value={formData.licenseNumber}
-                  onChange={(e) =>
-                    setFormData({ ...formData, licenseNumber: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  Status Driver
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as "ACTIVE" | "INACTIVE",
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="ACTIVE">ACTIVE (Aktif)</option>
-                  <option value="INACTIVE">INACTIVE (Non-Aktif)</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    resetForm();
-                  }}
-                  className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-xl border border-gray-200"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm"
-                >
-                  Simpan Data
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CONFIRM DELETE MODAL */}
-      {deleteConfirmId !== null && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 text-center space-y-4">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600 text-xl">
-              ⚠️
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Proses Data Driver?
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Tindakan ini akan mengirimkan instruksi penghapusan/penonaktifan
-                data ke server backend.
-              </p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 border rounded-xl"
-              >
-                Batal
-              </button>
-              <button
-                onClick={executeDelete}
-                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl"
-              >
-                Lanjutkan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL EDIT */}
+      <EditDriverModal
+        isOpen={Boolean(selectedDriverForEdit)}
+        driver={selectedDriverForEdit}
+        onClose={() => setSelectedDriverForEdit(null)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 }

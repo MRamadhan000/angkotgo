@@ -57,7 +57,6 @@ export interface AngkotLocationUpdatePayload {
   action: "location_update" | "vehicle_offline" | "stop_tracking" | string;
 }
 
-
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 /**
