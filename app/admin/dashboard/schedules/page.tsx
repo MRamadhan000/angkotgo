@@ -7,15 +7,17 @@ import {
   FiUser,
   FiMapPin,
   FiSearch,
-  FiFilter,
   FiArrowUp,
   FiArrowDown,
   FiNavigation,
   FiPlus,
+  FiEdit2,
+  FiTrash2,
 } from "react-icons/fi";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
 import DateDropdownModal from "@/components/schedules/DateDropdownModal";
 import CreateAssignmentModal from "@/components/schedules/CreateAssignmentModal";
+import UpdateAssignmentModal from "@/components/schedules/UpdateAssignmentModal";
 import { renderStatusBadge } from "@/components/schedules/StatusBadge";
 import { formatDateLabel } from "@/utils/format";
 import { AssignmentStatus, DirectionType } from "@/types/vehicles/vehicle.type";
@@ -24,7 +26,10 @@ import {
   getAvailableAssignmentDates,
 } from "@/utils/assignment.util";
 import ErrorAlert from "@/components/common/ErrorAlert";
-import { CreateVehicleAssignmentInput } from "@/types/vehicles/vehicle-assignments.type";
+import {
+  CreateVehicleAssignmentInput,
+  VehicleAssignment,
+} from "@/types/vehicles/vehicle-assignments.type";
 import StatusFilterButton from "@/components/schedules/StatusFilterButton";
 
 const ASSIGNMENT_STATUS_FILTERS = [
@@ -40,14 +45,26 @@ export default function OperationalBoardPage() {
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
+  // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+  const [selectedAssignment, setSelectedAssignment] =
+    useState<VehicleAssignment | null>(null);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sortField, setSortField] = useState<string>("time");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const { assignments, loading, error, fetchAssignments, createAssignment } =
-    useVehicleAssignments();
+
+  const {
+    assignments,
+    loading,
+    error,
+    fetchAssignments,
+    createAssignment,
+    updateAssignment,
+    deleteAssignment,
+  } = useVehicleAssignments();
 
   const handleRefresh = () => {
     fetchAssignments();
@@ -64,6 +81,55 @@ export default function OperationalBoardPage() {
         err?.message || "Gagal menyimpan data penugasan kendaraan.",
       );
     }
+  };
+
+  const handleUpdateAssignment = async (updatedData: any, id: string) => {
+    let numericId: number;
+    try {
+      numericId = parseInt(id, 10);
+    } catch (err) {
+      throw new Error("ID penugasan tidak valid.");
+    }
+    try {
+      await updateAssignment(numericId, updatedData);
+      fetchAssignments();
+    } catch (err: any) {
+      throw new Error(
+        err?.message || "Gagal memperbarui data penugasan kendaraan.",
+      );
+    }
+  };
+
+  const handleDeleteAssignment = async (
+    e: React.MouseEvent,
+    id: string | number,
+  ) => {
+    e.stopPropagation();
+
+    const confirmDelete = window.confirm(
+      "Apakah Anda yakin ingin menghapus penugasan ini?",
+    );
+    if (!confirmDelete) return;
+
+    let numericId: number;
+    try {
+      numericId = typeof id === "number" ? id : parseInt(id, 10);
+    } catch (err) {
+      alert("ID penugasan tidak valid.");
+      return;
+    }
+
+    try {
+      await deleteAssignment(numericId);
+      fetchAssignments();
+    } catch (err: any) {
+      alert(err?.message || "Gagal menghapus data penugasan kendaraan.");
+    }
+  };
+
+  const handleRowClick = (item: VehicleAssignment) => {
+    setSelectedAssignment(item);
+    setIsUpdateModalOpen(true);
   };
 
   const availableDates = useMemo(
@@ -110,7 +176,7 @@ export default function OperationalBoardPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Pantau status perjalanan armada secara real-time berdasarkan jadwal
-            harian dalam format tabel.
+            harian dalam format tabel. (Klik baris tabel untuk mengedit)
           </p>
         </div>
 
@@ -176,7 +242,7 @@ export default function OperationalBoardPage() {
       </div>
 
       {/* TABLE CONTAINER */}
-      <div className="bg-white border border-gray-200/80 rounded-3xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -252,19 +318,20 @@ export default function OperationalBoardPage() {
                       ))}
                   </div>
                 </th>
+                <th className="py-4 px-6 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-20 text-center text-gray-400">
+                  <td colSpan={7} className="py-20 text-center text-gray-400">
                     Memuat data operasional...
                   </td>
                 </tr>
               ) : processedAssignments.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="py-20 text-center text-gray-400 italic"
                   >
                     Tidak ada jadwal penugasan operasional yang cocok dengan
@@ -279,17 +346,19 @@ export default function OperationalBoardPage() {
                   return (
                     <tr
                       key={item.id}
-                      className="hover:bg-gray-50 transition-colors"
+                      onClick={() => handleRowClick(item)}
+                      className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                      title="Klik untuk mengedit penugasan"
                     >
                       {/* Vehicle */}
                       <td className="px-6 py-4">
                         <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-700 shrink-0">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 group-hover:bg-blue-100 group-hover:text-blue-700 text-gray-700 shrink-0 transition-colors">
                             <FiTruck className="h-5 w-5" />
                           </div>
 
                           <div className="min-w-0">
-                            <p className="font-mono font-bold text-gray-900">
+                            <p className="font-mono font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                               {item.vehicle?.vehicleCode || "UNIT-XX"}
                             </p>
 
@@ -381,6 +450,29 @@ export default function OperationalBoardPage() {
                       <td className="px-6 py-4 text-center">
                         {renderStatusBadge(item.status)}
                       </td>
+
+                      {/* Actions */}
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRowClick(item);
+                            }}
+                            className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                            title="Edit"
+                          >
+                            <FiEdit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteAssignment(e, item.id)}
+                            className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                            title="Hapus"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
@@ -395,6 +487,17 @@ export default function OperationalBoardPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={handleCreateAssignment}
+      />
+
+      {/* UPDATE ASSIGNMENT MODAL */}
+      <UpdateAssignmentModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => {
+          setIsUpdateModalOpen(false);
+          setSelectedAssignment(null);
+        }}
+        onSuccess={handleUpdateAssignment}
+        initialData={selectedAssignment}
       />
     </div>
   );

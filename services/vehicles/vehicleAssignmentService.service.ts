@@ -77,7 +77,7 @@ export const vehicleAssignmentService = {
     data: UpdateVehicleAssignmentInput,
   ): Promise<VehicleAssignment> {
     const response = await fetch(`${API_URL}/vehicle-assignments/${id}`, {
-      method: "PATCH", // Atau "PUT" tergantung implementasi di NestJS Anda
+      method: "PUT", // Atau "PATCH" tergantung implementasi di NestJS Anda
       headers: {
         "Content-Type": "application/json",
       },
