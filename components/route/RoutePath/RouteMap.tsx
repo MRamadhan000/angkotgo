@@ -7,24 +7,23 @@ import { DirectionType } from "@/types/vehicle.type";
 // Import Leaflet secara dinamis khusus client-side untuk menghindari error SSR Next.js
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
-  { ssr: false }
+  { ssr: false },
 );
 const TileLayer = dynamic(
   () => import("react-leaflet").then((mod) => mod.TileLayer),
-  { ssr: false }
+  { ssr: false },
 );
 const Polyline = dynamic(
   () => import("react-leaflet").then((mod) => mod.Polyline),
-  { ssr: false }
+  { ssr: false },
 );
 const Marker = dynamic(
   () => import("react-leaflet").then((mod) => mod.Marker),
-  { ssr: false }
+  { ssr: false },
 );
-const Popup = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Popup),
-  { ssr: false }
-);
+const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
+  ssr: false,
+});
 
 import { useMap } from "react-leaflet";
 
@@ -63,21 +62,37 @@ export default function RouteMap({ routePaths, activeTab }: RouteMapProps) {
     });
   }, []);
 
-  // Urutkan berdasarkan sequenceOrder
-  const sortedRoutePaths = [...routePaths].sort(
-    (a: any, b: any) => a.sequenceOrder - b.sequenceOrder
+  // 1. Filter data yang memiliki koordinat valid saja (tidak undefined/null/NaN)
+  const validRoutePaths = Array.isArray(routePaths)
+    ? routePaths.filter(
+        (path: any) =>
+          path &&
+          typeof path.latitude === "number" &&
+          typeof path.longitude === "number" &&
+          !isNaN(path.latitude) &&
+          !isNaN(path.longitude)
+      )
+    : [];
+
+  // 2. Urutkan berdasarkan stopOrder
+  const sortedRoutePaths = [...validRoutePaths].sort(
+    (a: any, b: any) => (a.stopOrder || 0) - (b.stopOrder || 0),
   );
+  
   const polylineCoordinates = sortedRoutePaths.map(
-    (path: any) => [path.latitude, path.longitude] as [number, number]
+    (path: any) => [path.latitude, path.longitude] as [number, number],
   );
 
   const defaultCenter: [number, number] =
-    routePaths.length > 0
-      ? [routePaths[0].latitude, routePaths[0].longitude]
+    sortedRoutePaths.length > 0
+      ? [sortedRoutePaths[0].latitude, sortedRoutePaths[0].longitude]
       : [-7.9666, 112.6326]; // Default Malang
 
   // Membuat Custom Marker Kecil dengan Nomor Sequence di dalamnya
-  const createSmallNumberedIcon = (sequence: number, direction: DirectionType) => {
+  const createSmallNumberedIcon = (
+    sequence: number,
+    direction: DirectionType,
+  ) => {
     if (!L) return undefined;
     const bgColor = direction === DirectionType.FORWARD ? "#2563eb" : "#d97706";
     return L.divIcon({
@@ -132,20 +147,26 @@ export default function RouteMap({ routePaths, activeTab }: RouteMapProps) {
           />
         )}
 
-        {routePaths.map((path: any) => {
+        {sortedRoutePaths.map((path: any, index: number) => {
           const smallIcon = createSmallNumberedIcon(
-            path.sequenceOrder,
-            path.direction
+            path.stopOrder ?? index + 1,
+            path.direction || activeTab,
           );
+          
+          const uniqueKey = path.id ? `marker-${path.id}` : `marker-index-${index}`;
+
           return (
             <Marker
-              key={path.id}
+              key={uniqueKey}
               position={[path.latitude, path.longitude]}
-              {...(smallIcon ? { icon: smallIcon } : {})}
+              icon={smallIcon}
             >
               <Popup>
                 <div className="text-xs space-y-1">
-                  <p className="font-bold">Urutan: #{path.sequenceOrder}</p>
+                  <p className="font-bold">
+                    {path.stopName || `Halte #${path.stopOrder}`}
+                  </p>
+                  <p>Urutan: #{path.stopOrder}</p>
                   <p>Arah: {path.direction}</p>
                   <p className="font-mono text-gray-500">
                     Lat: {path.latitude}, Lng: {path.longitude}
