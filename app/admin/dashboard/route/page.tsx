@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Route, UpdateRouteInput, CreateRouteInput } from "@/types/routes/route.type";
+import {
+  Route,
+  UpdateRouteInput,
+  CreateRouteInput,
+} from "@/types/routes/route.type";
 import { useRoutes } from "@/hooks/routes/useRoutes";
 import { CreateRouteModal } from "@/components/route/Route/CreateRouteModal";
 import { EditRouteModal } from "@/components/route/Route/EditRouteModal";
@@ -15,6 +19,8 @@ import {
   FiMapPin,
   FiCalendar,
   FiPlus,
+  FiNavigation,
+  FiLayers,
 } from "react-icons/fi";
 
 function extractRouteList(response: unknown): Route[] {
@@ -36,6 +42,8 @@ const TABLE_HEADERS = [
   "Kode Trayek",
   "Nama Trayek",
   "Waktu (Dibuat / Diubah)",
+  "Route Path",
+  "Route Stop",
   "Aksi",
 ];
 
@@ -143,7 +151,7 @@ export default function RoutesDashboardPage() {
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-gray-400">
+                  <td colSpan={6} className="py-12 text-center text-gray-400">
                     <div className="flex justify-center items-center gap-2">
                       <FiRefreshCw className="w-5 h-5 animate-spin" />
                       <span>Memuat data trayek...</span>
@@ -152,7 +160,7 @@ export default function RoutesDashboardPage() {
                 </tr>
               ) : routeList.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-gray-400">
+                  <td colSpan={6} className="py-12 text-center text-gray-400">
                     Tidak ada data trayek yang tersedia.
                   </td>
                 </tr>
@@ -194,16 +202,31 @@ export default function RoutesDashboardPage() {
                       </div>
                     </td>
 
-                    {/* Aksi (Detail Link via Slug/ID, Edit Modal, Delete) */}
+                    {/* Kolom Route Path (Ikon Saja) */}
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <Link
+                        href={`/admin/dashboard/route/${route.id}/points`}
+                        title="Lihat Detail Route Path"
+                        className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors inline-flex items-center justify-center"
+                      >
+                        <FiNavigation className="w-4 h-4" />
+                      </Link>
+                    </td>
+
+                    {/* Kolom Route Stop (Ikon Saja) */}
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <Link
+                        href={`/admin/dashboard/route/${route.id}/stops`}
+                        title="Lihat Detail Route Stop"
+                        className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-colors inline-flex items-center justify-center"
+                      >
+                        <FiLayers className="w-4 h-4" />
+                      </Link>
+                    </td>
+
+                    {/* Kolom Aksi (Detail Umum, Edit, Delete) */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`route/${route.id}`}
-                          title="Detail Trayek"
-                          className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors inline-flex items-center justify-center"
-                        >
-                          <FiEye className="w-4 h-4" />
-                        </Link>
                         <button
                           onClick={() => handleEdit(route)}
                           title="Edit Trayek"
