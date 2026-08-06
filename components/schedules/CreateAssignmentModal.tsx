@@ -166,16 +166,22 @@ export default function CreateAssignmentModal({
                 loading={loadingVehicles}
                 value={formData.vehicleId || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, vehicleId: Number(e.target.value) })
+                  setFormData({
+                    ...formData,
+                    vehicleId: Number(e.target.value),
+                  })
                 }
                 required
               >
                 <option value="" disabled>
-                  {loadingVehicles ? "Memuat kendaraan..." : "-- Pilih Kendaraan --"}
+                  {loadingVehicles
+                    ? "Memuat kendaraan..."
+                    : "-- Pilih Kendaraan --"}
                 </option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.vehicleCode ? `${v.vehicleCode} - ` : ""}Plat: {v.plateNumber}
+                    {v.vehicleCode ? `${v.vehicleCode} - ` : ""}Plat:{" "}
+                    {v.plateNumber}
                   </option>
                 ))}
               </FieldSelect>
@@ -241,7 +247,10 @@ export default function CreateAssignmentModal({
                 icon={FiNavigation}
                 value={formData.direction || DirectionType.FORWARD}
                 onChange={(e) =>
-                  setFormData({ ...formData, direction: e.target.value as DirectionType })
+                  setFormData({
+                    ...formData,
+                    direction: e.target.value as DirectionType,
+                  })
                 }
               >
                 <option value={DirectionType.FORWARD}>Forward (Pergi)</option>
@@ -276,7 +285,10 @@ export default function CreateAssignmentModal({
               <select
                 value={formData.status || AssignmentStatus.SCHEDULED}
                 onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value as AssignmentStatus })
+                  setFormData({
+                    ...formData,
+                    status: e.target.value as AssignmentStatus,
+                  })
                 }
                 className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer"
               >
@@ -297,7 +309,9 @@ export default function CreateAssignmentModal({
                 <input
                   type="time"
                   value={formData.startTime}
-                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, startTime: e.target.value })
+                  }
                   className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
                   required
                 />
@@ -314,7 +328,9 @@ export default function CreateAssignmentModal({
                 <input
                   type="time"
                   value={formData.endTime}
-                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, endTime: e.target.value })
+                  }
                   className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
                   required
                 />
@@ -322,25 +338,27 @@ export default function CreateAssignmentModal({
             </div>
           </div>
 
-          {/* MODAL FOOTER / ACTIONS */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-all cursor-pointer"
+              className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition-all hover:bg-red-100 active:scale-95 cursor-pointer"
             >
+              <FiX className="h-4 w-4" />
               Batal
             </button>
+
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? (
-                <FiLoader className="w-4 h-4 animate-spin" />
+                <FiLoader className="h-4 w-4 animate-spin" />
               ) : (
-                <FiCheck className="w-4 h-4" />
+                <FiCheck className="h-4 w-4" />
               )}
+
               {isSubmitting ? "Menyimpan..." : "Simpan Jadwal"}
             </button>
           </div>
