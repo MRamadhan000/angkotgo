@@ -16,6 +16,8 @@ interface RouteIntervalModalProps {
   }) => Promise<void>;
   routeStops: Array<{ id: number; stopName: string; stopOrder: number }>;
   defaultDirection: DirectionType;
+  mode: "CREATE" | "EDIT";
+  initialData?: any;
 }
 
 export default function RouteIntervalModal({
@@ -24,6 +26,8 @@ export default function RouteIntervalModal({
   onSubmit,
   routeStops,
   defaultDirection,
+  mode,
+  initialData,
 }: RouteIntervalModalProps) {
   const [fromStopId, setFromStopId] = useState<number | "">("");
   const [toStopId, setToStopId] = useState<number | "">("");
@@ -33,12 +37,19 @@ export default function RouteIntervalModal({
 
   useEffect(() => {
     if (isOpen) {
-      setFromStopId("");
-      setToStopId("");
-      setDistance("");
-      setDuration("");
+      if (mode === "EDIT" && initialData) {
+        setFromStopId(initialData.fromStopId ?? "");
+        setToStopId(initialData.toStopId ?? "");
+        setDistance(initialData.distanceInMeters ?? "");
+        setDuration(initialData.durationInSeconds ?? "");
+      } else {
+        setFromStopId("");
+        setToStopId("");
+        setDistance("");
+        setDuration("");
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, mode, initialData]);
 
   if (!isOpen) return null;
 
@@ -87,7 +98,9 @@ export default function RouteIntervalModal({
             </div>
             <div>
               <h3 className="font-bold text-gray-900 text-base">
-                Tambah Interval Antar Halte
+                {mode === "CREATE"
+                  ? "Tambah Interval Antar Halte"
+                  : "Edit Interval Antar Halte"}
               </h3>
               <p className="text-xs text-gray-400">
                 Arah:{" "}
@@ -215,7 +228,11 @@ export default function RouteIntervalModal({
                 disabled={loading}
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all disabled:opacity-50"
               >
-                {loading ? "Menyimpan..." : "Simpan Interval"}
+                {loading
+                  ? "Menyimpan..."
+                  : mode === "CREATE"
+                    ? "Simpan Interval"
+                    : "Perbarui Interval"}
               </button>
             )}
           </div>
