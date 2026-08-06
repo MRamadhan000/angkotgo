@@ -11,7 +11,7 @@ export default function Sidebar({
   onClose?: () => void;
 }) {
   const pathname = usePathname();
-const navItems = [
+  const navItems = [
     {
       href: "/admin/dashboard",
       label: "Dashboard",
@@ -109,7 +109,7 @@ const navItems = [
     },
     {
       href: "/admin/dashboard/schedules",
-      label: "Jadwal",
+      label: "Monitoring Jadwal",
       icon: (
         <svg
           className="w-5 h-5"
@@ -127,8 +127,8 @@ const navItems = [
       ),
     },
     {
-      href: "/admin/dashboard/live-route",
-      label: "Live Route",
+      href: "/admin/dashboard/assignments",
+      label: "Penugasan (Roster)",
       icon: (
         <svg
           className="w-5 h-5"
@@ -140,14 +140,7 @@ const navItems = [
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.553 2.724A1 1 0 0121 7.618v8.764a1 1 0 01-.553.894L15 20l-6-3z"
-          />
-          <circle cx="15" cy="9" r="2" strokeWidth={2} />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 11v4"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012-2m-6 9l2 2 4-4"
           />
         </svg>
       ),
