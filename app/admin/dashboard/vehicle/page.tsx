@@ -1,25 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { Vehicle, UpdateVehicleInput, VehicleType } from "@/types/vehicle.type";
+import Link from "next/link";
+import {
+  Vehicle,
+  UpdateVehicleInput,
+  CreateVehicleInput,
+  VehicleType,
+} from "@/types/vehicle.type";
 import { useVehicles } from "@/hooks/useVehicles";
 import { EditVehicleModal } from "@/components/vehicle/EditVehicleModal";
+import { CreateVehicleModal } from "@/components/vehicle/CreateVehicleModal";
 import {
   FiRefreshCw,
   FiCheckCircle,
   FiClock,
   FiAlertCircle,
+  FiEye,
   FiEdit3,
   FiTrash2,
   FiCalendar,
   FiTruck,
   FiTool,
   FiStar,
+  FiPlus,
 } from "react-icons/fi";
 
 function extractVehicleList(response: unknown): Vehicle[] {
   let rawList: any[] = [];
-  
+
   if (Array.isArray(response)) {
     rawList = response;
   } else if (response && typeof response === "object" && "data" in response) {
@@ -49,17 +58,36 @@ const TABLE_HEADERS = [
 ];
 
 export default function VehiclesDashboardPage() {
-  const { vehicles, updateVehicle, deleteVehicle, loading, error, fetchVehicles } = useVehicles();
+  const {
+    vehicles,
+    createVehicle,
+    updateVehicle,
+    deleteVehicle,
+    loading,
+    error,
+    fetchVehicles,
+  } = useVehicles();
 
   const vehicleList: Vehicle[] = extractVehicleList(vehicles);
 
   // Tab filter berdasarkan status kendaraan (ACTIVE, INACTIVE, MAINTENANCE)
   const [activeTab, setActiveTab] = useState<string>("ACTIVE");
-  const [selectedVehicleForEdit, setSelectedVehicleForEdit] = useState<Vehicle | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [selectedVehicleForEdit, setSelectedVehicleForEdit] =
+    useState<Vehicle | null>(null);
 
   const filteredVehicles = vehicleList.filter(
     (vehicle) => vehicle.status === activeTab,
   );
+
+  const handleCreate = async (data: CreateVehicleInput) => {
+    try {
+      await createVehicle(data);
+      fetchVehicles();
+    } catch (err) {
+      console.error("Gagal membuat kendaraan:", err);
+    }
+  };
 
   const handleEdit = (vehicle: Vehicle) => {
     setSelectedVehicleForEdit(vehicle);
@@ -92,18 +120,29 @@ export default function VehiclesDashboardPage() {
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manajemen Kendaraan</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Manajemen Kendaraan
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
             Kelola dan pantau seluruh informasi operasional armada AngkotGo.
           </p>
         </div>
-        <button
-          onClick={fetchVehicles}
-          className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
-        >
-          <FiRefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
+          >
+            <FiPlus className="w-4 h-4" />
+            Tambah Kendaraan
+          </button>
+          <button
+            onClick={fetchVehicles}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
+          >
+            <FiRefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ERROR MESSAGE */}
@@ -220,7 +259,9 @@ export default function VehiclesDashboardPage() {
                             : "bg-slate-100 text-slate-700"
                         }`}
                       >
-                        {vehicle.type === "PREMIUM" && <FiStar className="w-3 h-3" />}
+                        {vehicle.type === "PREMIUM" && (
+                          <FiStar className="w-3 h-3" />
+                        )}
                         {vehicle.type || "REGULER"}
                       </span>
                     </td>
@@ -231,7 +272,8 @@ export default function VehiclesDashboardPage() {
                         {vehicle.capacity ?? 0} Penumpang
                       </div>
                       <div className="text-[11px] text-gray-400 mt-0.5 font-mono">
-                        {(vehicle.currentOdometer ?? 0).toLocaleString("id-ID")} KM
+                        {(vehicle.currentOdometer ?? 0).toLocaleString("id-ID")}{" "}
+                        KM
                       </div>
                     </td>
 
@@ -252,8 +294,8 @@ export default function VehiclesDashboardPage() {
                           vehicle.status === "ACTIVE"
                             ? "bg-blue-50 text-blue-700"
                             : vehicle.status === "INACTIVE"
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-rose-50 text-rose-700"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-rose-50 text-rose-700"
                         }`}
                       >
                         {vehicle.status}
@@ -264,16 +306,31 @@ export default function VehiclesDashboardPage() {
                     <td className="py-4 px-6 text-[11px] text-gray-500 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <FiCalendar className="w-3 h-3 text-gray-400" />
-                        <span>Dibuat: {new Date(vehicle.createdAt).toLocaleDateString("id-ID")}</span>
+                        <span>
+                          Dibuat:{" "}
+                          {new Date(vehicle.createdAt).toLocaleDateString(
+                            "id-ID",
+                          )}
+                        </span>
                       </div>
                       <div className="text-gray-400 mt-0.5">
-                        Diubah: {new Date(vehicle.updatedAt).toLocaleDateString("id-ID")}
+                        Diubah:{" "}
+                        {new Date(vehicle.updatedAt).toLocaleDateString(
+                          "id-ID",
+                        )}
                       </div>
                     </td>
 
-                    {/* Aksi */}
+                    {/* Aksi (Detail Link, Edit Modal, Delete) */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-2">
+                        <Link
+                          href={`/vehicles/${vehicle.id}`}
+                          title="Detail Kendaraan"
+                          className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors inline-flex items-center justify-center"
+                        >
+                          <FiEye className="w-4 h-4" />
+                        </Link>
                         <button
                           onClick={() => handleEdit(vehicle)}
                           title="Edit Kendaraan"
@@ -297,6 +354,13 @@ export default function VehiclesDashboardPage() {
           </table>
         </div>
       </div>
+
+      {/* MODAL CREATE */}
+      <CreateVehicleModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSave={handleCreate}
+      />
 
       {/* MODAL EDIT */}
       {selectedVehicleForEdit && (
