@@ -1,326 +1,278 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
+import { Vehicle, UpdateVehicleInput } from "@/types/vehicle.type";
+import { useVehicles } from "@/hooks/useVehicles";
+import { EditVehicleModal } from "@/components/vehicle/EditVehicleModal";
+import {
+  FiRefreshCw,
+  FiCheckCircle,
+  FiClock,
+  FiAlertCircle,
+  FiEdit3,
+  FiTrash2,
+  FiCalendar,
+  FiTruck,
+  FiActivity,
+  FiTool,
+} from "react-icons/fi";
 
-interface Vehicle {
-  id: number;
-  plateNumber: string; // Menyesuaikan penamaan backend umum Andre
-  vehicleCode: string;
-  capacity: number; // Menggunakan tipe data number untuk manipulasi data aman
-  status: "ACTIVE" | "MAINTENANCE" | "INACTIVE";
+function extractVehicleList(response: unknown): Vehicle[] {
+  let rawList: any[] = [];
+  
+  if (Array.isArray(response)) {
+    rawList = response;
+  } else if (response && typeof response === "object" && "data" in response) {
+    const maybeData = (response as { data: unknown }).data;
+    if (Array.isArray(maybeData)) {
+      rawList = maybeData as Vehicle[];
+    }
+  }
+
+  return rawList.map((item) => ({
+    ...item,
+    capacity: Number(item.capacity ?? 0),
+    currentOdometer: Number(item.currentOdometer ?? 0),
+  }));
 }
 
-interface Toast {
-  id: number;
-  message: string;
-  type: "success" | "error" | "info";
-}
+const TABLE_HEADERS = [
+  "Kendaraan & Kode",
+  "Nomor Plat",
+  "Kapasitas & Odometer",
+  "Statistik & Layanan",
+  "Status Kendaraan",
+  "Waktu (Dibuat/Diubah)",
+  "Aksi",
+];
 
-const BASE_URI = "https://v1rpzn50-3000.asse.devtunnels.ms";
+export default function VehiclesDashboardPage() {
+  const { vehicles, updateVehicle, deleteVehicle, loading, error, fetchVehicles } = useVehicles();
 
-export default function VehicleDashboardPage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const vehicleList: Vehicle[] = extractVehicleList(vehicles);
 
-  // State untuk Tab Filter (3 Opsi sesuai data backend)
-  const [activeTab, setActiveTab] = useState<
-    "ACTIVE" | "MAINTENANCE" | "INACTIVE"
-  >("ACTIVE");
+  // Tab filter berdasarkan status kendaraan (ACTIVE, INACTIVE, MAINTENANCE)
+  const [activeTab, setActiveTab] = useState<string>("ACTIVE");
+  const [selectedVehicleForEdit, setSelectedVehicleForEdit] = useState<Vehicle | null>(null);
 
-  // State Modal CRUD
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingVehicleId, setEditingVehicleId] = useState<number | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const filteredVehicles = vehicleList.filter(
+    (vehicle) => vehicle.status === activeTab,
+  );
 
-  // State Formulir Kendaraan
-  const [formData, setFormData] = useState({
-    plateNumber: "",
-    vehicleCode: "",
-    capacity: 12,
-    status: "ACTIVE" as "ACTIVE" | "MAINTENANCE" | "INACTIVE",
-  });
-
-  const showToast = (
-    message: string,
-    type: "success" | "error" | "info" = "success",
-  ) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+  const handleEdit = (vehicle: Vehicle) => {
+    setSelectedVehicleForEdit(vehicle);
   };
 
-  // 1. GET DATA VEHICLES
-  const fetchVehicles = async () => {
+  const handleSaveEdit = async (updatedData: UpdateVehicleInput) => {
+    if (!selectedVehicleForEdit) return;
     try {
-      setLoading(true);
-      const res = await fetch(`${BASE_URI}/vehicles`, {
-        headers: {
-          "bypass-tunnel-reminder": "true",
-          "X-Tunnel-Skip-Anti-Phishing-Threshold": "true",
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setVehicles(data);
-      } else {
-        console.error("Gagal load kendaraan, status:", res.status);
-      }
+      await updateVehicle(selectedVehicleForEdit.id, updatedData);
+      setSelectedVehicleForEdit(null);
+      fetchVehicles();
     } catch (err) {
-      showToast("Gagal terhubung ke server backend kendaraan.", "error");
-    } finally {
-      setLoading(false);
+      console.error("Gagal mengupdate kendaraan:", err);
     }
   };
 
-  useEffect(() => {
-    fetchVehicles();
-  }, []);
-
-  // Menyaring data kendaraan berdasarkan tab yang aktif
-  const filteredVehicles = vehicles.filter((v) => v.status === activeTab);
-
-  const resetForm = () => {
-    setFormData({
-      plateNumber: "",
-      vehicleCode: "",
-      capacity: 12,
-      status: "ACTIVE",
-    });
-    setEditingVehicleId(null);
-  };
-
-  const handleEditClick = (vehicle: Vehicle) => {
-    setEditingVehicleId(vehicle.id);
-    setFormData({
-      plateNumber: vehicle.plateNumber,
-      vehicleCode: vehicle.vehicleCode,
-      capacity: vehicle.capacity,
-      status: vehicle.status,
-    });
-    setIsModalOpen(true);
-  };
-
-  // 2. POST / PATCH DATA VEHICLE
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const isEditing = editingVehicleId !== null;
-      const url = isEditing
-        ? `${BASE_URI}/vehicles/${editingVehicleId}`
-        : `${BASE_URI}/vehicles`;
-      const method = isEditing ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-          "bypass-tunnel-reminder": "true",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        showToast(
-          isEditing
-            ? "Data kendaraan berhasil diperbarui!"
-            : "Kendaraan baru berhasil ditambahkan!",
-          "success",
-        );
-        setIsModalOpen(false);
-        resetForm();
+  const handleDelete = async (id: number) => {
+    if (confirm("Apakah Anda yakin ingin menghapus kendaraan ini?")) {
+      try {
+        await deleteVehicle(id);
         fetchVehicles();
-      } else {
-        showToast(
-          `Gagal menyimpan data ke BE (Status: ${res.status})`,
-          "error",
-        );
+      } catch (err) {
+        console.error("Gagal menghapus kendaraan:", err);
       }
-    } catch (err) {
-      showToast("Terjadi kesalahan jaringan.", "error");
-    }
-  };
-
-  // 3. DELETE / DEACTIVATE DATA VEHICLE
-  const executeDelete = async () => {
-    if (!deleteConfirmId) return;
-    try {
-      const res = await fetch(`${BASE_URI}/vehicles/${deleteConfirmId}`, {
-        method: "DELETE",
-        headers: { "bypass-tunnel-reminder": "true" },
-      });
-      if (res.ok) {
-        showToast("Data kendaraan berhasil diproses (Deactivated).", "success");
-        fetchVehicles();
-      } else {
-        showToast("Gagal menonaktifkan data di backend.", "error");
-      }
-    } catch (err) {
-      showToast("Kendala koneksi ke backend.", "error");
-    } finally {
-      setDeleteConfirmId(null);
     }
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6 relative">
-      {/* TOAST NOTIFICATION CONTAINER */}
-      <div className="fixed top-5 right-5 z-[9999] space-y-3 pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border text-sm font-semibold min-w-[280px] ${t.type === "success" ? "text-emerald-800 border-emerald-100 bg-emerald-50" : "text-rose-800 border-rose-100 bg-rose-50"}`}
-          >
-            <span>{t.type === "success" ? "✨" : "🛑"}</span>
-            <div className="flex-1">{t.message}</div>
-            <button
-              onClick={() =>
-                setToasts((prev) => prev.filter((item) => item.id !== t.id))
-              }
-              className="text-gray-400 hover:text-gray-600 ml-2"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
-
+    <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Manajemen Kendaraan
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900">Manajemen Kendaraan</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Kelola armada angkot, plat nomor, kapasitas, serta status
-            operasional.
+            Kelola dan pantau seluruh informasi operasional armada AngkotGo.
           </p>
         </div>
         <button
-          onClick={() => {
-            resetForm();
-            setIsModalOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2"
+          onClick={fetchVehicles}
+          className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
         >
-          <span>+</span> Tambah Kendaraan
+          <FiRefreshCw className="w-4 h-4" />
+          Refresh
         </button>
       </div>
 
-      {/* WIDGET SEGMENTED CONTROL / THREE-ELEMENT TOUCH BAR */}
-      <div className="flex justify-start">
-        <div className="bg-gray-100 p-1 rounded-2xl flex gap-1 border border-gray-200/50">
-          <button
-            onClick={() => setActiveTab("ACTIVE")}
-            className={`px-5 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
-              activeTab === "ACTIVE"
-                ? "bg-gray-800 text-white shadow-sm"
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-            }`}
-          >
-            🟢 Siap Jalan (
-            {vehicles.filter((v) => v.status === "ACTIVE").length})
-          </button>
-          <button
-            onClick={() => setActiveTab("MAINTENANCE")}
-            className={`px-5 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
-              activeTab === "MAINTENANCE"
-                ? "bg-gray-800 text-white shadow-sm"
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-            }`}
-          >
-            <span className="text-orange-500">🛠️</span> Servis (
-            {vehicles.filter((v) => v.status === "MAINTENANCE").length})
-          </button>
-          <button
-            onClick={() => setActiveTab("INACTIVE")}
-            className={`px-5 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
-              activeTab === "INACTIVE"
-                ? "bg-gray-800 text-white shadow-sm"
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
-            }`}
-          >
-            🔴 Non-Aktif (
-            {vehicles.filter((v) => v.status === "INACTIVE").length})
-          </button>
+      {/* ERROR MESSAGE */}
+      {error && (
+        <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
+          <FiAlertCircle className="w-5 h-5 shrink-0" />
+          <span>Gagal memuat data: {error}</span>
         </div>
+      )}
+
+      {/* WIDGET SEGMENTED CONTROL */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit border border-gray-200/50">
+        {[
+          {
+            label: "Aktif",
+            value: "ACTIVE",
+            icon: FiCheckCircle,
+            count: vehicleList.filter((v) => v.status === "ACTIVE").length,
+          },
+          {
+            label: "Tidak Aktif",
+            value: "INACTIVE",
+            icon: FiClock,
+            count: vehicleList.filter((v) => v.status === "INACTIVE").length,
+          },
+          {
+            label: "Perawatan",
+            value: "MAINTENANCE",
+            icon: FiTool,
+            count: vehicleList.filter((v) => v.status === "MAINTENANCE").length,
+          },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
+                activeTab === tab.value
+                  ? "bg-gray-800 text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/60"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label} ({tab.count})
+            </button>
+          );
+        })}
       </div>
 
-      {/* TABLE DATA KENDARAAN */}
+      {/* TABLE DATA */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <th className="py-4 px-6">Plat Nomor</th>
-                <th className="py-4 px-6">Kode Kendaraan</th>
-                <th className="py-4 px-6">Kapasitas</th>
-                <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6 text-center">Aksi</th>
+                {TABLE_HEADERS.map((header) => (
+                  <th key={header} className="py-4 px-6">
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
-              {loading && vehicles.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-gray-400">
-                    Menghubungkan ke server armada...
+                  <td colSpan={7} className="py-12 text-center text-gray-400">
+                    <div className="flex justify-center items-center gap-2">
+                      <FiRefreshCw className="w-5 h-5 animate-spin" />
+                      <span>Memuat data kendaraan...</span>
+                    </div>
                   </td>
                 </tr>
               ) : filteredVehicles.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-gray-400">
-                    Tidak ada armada dengan status{" "}
-                    {activeTab === "ACTIVE"
-                      ? "Siap Jalan"
-                      : activeTab === "MAINTENANCE"
-                        ? "Servis"
-                        : "Non-Aktif"}
-                    .
+                  <td colSpan={7} className="py-12 text-center text-gray-400">
+                    Tidak ada data kendaraan untuk kategori ini.
                   </td>
                 </tr>
               ) : (
                 filteredVehicles.map((vehicle) => (
                   <tr
                     key={vehicle.id}
-                    className="hover:bg-gray-50/40 transition-colors"
+                    className="hover:bg-gray-50/40 transition-colors align-top"
                   >
-                    <td className="py-4 px-6 font-semibold text-gray-900 tracking-wide">
-                      {vehicle.plateNumber}
-                    </td>
-                    <td className="py-4 px-6 text-gray-500 font-mono text-xs">
-                      {vehicle.vehicleCode}
-                    </td>
-                    <td className="py-4 px-6 text-gray-700">
-                      {vehicle.capacity} Penumpang
-                    </td>
+                    {/* Kendaraan & Kode */}
                     <td className="py-4 px-6">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
+                          <FiTruck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900 font-mono">
+                            {vehicle.vehicleCode}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            ID: #{vehicle.id}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Nomor Plat */}
+                    <td className="py-4 px-6 font-mono text-xs font-bold text-gray-800">
+                      {vehicle.plateNumber || "-"}
+                    </td>
+
+                    {/* Kapasitas & Odometer */}
+                    <td className="py-4 px-6 text-xs text-gray-600">
+                      <div className="font-semibold text-gray-800">
+                        {vehicle.capacity ?? 0} Penumpang
+                      </div>
+                      <div className="text-[11px] text-gray-400 mt-0.5 font-mono">
+                        {(vehicle.currentOdometer ?? 0).toLocaleString("id-ID")} KM
+                      </div>
+                    </td>
+
+                    {/* Statistik & Layanan */}
+                    <td className="py-4 px-6 text-xs text-gray-600 whitespace-nowrap">
+                      <div className="font-semibold text-gray-800">
+                        {vehicle.assignments?.length ?? 0} Penugasan
+                      </div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">
+                        {vehicle.services?.length ?? 0} Riwayat Servis
+                      </div>
+                    </td>
+
+                    {/* Status Kendaraan */}
+                    <td className="py-4 px-6 whitespace-nowrap">
                       <span
-                        className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold ${
+                        className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-bold ${
                           vehicle.status === "ACTIVE"
-                            ? "bg-green-100 text-green-700"
-                            : vehicle.status === "MAINTENANCE"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-red-100 text-red-700"
+                            ? "bg-blue-50 text-blue-700"
+                            : vehicle.status === "INACTIVE"
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-rose-50 text-rose-700"
                         }`}
                       >
                         {vehicle.status}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-center space-x-2">
-                      <button
-                        onClick={() => handleEditClick(vehicle)}
-                        className="text-gray-400 hover:text-blue-600 p-1"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirmId(vehicle.id)}
-                        className="text-gray-400 hover:text-red-600 p-1"
-                      >
-                        🗑️
-                      </button>
+
+                    {/* Waktu */}
+                    <td className="py-4 px-6 text-[11px] text-gray-500 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <FiCalendar className="w-3 h-3 text-gray-400" />
+                        <span>Dibuat: {new Date(vehicle.createdAt).toLocaleDateString("id-ID")}</span>
+                      </div>
+                      <div className="text-gray-400 mt-0.5">
+                        Diubah: {new Date(vehicle.updatedAt).toLocaleDateString("id-ID")}
+                      </div>
+                    </td>
+
+                    {/* Aksi */}
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEdit(vehicle)}
+                          title="Edit Kendaraan"
+                          className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                        >
+                          <FiEdit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(vehicle.id)}
+                          title="Hapus Kendaraan"
+                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -330,165 +282,14 @@ export default function VehicleDashboardPage() {
         </div>
       </div>
 
-      {/* MODAL FORM TAMBAH / EDIT KENDARAAN */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-xl border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold text-gray-900">
-                {editingVehicleId
-                  ? "Edit Data Kendaraan"
-                  : "Tambah Kendaraan Baru"}
-              </h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
-                }}
-                className="text-gray-400 text-sm hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  Plat Nomor *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: N 1201 XA"
-                  value={formData.plateNumber}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      plateNumber: e.target.value.toUpperCase(),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 uppercase tracking-wider"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  Kode Kendaraan *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: VH001"
-                  value={formData.vehicleCode}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      vehicleCode: e.target.value.toUpperCase(),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 uppercase"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  Kapasitas (Penumpang) *
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="12"
-                  value={formData.capacity}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      capacity: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-                  Status Operasional
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as
-                        | "ACTIVE"
-                        | "MAINTENANCE"
-                        | "INACTIVE",
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="ACTIVE">ACTIVE (Siap Jalan)</option>
-                  <option value="MAINTENANCE">
-                    MAINTENANCE (Servis/Rusak)
-                  </option>
-                  <option value="INACTIVE">INACTIVE (Non-Aktif)</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    resetForm();
-                  }}
-                  className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-xl border border-gray-200"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm"
-                >
-                  Simpan Kendaraan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CONFIRM DELETE MODAL */}
-      {deleteConfirmId !== null && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 text-center space-y-4">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600 text-xl">
-              ⚠️
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Proses Penonaktifan Armada?
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Sistem akan mengirimkan perintah penonaktifan/penghapusan ke
-                endpoint DELETE backend kendaraan.
-              </p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 border rounded-xl"
-              >
-                Batal
-              </button>
-              <button
-                onClick={executeDelete}
-                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl"
-              >
-                Lanjutkan
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* MODAL EDIT */}
+      {selectedVehicleForEdit && (
+        <EditVehicleModal
+          isOpen={Boolean(selectedVehicleForEdit)}
+          vehicle={selectedVehicleForEdit}
+          onClose={() => setSelectedVehicleForEdit(null)}
+          onSave={handleSaveEdit}
+        />
       )}
     </div>
   );
