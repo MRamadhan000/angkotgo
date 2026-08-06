@@ -13,14 +13,20 @@ export function useDrivers() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDrivers = useCallback(async () => {
+const fetchDrivers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await driverService.getAllDrivers();
-      setDrivers(data);
+      const response = (await driverService.getAllDrivers()) as any;
+      
+      const driversArray = Array.isArray(response) 
+        ? response 
+        : response?.data || response?.drivers || [];
+
+      setDrivers(driversArray);
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan saat memuat data drivers");
+      setDrivers([]);
     } finally {
       setLoading(false);
     }

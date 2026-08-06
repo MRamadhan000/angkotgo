@@ -6,15 +6,16 @@ import {
   FiTruck,
   FiUser,
   FiMapPin,
-  FiAlertCircle,
   FiSearch,
   FiFilter,
   FiArrowUp,
   FiArrowDown,
   FiNavigation,
+  FiPlus,
 } from "react-icons/fi";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
 import DateDropdownModal from "@/components/schedules/DateDropdownModal";
+import CreateAssignmentModal from "@/components/schedules/CreateAssignmentModal";
 import { renderStatusBadge } from "@/components/schedules/StatusBadge";
 import { formatDateLabel } from "@/utils/format";
 import { AssignmentStatus, DirectionType } from "@/types/vehicles/vehicle.type";
@@ -22,6 +23,8 @@ import {
   filterAndSortAssignments,
   getAvailableAssignmentDates,
 } from "@/utils/assignment.util";
+import ErrorAlert from "@/components/common/ErrorAlert";
+import { CreateVehicleAssignmentInput } from "@/types/vehicles/vehicle-assignments.type";
 
 const ASSIGNMENT_STATUS_FILTERS = [
   { key: "ALL", label: "Semua" },
@@ -35,17 +38,35 @@ export default function OperationalBoardPage() {
   const todayString = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  
+  // State untuk modal Create Assignment
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sortField, setSortField] = useState<string>("time");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  const { assignments, loading, error, fetchAssignments } =
+  const { assignments, loading, error, fetchAssignments , createAssignment} =
     useVehicleAssignments();
 
   const handleRefresh = () => {
     fetchAssignments();
+  };
+
+  // Handler saat berhasil menyimpan jadwal baru dari modal
+  const handleCreateAssignment = async (newAssignmentData: CreateVehicleAssignmentInput) => {
+    try {
+      // TODO: Ganti dengan service call API create assignment Anda yang sebenarnya, contoh:
+      await createAssignment(newAssignmentData);
+      
+      console.log("Data Assignment Baru Dikirim:", newAssignmentData);
+      
+      // Refresh data tabel setelah berhasil
+      fetchAssignments();
+    } catch (err: any) {
+      throw new Error(err?.message || "Gagal menyimpan data penugasan kendaraan.");
+    }
   };
 
   const availableDates = useMemo(
@@ -96,7 +117,7 @@ export default function OperationalBoardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <DateDropdownModal
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
@@ -106,6 +127,14 @@ export default function OperationalBoardPage() {
             assignments={assignments}
             todayString={todayString}
           />
+
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+          >
+            <FiPlus className="w-4 h-4" />
+            Tambah Jadwal
+          </button>
 
           <button
             onClick={handleRefresh}
@@ -119,13 +148,7 @@ export default function OperationalBoardPage() {
         </div>
       </div>
 
-      {/* ERROR MESSAGE */}
-      {error && (
-        <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
-          <FiAlertCircle className="w-5 h-5 shrink-0" />
-          <span>Gagal memuat data: {error}</span>
-        </div>
-      )}
+      {error && <ErrorAlert message={`Gagal memuat data: ${error}`} />}
 
       {/* FILTER & SEARCH TOOLBAR */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm">
@@ -340,6 +363,13 @@ export default function OperationalBoardPage() {
           </table>
         </div>
       </div>
+
+      {/* CREATE ASSIGNMENT MODAL */}
+      <CreateAssignmentModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleCreateAssignment}
+      />
     </div>
   );
 }

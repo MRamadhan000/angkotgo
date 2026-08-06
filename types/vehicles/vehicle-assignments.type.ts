@@ -3,7 +3,6 @@ import { DirectionType, Vehicle } from "./vehicle.type";
 import { Driver } from "../driver.type";
 import { Conductor } from "../conductor.type";
 
-
 export enum AssignmentStatus {
   SCHEDULED = "SCHEDULED",
   ONGOING = "ONGOING",
