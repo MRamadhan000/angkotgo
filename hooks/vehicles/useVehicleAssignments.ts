@@ -25,7 +25,6 @@ export function useVehicleAssignments() {
     }
   }, []);
 
-  // Ambil data otomatis saat hook pertama kali dipasang (mount)
   useEffect(() => {
     fetchAssignments();
   }, [fetchAssignments]);
@@ -41,7 +40,6 @@ export function useVehicleAssignments() {
     }
   };
 
-  // Fungsi untuk memperbarui penugasan
   const updateAssignment = async (id: number, data: UpdateVehicleAssignmentInput) => {
     try {
       const updated = await vehicleAssignmentService.update(id, data);
@@ -54,7 +52,6 @@ export function useVehicleAssignments() {
     }
   };
 
-  // Fungsi untuk menghapus penugasan
   const deleteAssignment = async (id: number) => {
     try {
       await vehicleAssignmentService.remove(id);
