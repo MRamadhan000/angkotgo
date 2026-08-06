@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Route, UpdateRouteInput, CreateRouteInput } from "@/types/route.type";
-import { useRoutes } from "@/hooks/useRoutes";
-import { CreateRouteModal } from "@/components/route/CreateRouteModal";
-import { EditRouteModal } from "@/components/route/EditRouteModal";
+import { Route, UpdateRouteInput, CreateRouteInput } from "@/types/routes/route.type";
+import { useRoutes } from "@/hooks/routes/useRoutes";
+import { CreateRouteModal } from "@/components/route/Route/CreateRouteModal";
+import { EditRouteModal } from "@/components/route/Route/EditRouteModal";
 import {
   FiRefreshCw,
   FiAlertCircle,
@@ -198,7 +198,7 @@ export default function RoutesDashboardPage() {
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Link
-                          href={`/routes/${route.id}`}
+                          href={`route/${route.id}`}
                           title="Detail Trayek"
                           className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors inline-flex items-center justify-center"
                         >

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Route, CreateRouteInput, UpdateRouteInput } from "@/types/route.type";
-import { RouteService } from "@/services/route.service";
+import { Route, CreateRouteInput, UpdateRouteInput } from "@/types/routes/route.type";
+import { RouteService } from "@/services/routes/route.service";
 
 export function useRoutes() {
   const [routes, setRoutes] = useState<Route[]>([]);
