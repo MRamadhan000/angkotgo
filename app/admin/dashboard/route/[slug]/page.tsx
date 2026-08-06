@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { CreateRoutePathInput } from "@/types/routes/route-path.type";
 import { DirectionType } from "@/types/vehicle.type";
 import { useRoutePaths } from "@/hooks/routes/useRoutePath";
@@ -16,16 +17,58 @@ import {
   FiCompass,
   FiArrowRightCircle,
   FiArrowLeftCircle,
-  FiClock,
+  FiChevronRight,
+  FiHome,
 } from "react-icons/fi";
 import RoutePathModal from "@/components/route/RoutePath/RoutePathModal";
 
+// Import Leaflet secara dinamis khusus client-side untuk menghindari error SSR Next.js
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.MapContainer),
+  { ssr: false },
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.TileLayer),
+  { ssr: false },
+);
+const Polyline = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Polyline),
+  { ssr: false },
+);
+const Marker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Marker),
+  { ssr: false },
+);
+const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
+  ssr: false,
+});
+
+// Komponen tambahan untuk mengatur animasi/fokus center dan auto zoom peta secara dinamis
+import { useMap } from "react-leaflet";
+function MapController({ coordinates }: { coordinates: [number, number][] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (coordinates.length > 0) {
+      if (coordinates.length === 1) {
+        // Jika hanya ada 1 titik, langsung set view ke titik tersebut dengan zoom 15
+        map.setView(coordinates[0], 15, { animate: true });
+      } else {
+        // Jika ada banyak titik, otomatis fit bounds agar semua titik masuk ke dalam frame peta
+        map.fitBounds(coordinates, {
+          padding: [50, 50], // Memberikan jarak/margin pinggir dalam piksel agar marker tidak mepet tepi peta
+          animate: true,
+          maxZoom: 16, // Batas maksimal zoom agar tidak terlalu dekat jika titiknya saling berdekatan
+        });
+      }
+    }
+  }, [coordinates, map]);
+  return null;
+}
+
 const TABLE_HEADERS = [
   "ID & Urutan",
-  "Route ID",
   "Arah (Direction)",
   "Koordinat (Latitude, Longitude)",
-  "Waktu (Created / Updated)",
   "Aksi",
 ];
 
@@ -37,11 +80,11 @@ interface PageProps {
 
 export default function RoutePathsBySlugPage({ params }: PageProps) {
   const resolvedParams = use(params);
-  
-  const rawSlug = Array.isArray(resolvedParams.slug) 
-    ? resolvedParams.slug[resolvedParams.slug.length - 1] 
+
+  const rawSlug = Array.isArray(resolvedParams.slug)
+    ? resolvedParams.slug[resolvedParams.slug.length - 1]
     : resolvedParams.slug;
-    
+
   const routeIdNum = rawSlug ? Number(rawSlug) : NaN;
 
   const [activeTab, setActiveTab] = useState<DirectionType>(
@@ -51,6 +94,16 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [selectedPathData, setSelectedPathData] = useState<any>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [L, setL] = useState<any>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+    // Import leaflet secara dinamis untuk kustomisasi DivIcon marker
+    import("leaflet").then((leaflet) => {
+      setL(leaflet);
+    });
+  }, []);
 
   const forwardHook = useRoutePaths();
   const returnHook = useRoutePaths();
@@ -68,8 +121,14 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
 
   const currentHook =
     activeTab === DirectionType.FORWARD ? forwardHook : returnHook;
-  const { routePaths, loading, error, createRoutePath, updateRoutePath, deleteRoutePath } =
-    currentHook;
+  const {
+    routePaths,
+    loading,
+    error,
+    createRoutePath,
+    updateRoutePath,
+    deleteRoutePath,
+  } = currentHook;
 
   const handleOpenCreateModal = () => {
     setModalMode("CREATE");
@@ -126,11 +185,44 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleString("id-ID", {
-      dateStyle: "medium",
-      timeStyle: "short",
+  // Persiapan koordinat untuk polyline & center peta
+  const sortedRoutePaths = [...routePaths].sort(
+    (a: any, b: any) => a.sequenceOrder - b.sequenceOrder,
+  );
+  const polylineCoordinates = sortedRoutePaths.map(
+    (path: any) => [path.latitude, path.longitude] as [number, number],
+  );
+
+  const defaultCenter: [number, number] =
+    routePaths.length > 0
+      ? [routePaths[0].latitude, routePaths[0].longitude]
+      : [-7.9666, 112.6326]; // Default Malang
+
+  // Membuat Custom Marker Kecil dengan Nomor Sequence di dalamnya
+  const createSmallNumberedIcon = (
+    sequence: number,
+    direction: DirectionType,
+  ) => {
+    if (!L) return undefined;
+    const bgColor = direction === DirectionType.FORWARD ? "#2563eb" : "#d97706";
+    return L.divIcon({
+      className: "custom-small-marker",
+      html: `<div style="
+        background-color: ${bgColor};
+        color: white;
+        border: 1.5px solid white;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: bold;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      ">${sequence}</div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
     });
   };
 
@@ -139,7 +231,10 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
       <div className="p-6 max-w-[1700px] mx-auto space-y-6">
         <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
           <FiAlertCircle className="w-5 h-5 shrink-0" />
-          <span>Slug / Route ID pada URL tidak valid ({String(rawSlug)}). Pastikan folder dinamis dinamai <code>[slug]</code>.</span>
+          <span>
+            Slug / Route ID pada URL tidak valid ({String(rawSlug)}). Pastikan
+            folder dinamis dinamai <code>[slug]</code>.
+          </span>
         </div>
       </div>
     );
@@ -147,6 +242,25 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
 
   return (
     <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
+      {/* BREADCRUMB NAVIGATION */}
+      <nav className="flex items-center text-sm font-medium text-gray-500 space-x-2">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+        >
+          <FiHome className="w-4 h-4" />
+          <span>Dashboard</span>
+        </Link>
+        <FiChevronRight className="w-4 h-4 text-gray-400" />
+        <Link href="/routes" className="hover:text-blue-600 transition-colors">
+          Daftar Trayek (Routes)
+        </Link>
+        <FiChevronRight className="w-4 h-4 text-gray-400" />
+        <span className="text-gray-900 font-semibold">
+          Route Path #{routeIdNum}
+        </span>
+      </nav>
+
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
@@ -155,7 +269,8 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Kelola titik koordinat jalur untuk Route ID{" "}
-            <span className="font-semibold text-gray-800">{routeIdNum}</span> (Slug: {rawSlug}).
+            <span className="font-semibold text-gray-800">{routeIdNum}</span>{" "}
+            (Slug: {rawSlug}).
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -218,6 +333,71 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
         })}
       </div>
 
+      {/* VISUALISASI PETA LEAFLET (Dengan Auto Center & Auto Zoom / Fit Bounds) */}
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4">
+        <div className="mb-3 flex justify-between items-center px-2">
+          <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+            <FiMapPin className="w-4 h-4 text-blue-600" />
+            Visualisasi Peta Jalur ({activeTab})
+          </h2>
+          <span className="text-xs text-gray-400 font-mono">
+            Total Titik: {routePaths.length}
+          </span>
+        </div>
+        <div className="w-full h-[400px] rounded-2xl overflow-hidden border border-gray-100 z-0 relative">
+          {isMounted && L && (
+            <MapContainer
+              center={defaultCenter}
+              zoom={13}
+              style={{ width: "100%", height: "100%" }}
+              scrollWheelZoom={false}
+            >
+              {/* Controller otomatis center & zoom berdasarkan koordinat titik jalur */}
+              <MapController coordinates={polylineCoordinates} />
+
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {polylineCoordinates.length > 0 && (
+                <Polyline
+                  positions={polylineCoordinates}
+                  color={
+                    activeTab === DirectionType.FORWARD ? "#2563eb" : "#d97706"
+                  }
+                  weight={3}
+                />
+              )}
+              {routePaths.map((path: any) => {
+                const smallIcon = createSmallNumberedIcon(
+                  path.sequenceOrder,
+                  path.direction,
+                );
+                return (
+                  <Marker
+                    key={path.id}
+                    position={[path.latitude, path.longitude]}
+                    {...(smallIcon ? { icon: smallIcon } : {})}
+                  >
+                    <Popup>
+                      <div className="text-xs space-y-1">
+                        <p className="font-bold">
+                          Urutan: #{path.sequenceOrder}
+                        </p>
+                        <p>Arah: {path.direction}</p>
+                        <p className="font-mono text-gray-500">
+                          Lat: {path.latitude}, Lng: {path.longitude}
+                        </p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+          )}
+        </div>
+      </div>
+
       {/* TABLE DATA */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -234,7 +414,7 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-400">
+                  <td colSpan={4} className="py-12 text-center text-gray-400">
                     <div className="flex justify-center items-center gap-2">
                       <FiRefreshCw className="w-5 h-5 animate-spin" />
                       <span>Memuat data jalur trayek {activeTab}...</span>
@@ -243,7 +423,7 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
                 </tr>
               ) : routePaths.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-400">
+                  <td colSpan={4} className="py-12 text-center text-gray-400">
                     Tidak ada data jalur trayek untuk arah{" "}
                     <span className="font-bold">{activeTab}</span> pada Route ID{" "}
                     {routeIdNum}.
@@ -272,11 +452,6 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
                       </div>
                     </td>
 
-                    {/* Route ID */}
-                    <td className="py-4 px-6 font-mono text-xs font-bold text-gray-800">
-                      Route #{path.routeId}
-                    </td>
-
                     {/* Direction */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span
@@ -296,18 +471,6 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
                       <div>Lat: {path.latitude}</div>
                       <div className="text-gray-400 mt-0.5">
                         Lng: {path.longitude}
-                      </div>
-                    </td>
-
-                    {/* Created At & Updated At */}
-                    <td className="py-4 px-6 text-xs text-gray-600">
-                      <div className="flex items-center gap-1.5 text-gray-700">
-                        <FiClock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                        <span><strong>Dibuat:</strong> {formatDate(path.createdAt || path.created_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-gray-500 mt-1">
-                        <FiRefreshCw className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span><strong>Diubah:</strong> {formatDate(path.updatedAt || path.updated_at)}</span>
                       </div>
                     </td>
 
