@@ -4,6 +4,11 @@ export enum VehicleStatus {
   MAINTENANCE = 'MAINTENANCE',
 }
 
+export enum VehicleType {
+  PREMIUM = 'PREMIUM',
+  REGULER = 'REGULER',
+}
+
 export enum AssignmentStatus {
   SCHEDULED = 'SCHEDULED',
   ONGOING = 'ONGOING',
@@ -39,6 +44,7 @@ export interface Vehicle {
   capacity: number;
   currentOdometer: number;
   status: VehicleStatus;
+  type: VehicleType;
   assignments?: VehicleAssignment[];
   services?: VehicleService[];
   createdAt: string | Date;
@@ -51,6 +57,7 @@ export type CreateVehicleInput = {
   capacity?: number;
   currentOdometer?: number;
   status?: VehicleStatus;
+  type?: VehicleType;
   assignments?: any[];
   services?: any[];
 };

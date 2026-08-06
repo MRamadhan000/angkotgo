@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Vehicle, UpdateVehicleInput, VehicleStatus } from "@/types/vehicle.type";
+import { Vehicle, UpdateVehicleInput, VehicleStatus, VehicleType } from "@/types/vehicle.type";
 import { FiX, FiSave } from "react-icons/fi";
 
 interface EditVehicleModalProps {
@@ -23,6 +23,7 @@ export function EditVehicleModal({
     capacity: 0,
     currentOdometer: 0,
     status: VehicleStatus.ACTIVE,
+    type: VehicleType.REGULER,
   });
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export function EditVehicleModal({
         capacity: vehicle.capacity ?? 0,
         currentOdometer: vehicle.currentOdometer ?? 0,
         status: vehicle.status || VehicleStatus.ACTIVE,
+        type: vehicle.type || VehicleType.REGULER,
       });
     }
   }, [vehicle]);
@@ -52,6 +54,7 @@ export function EditVehicleModal({
       capacity: Number(form.capacity),
       currentOdometer: Number(form.currentOdometer),
       status: form.status,
+      type: form.type,
     };
 
     onSave(updatedData);
@@ -129,21 +132,41 @@ export function EditVehicleModal({
             ))}
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
-              Status Kendaraan
-            </label>
-            <select
-              value={form.status}
-              onChange={(e) =>
-                handleChange("status", e.target.value as VehicleStatus)
-              }
-              className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white"
-            >
-              <option value={VehicleStatus.ACTIVE}>ACTIVE</option>
-              <option value={VehicleStatus.INACTIVE}>INACTIVE</option>
-              <option value={VehicleStatus.MAINTENANCE}>MAINTENANCE</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Field Tipe Kendaraan */}
+            <div>
+              <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                Tipe Kendaraan
+              </label>
+              <select
+                value={form.type}
+                onChange={(e) =>
+                  handleChange("type", e.target.value as VehicleType)
+                }
+                className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white"
+              >
+                <option value={VehicleType.REGULER}>REGULER</option>
+                <option value={VehicleType.PREMIUM}>PREMIUM</option>
+              </select>
+            </div>
+
+            {/* Field Status Kendaraan */}
+            <div>
+              <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                Status Kendaraan
+              </label>
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  handleChange("status", e.target.value as VehicleStatus)
+                }
+                className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-800 bg-white"
+              >
+                <option value={VehicleStatus.ACTIVE}>ACTIVE</option>
+                <option value={VehicleStatus.INACTIVE}>INACTIVE</option>
+                <option value={VehicleStatus.MAINTENANCE}>MAINTENANCE</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

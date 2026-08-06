@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Vehicle, UpdateVehicleInput } from "@/types/vehicle.type";
+import { Vehicle, UpdateVehicleInput, VehicleType } from "@/types/vehicle.type";
 import { useVehicles } from "@/hooks/useVehicles";
 import { EditVehicleModal } from "@/components/vehicle/EditVehicleModal";
 import {
@@ -13,8 +13,8 @@ import {
   FiTrash2,
   FiCalendar,
   FiTruck,
-  FiActivity,
   FiTool,
+  FiStar,
 } from "react-icons/fi";
 
 function extractVehicleList(response: unknown): Vehicle[] {
@@ -33,12 +33,14 @@ function extractVehicleList(response: unknown): Vehicle[] {
     ...item,
     capacity: Number(item.capacity ?? 0),
     currentOdometer: Number(item.currentOdometer ?? 0),
+    type: item.type ?? VehicleType.REGULER,
   }));
 }
 
 const TABLE_HEADERS = [
   "Kendaraan & Kode",
   "Nomor Plat",
+  "Tipe",
   "Kapasitas & Odometer",
   "Statistik & Layanan",
   "Status Kendaraan",
@@ -168,7 +170,7 @@ export default function VehiclesDashboardPage() {
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-400">
+                  <td colSpan={8} className="py-12 text-center text-gray-400">
                     <div className="flex justify-center items-center gap-2">
                       <FiRefreshCw className="w-5 h-5 animate-spin" />
                       <span>Memuat data kendaraan...</span>
@@ -177,7 +179,7 @@ export default function VehiclesDashboardPage() {
                 </tr>
               ) : filteredVehicles.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-400">
+                  <td colSpan={8} className="py-12 text-center text-gray-400">
                     Tidak ada data kendaraan untuk kategori ini.
                   </td>
                 </tr>
@@ -207,6 +209,20 @@ export default function VehiclesDashboardPage() {
                     {/* Nomor Plat */}
                     <td className="py-4 px-6 font-mono text-xs font-bold text-gray-800">
                       {vehicle.plateNumber || "-"}
+                    </td>
+
+                    {/* Tipe Kendaraan (PREMIUM / REGULER) */}
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold ${
+                          vehicle.type === "PREMIUM"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {vehicle.type === "PREMIUM" && <FiStar className="w-3 h-3" />}
+                        {vehicle.type || "REGULER"}
+                      </span>
                     </td>
 
                     {/* Kapasitas & Odometer */}
