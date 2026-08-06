@@ -5,8 +5,23 @@ import {
   Vehicle,
   CreateVehicleInput,
   UpdateVehicleInput,
-} from "@/types/vehicle.type";
-import { vehicleService } from "@/services/vehicle.service";
+} from "@/types/vehicles/vehicle.type";
+import { vehicleService } from "@/services/vehicles/vehicle.service";
+
+function extractVehicleList(response: unknown): Vehicle[] {
+  let rawList: any[] = [];
+
+  if (Array.isArray(response)) {
+    rawList = response;
+  } else if (response && typeof response === "object" && "data" in response) {
+    const maybeData = (response as { data: unknown }).data;
+    if (Array.isArray(maybeData)) {
+      rawList = maybeData as Vehicle[];
+    }
+  }
+
+  return rawList;
+}
 
 export function useVehicles() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -17,10 +32,12 @@ export function useVehicles() {
     setLoading(true);
     setError(null);
     try {
-      const data = await vehicleService.getAllVehicles();
+      const response = await vehicleService.getAllVehicles();
+      const data = extractVehicleList(response);
       setVehicles(data);
     } catch (err: any) {
       setError(err.message || "Gagal memuat data kendaraan");
+      setVehicles([]); // Fallback ke array kosong jika terjadi error
     } finally {
       setLoading(false);
     }
@@ -32,7 +49,13 @@ export function useVehicles() {
 
   const createVehicle = async (data: CreateVehicleInput) => {
     try {
-      const newVehicle = await vehicleService.createVehicle(data);
+      const response = await vehicleService.createVehicle(data);
+      // Menangani jika response create terbungkus dalam object { data: ... }
+      const newVehicle =
+        response && typeof response === "object" && "data" in response
+          ? (response as { data: Vehicle }).data
+          : (response as Vehicle);
+
       setVehicles((prev) => [newVehicle, ...prev]);
       return newVehicle;
     } catch (err: any) {
@@ -45,7 +68,12 @@ export function useVehicles() {
     data: UpdateVehicleInput,
   ) => {
     try {
-      const updated = await vehicleService.updateVehicle(id, data);
+      const response = await vehicleService.updateVehicle(id, data);
+      const updated =
+        response && typeof response === "object" && "data" in response
+          ? (response as { data: Vehicle }).data
+          : (response as Vehicle);
+
       setVehicles((prev) =>
         prev.map((item) => (item.id === Number(id) ? updated : item)),
       );

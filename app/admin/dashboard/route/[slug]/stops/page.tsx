@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { CreateRouteStopInput } from "@/types/routes/route-stop.type";
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 import { useRouteStops } from "@/hooks/routes/useRouteStops";
 import {
   FiRefreshCw,

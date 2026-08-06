@@ -7,8 +7,8 @@ import {
   UpdateVehicleInput,
   CreateVehicleInput,
   VehicleType,
-} from "@/types/vehicle.type";
-import { useVehicles } from "@/hooks/useVehicles";
+} from "@/types/vehicles/vehicle.type";
+import { useVehicles } from "@/hooks/vehicles/useVehicles";
 import { EditVehicleModal } from "@/components/vehicle/EditVehicleModal";
 import { CreateVehicleModal } from "@/components/vehicle/CreateVehicleModal";
 import {

@@ -4,7 +4,7 @@ import {
   CreateRouteStopInput,
   UpdateRouteStopInput,
 } from "@/types/routes/route-stop.type";
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 

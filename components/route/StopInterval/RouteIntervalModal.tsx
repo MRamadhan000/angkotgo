@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FiX, FiClock, FiMapPin, FiNavigation } from "react-icons/fi";
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 
 interface RouteIntervalModalProps {
   isOpen: boolean;

@@ -6,7 +6,7 @@ import {
   CreateStopIntervalInput, 
   UpdateStopIntervalInput 
 } from "@/types/routes/stop-interval.type";
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 import { stopIntervalService } from "@/services/routes/interval-stop.service";
 
 interface UseStopIntervalsProps {
