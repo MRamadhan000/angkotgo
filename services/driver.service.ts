@@ -1,3 +1,4 @@
+import { LoginDriverData } from "@/types/auth/auth-driver.type";
 import {
   Driver,
   CreateDriverInput,
@@ -7,6 +8,28 @@ import {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const driverService = {
+  async login(payload: Driver): Promise<Driver> {
+    const response = await fetch(`${API_BASE_URL}/drivers/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        Array.isArray(errorData.message)
+          ? errorData.message[0]
+          : errorData.message ||
+              "Gagal login, periksa kembali email dan password.",
+      );
+    }
+
+    return response.json();
+  },
+
   async getAllDrivers(): Promise<Driver[]> {
     console.log("API_BASE_URL:", API_BASE_URL); // Debugging line
     const response = await fetch(`${API_BASE_URL}/drivers`, {
@@ -63,10 +86,7 @@ export const driverService = {
     return response.json();
   },
 
-  async loginDriver(credentials: {
-    email: string;
-    password: string;
-  }): Promise<any> {
+  async loginDriver(credentials: LoginDriverData): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/drivers/login`, {
       method: "POST",
       headers: {

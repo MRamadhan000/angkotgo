@@ -19,7 +19,7 @@ import {
 } from "react-icons/fi";
 import RoutePathModal from "@/components/route/RoutePath/RoutePathModal";
 import RouteMap from "@/components/route/RoutePath/RouteMap";
-import Breadcrumb from "@/components/Breadcrumb";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 const TABLE_HEADERS = [
   "ID & Urutan",
