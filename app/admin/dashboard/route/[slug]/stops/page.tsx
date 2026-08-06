@@ -22,6 +22,7 @@ import RouteStopModal from "@/components/route/RouteStop/RouteStopModal";
 import RouteMap from "@/components/route/RoutePath/RouteMap";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useStopIntervals } from "@/hooks/routes/useStopIntervals";
+import RouteIntervalModal from "@/components/route/StopInterval/RouteIntervalModal";
 
 const TABLE_HEADERS = [
   "Urutan & Halte",
@@ -60,6 +61,11 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [selectedStopData, setSelectedStopData] = useState<any>(null);
+
+  // State Modal Stop Interval
+  const [isIntervalModalOpen, setIsIntervalModalOpen] = useState(false);
+  const [intervalModalMode, setIntervalModalMode] = useState<"CREATE" | "EDIT">("CREATE");
+  const [selectedIntervalData, setSelectedIntervalData] = useState<any>(null);
 
   // Hook Route Stops
   const forwardHook = useRouteStops();
@@ -108,6 +114,7 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
     loading: intervalLoading,
     error: intervalError,
     createInterval,
+    updateInterval,
     deleteInterval,
   } = currentIntervalHook;
 
@@ -169,34 +176,53 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
     }
   };
 
-  // Handler Stop Interval
+  // Handler Stop Interval Modal
   const handleOpenCreateIntervalModal = () => {
     if (routeStops.length < 2) {
       alert("Minimal harus ada 2 halte terdaftar untuk membuat interval jarak & durasi!");
       return;
     }
+    setIntervalModalMode("CREATE");
+    setSelectedIntervalData(null);
+    setIsIntervalModalOpen(true);
+  };
 
-    const fromStopIdStr = prompt("Masukkan ID Halte Asal (From Stop ID):");
-    const toStopIdStr = prompt("Masukkan ID Halte Tujuan (To Stop ID):");
-    const distanceStr = prompt("Masukkan Jarak dalam Meter (misal: 1500):");
-    const durationStr = prompt("Masukkan Durasi dalam Detik (misal: 300):");
+  const handleOpenEditIntervalModal = (intervalItem: any) => {
+    setIntervalModalMode("EDIT");
+    setSelectedIntervalData(intervalItem);
+    setIsIntervalModalOpen(true);
+  };
 
-    if (!fromStopIdStr || !toStopIdStr || !distanceStr || !durationStr) return;
-
-    createInterval({
-      routeId: routeIdNum,
-      direction: activeTab,
-      fromStopId: Number(fromStopIdStr),
-      toStopId: Number(toStopIdStr),
-      distanceInMeters: Number(distanceStr),
-      durationInSeconds: Number(durationStr),
-    }).then((res: any) => {
-      if (res?.success) {
-        currentIntervalHook.refetch();
+  const handleIntervalModalSubmit = async (data: {
+    fromStopId: number;
+    toStopId: number;
+    distanceInMeters: number;
+    durationInSeconds: number;
+    direction: DirectionType;
+  }) => {
+    let res: any;
+    if (intervalModalMode === "CREATE") {
+      res = await createInterval({
+        routeId: routeIdNum,
+        ...data,
+      });
+    } else if (intervalModalMode === "EDIT" && selectedIntervalData) {
+      if (updateInterval) {
+        res = await updateInterval(selectedIntervalData.id, {
+          routeId: routeIdNum,
+          ...data,
+        });
       } else {
-        alert(res?.message || "Gagal membuat interval.");
+        alert("Fungsi updateInterval belum tersedia pada hook.");
+        return;
       }
-    });
+    }
+
+    if (res?.success !== false) {
+      currentIntervalHook.refetch();
+    } else {
+      alert(res?.message || "Gagal menyimpan interval.");
+    }
   };
 
   const handleDeleteInterval = async (id: number) => {
@@ -518,6 +544,13 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <button
+                            onClick={() => handleOpenEditIntervalModal(item)}
+                            title="Edit Interval"
+                            className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                          >
+                            <FiEdit3 className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleDeleteInterval(item.id)}
                             title="Hapus Interval"
                             className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
@@ -544,6 +577,17 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
         mode={modalMode}
         routeId={routeIdNum}
         defaultDirection={activeTab}
+      />
+
+      {/* MODAL COMPONENT ROUTE INTERVAL */}
+      <RouteIntervalModal
+        isOpen={isIntervalModalOpen}
+        onClose={() => setIsIntervalModalOpen(false)}
+        onSubmit={handleIntervalModalSubmit}
+        routeStops={routeStops}
+        defaultDirection={activeTab}
+        mode={intervalModalMode}
+        initialData={selectedIntervalData}
       />
     </div>
   );
