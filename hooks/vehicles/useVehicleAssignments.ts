@@ -1,17 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
-import { 
-  VehicleAssignment, 
-  CreateVehicleAssignmentInput, 
-  UpdateVehicleAssignmentInput 
+import {
+  VehicleAssignment,
+  CreateVehicleAssignmentInput,
+  UpdateVehicleAssignmentInput,
 } from "@/types/vehicles/vehicle-assignments.type";
 import { vehicleAssignmentService } from "@/services/vehicles/vehicleAssignmentService.service";
+import { VehicleSchedule } from "@/types/vehicles/vehicle-schedule.type";
 
 export function useVehicleAssignments() {
   const [assignments, setAssignments] = useState<VehicleAssignment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fungsi untuk mengambil semua data penugasan
+  const [schedules, setSchedules] = useState<VehicleSchedule[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState<boolean>(false);
+  const [schedulesError, setSchedulesError] = useState<string | null>(null);
+
   const fetchAssignments = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -29,7 +33,26 @@ export function useVehicleAssignments() {
     fetchAssignments();
   }, [fetchAssignments]);
 
-  // Fungsi untuk membuat penugasan baru
+  const fetchSchedulesByDate = useCallback(async (dateString: string) => {
+    if (!dateString) return;
+
+    setSchedulesLoading(true);
+    setSchedulesError(null);
+    try {
+      const data =
+        await vehicleAssignmentService.getSchedulesByDate(dateString);
+      setSchedules(data);
+    } catch (err: any) {
+      setSchedulesError(
+        err.message ||
+          "Terjadi kesalahan saat memuat jadwal dan estimasi halte.",
+      );
+      setSchedules([]);
+    } finally {
+      setSchedulesLoading(false);
+    }
+  }, []);
+
   const createAssignment = async (data: CreateVehicleAssignmentInput) => {
     try {
       const newAssignment = await vehicleAssignmentService.create(data);
@@ -40,11 +63,14 @@ export function useVehicleAssignments() {
     }
   };
 
-  const updateAssignment = async (id: number, data: UpdateVehicleAssignmentInput) => {
+  const updateAssignment = async (
+    id: number,
+    data: UpdateVehicleAssignmentInput,
+  ) => {
     try {
       const updated = await vehicleAssignmentService.update(id, data);
       setAssignments((prev) =>
-        prev.map((item) => (item.id === id ? updated : item))
+        prev.map((item) => (item.id === id ? updated : item)),
       );
       return updated;
     } catch (err: any) {
@@ -69,5 +95,10 @@ export function useVehicleAssignments() {
     createAssignment,
     updateAssignment,
     deleteAssignment,
+
+    schedules,
+    schedulesLoading,
+    schedulesError,
+    fetchSchedulesByDate,
   };
 }
