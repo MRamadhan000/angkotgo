@@ -20,7 +20,7 @@ import {
 } from "react-icons/fi";
 import RouteStopModal from "@/components/route/RouteStop/RouteStopModal";
 import RouteMap from "@/components/route/RoutePath/RouteMap";
-import Breadcrumb from "@/components/Breadcrumb";
+import Breadcrumb from "@/components/common/Breadcrumb";
 import { useStopIntervals } from "@/hooks/routes/useStopIntervals";
 import RouteIntervalModal from "@/components/route/StopInterval/RouteIntervalModal";
 
