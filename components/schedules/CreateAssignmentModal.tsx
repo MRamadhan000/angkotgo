@@ -11,6 +11,7 @@ import {
   FiCalendar,
   FiClock,
   FiNavigation,
+  FiLoader,
 } from "react-icons/fi";
 import { DirectionType, AssignmentStatus } from "@/types/vehicles/vehicle.type";
 import { useVehicles } from "@/hooks/vehicles/useVehicles";
@@ -22,6 +23,33 @@ interface CreateAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (data: CreateVehicleAssignmentInput) => Promise<void> | void;
+}
+
+// Select dengan ikon kiri dan indikator loading di kanan
+function FieldSelect({
+  icon: Icon,
+  loading,
+  children,
+  ...props
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  loading?: boolean;
+} & React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="relative">
+      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+      <select
+        {...props}
+        disabled={loading || props.disabled}
+        className="w-full bg-gray-50 border border-gray-200 pl-10 pr-9 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+      >
+        {children}
+      </select>
+      {loading && (
+        <FiLoader className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
+      )}
+    </div>
+  );
 }
 
 export default function CreateAssignmentModal({
@@ -76,7 +104,6 @@ export default function CreateAssignmentModal({
     e.preventDefault();
     setErrorMsg(null);
 
-    // Validasi sederhana
     if (!formData.vehicleId || !formData.driverId || !formData.routeId) {
       setErrorMsg("Kendaraan, Driver, dan Rute wajib dipilih!");
       return;
@@ -95,7 +122,7 @@ export default function CreateAssignmentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 space-y-6 m-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 space-y-6 m-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
         {/* MODAL HEADER */}
         <div className="flex items-center justify-between border-b border-gray-100 pb-4">
           <div className="flex items-center gap-3">
@@ -121,7 +148,7 @@ export default function CreateAssignmentModal({
 
         {/* ERROR ALERT */}
         {errorMsg && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm animate-in fade-in duration-150">
             {errorMsg}
           </div>
         )}
@@ -134,32 +161,24 @@ export default function CreateAssignmentModal({
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Unit Kendaraan
               </label>
-              <div className="relative">
-                <FiTruck className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <select
-                  value={formData.vehicleId || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      vehicleId: Number(e.target.value),
-                    })
-                  }
-                  className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer"
-                  required
-                >
-                  <option value="" disabled>
-                    {loadingVehicles
-                      ? "Memuat kendaraan..."
-                      : "-- Pilih Kendaraan --"}
+              <FieldSelect
+                icon={FiTruck}
+                loading={loadingVehicles}
+                value={formData.vehicleId || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, vehicleId: Number(e.target.value) })
+                }
+                required
+              >
+                <option value="" disabled>
+                  {loadingVehicles ? "Memuat kendaraan..." : "-- Pilih Kendaraan --"}
+                </option>
+                {vehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.vehicleCode ? `${v.vehicleCode} - ` : ""}Plat: {v.plateNumber}
                   </option>
-                  {vehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.vehicleCode ? `${v.vehicleCode} - ` : ""}Plat:{" "}
-                      {v.plateNumber}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                ))}
+              </FieldSelect>
             </div>
 
             {/* 2. Pilih Driver */}
@@ -167,29 +186,24 @@ export default function CreateAssignmentModal({
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Pengemudi (Driver)
               </label>
-              <div className="relative">
-                <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <select
-                  value={formData.driverId || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      driverId: Number(e.target.value),
-                    })
-                  }
-                  className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer"
-                  required
-                >
-                  <option value="" disabled>
-                    {loadingDrivers ? "Memuat driver..." : "-- Pilih Driver --"}
+              <FieldSelect
+                icon={FiUser}
+                loading={loadingDrivers}
+                value={formData.driverId || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, driverId: Number(e.target.value) })
+                }
+                required
+              >
+                <option value="" disabled>
+                  {loadingDrivers ? "Memuat driver..." : "-- Pilih Driver --"}
+                </option>
+                {drivers.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
                   </option>
-                  {drivers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                ))}
+              </FieldSelect>
             </div>
 
             {/* 3. Pilih Rute (Route) */}
@@ -197,30 +211,25 @@ export default function CreateAssignmentModal({
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Rute Perjalanan
               </label>
-              <div className="relative">
-                <FiMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <select
-                  value={formData.routeId || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      routeId: Number(e.target.value),
-                    })
-                  }
-                  className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer"
-                  required
-                >
-                  <option value="" disabled>
-                    {loadingRoutes ? "Memuat rute..." : "-- Pilih Rute --"}
+              <FieldSelect
+                icon={FiMapPin}
+                loading={loadingRoutes}
+                value={formData.routeId || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, routeId: Number(e.target.value) })
+                }
+                required
+              >
+                <option value="" disabled>
+                  {loadingRoutes ? "Memuat rute..." : "-- Pilih Rute --"}
+                </option>
+                {routes?.map((r: any) => (
+                  <option key={r.id} value={r.id}>
+                    {r.routeCode ? `${r.routeCode} - ` : ""}
+                    {r.routeName}
                   </option>
-                  {routes?.map((r: any) => (
-                    <option key={r.id} value={r.id}>
-                      {r.routeCode ? `${r.routeCode} - ` : ""}
-                      {r.routeName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                ))}
+              </FieldSelect>
             </div>
 
             {/* 4. Arah Perjalanan (Direction) */}
@@ -228,22 +237,16 @@ export default function CreateAssignmentModal({
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Arah (Direction)
               </label>
-              <div className="relative">
-                <FiNavigation className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <select
-                  value={formData.direction || DirectionType.FORWARD}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      direction: e.target.value as DirectionType,
-                    })
-                  }
-                  className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer"
-                >
-                  <option value={DirectionType.FORWARD}>Forward (Pergi)</option>
-                  <option value={DirectionType.RETURN}>Return (Pulang)</option>
-                </select>
-              </div>
+              <FieldSelect
+                icon={FiNavigation}
+                value={formData.direction || DirectionType.FORWARD}
+                onChange={(e) =>
+                  setFormData({ ...formData, direction: e.target.value as DirectionType })
+                }
+              >
+                <option value={DirectionType.FORWARD}>Forward (Pergi)</option>
+                <option value={DirectionType.RETURN}>Return (Pulang)</option>
+              </FieldSelect>
             </div>
 
             {/* 5. Tanggal Penugasan */}
@@ -273,10 +276,7 @@ export default function CreateAssignmentModal({
               <select
                 value={formData.status || AssignmentStatus.SCHEDULED}
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    status: e.target.value as AssignmentStatus,
-                  })
+                  setFormData({ ...formData, status: e.target.value as AssignmentStatus })
                 }
                 className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer"
               >
@@ -297,9 +297,7 @@ export default function CreateAssignmentModal({
                 <input
                   type="time"
                   value={formData.startTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, startTime: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                   className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
                   required
                 />
@@ -316,9 +314,7 @@ export default function CreateAssignmentModal({
                 <input
                   type="time"
                   value={formData.endTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endTime: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                   className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
                   required
                 />
@@ -340,7 +336,11 @@ export default function CreateAssignmentModal({
               disabled={isSubmitting}
               className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
             >
-              <FiCheck className="w-4 h-4" />
+              {isSubmitting ? (
+                <FiLoader className="w-4 h-4 animate-spin" />
+              ) : (
+                <FiCheck className="w-4 h-4" />
+              )}
               {isSubmitting ? "Menyimpan..." : "Simpan Jadwal"}
             </button>
           </div>

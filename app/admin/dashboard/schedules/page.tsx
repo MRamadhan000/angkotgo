@@ -38,7 +38,7 @@ export default function OperationalBoardPage() {
   const todayString = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  
+
   // State untuk modal Create Assignment
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
@@ -47,7 +47,7 @@ export default function OperationalBoardPage() {
   const [sortField, setSortField] = useState<string>("time");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  const { assignments, loading, error, fetchAssignments , createAssignment} =
+  const { assignments, loading, error, fetchAssignments, createAssignment } =
     useVehicleAssignments();
 
   const handleRefresh = () => {
@@ -55,17 +55,21 @@ export default function OperationalBoardPage() {
   };
 
   // Handler saat berhasil menyimpan jadwal baru dari modal
-  const handleCreateAssignment = async (newAssignmentData: CreateVehicleAssignmentInput) => {
+  const handleCreateAssignment = async (
+    newAssignmentData: CreateVehicleAssignmentInput,
+  ) => {
     try {
       // TODO: Ganti dengan service call API create assignment Anda yang sebenarnya, contoh:
       await createAssignment(newAssignmentData);
-      
+
       console.log("Data Assignment Baru Dikirim:", newAssignmentData);
-      
+
       // Refresh data tabel setelah berhasil
       fetchAssignments();
     } catch (err: any) {
-      throw new Error(err?.message || "Gagal menyimpan data penugasan kendaraan.");
+      throw new Error(
+        err?.message || "Gagal menyimpan data penugasan kendaraan.",
+      );
     }
   };
 
@@ -285,74 +289,109 @@ export default function OperationalBoardPage() {
                 </tr>
               ) : (
                 processedAssignments.map((item) => {
-                  const vehicleDisplay =
-                    item.vehicle?.vehicleCode ||
-                    item.vehicle?.plateNumber ||
-                    "UNIT-XX";
-                  const driverDisplay = item.driver?.name || "Driver";
-                  const routeDisplay = item.route
-                    ? `${item.route.routeCode ? `${item.route.routeCode} - ` : ""}${item.route.routeName}`
-                    : "Rute Perjalanan";
-                  const directionDisplay =
-                    item.direction || DirectionType.FORWARD;
-                  const timeDisplay = `${item.startTime || "xx:xx"} - ${item.endTime || "xx:xx"}`;
-
                   return (
                     <tr
                       key={item.id}
-                      className="hover:bg-gray-50/60 transition-colors"
+                      className="hover:bg-gray-50 transition-colors"
                     >
                       {/* Vehicle */}
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gray-100 rounded-xl text-gray-700 shrink-0">
-                            <FiTruck className="w-4 h-4" />
+                      <td className="px-6 py-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-700 shrink-0">
+                            <FiTruck className="h-5 w-5" />
                           </div>
-                          <span className="font-bold font-mono text-gray-900">
-                            {vehicleDisplay}
-                          </span>
+
+                          <div className="min-w-0">
+                            <p className="font-mono font-bold text-gray-900">
+                              {item.vehicle?.vehicleCode || "UNIT-XX"}
+                            </p>
+
+                            <p className="text-xs text-gray-500">
+                              {item.vehicle?.plateNumber || "-"}
+                            </p>
+
+                            <span
+                              className={`mt-1 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                item.vehicle?.type === "PREMIUM"
+                                  ? "bg-amber-100 text-amber-800 border-amber-300"
+                                  : "bg-emerald-100 text-emerald-700 border-emerald-200"
+                              }`}
+                            >
+                              {item.vehicle?.type || "-"}
+                            </span>
+                          </div>
                         </div>
                       </td>
 
-                      {/* Time */}
-                      <td className="py-4 px-6">
-                        <span className="inline-block font-mono text-xs font-medium bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg">
-                          {timeDisplay}
-                        </span>
+                      {/* Schedule */}
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <span className="inline-flex rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-medium text-gray-700">
+                            {item.startTime || "--:--"} -{" "}
+                            {item.endTime || "--:--"}
+                          </span>
+
+                          <p className="text-xs text-gray-500">
+                            {item.assignmentDate}
+                          </p>
+                        </div>
                       </td>
 
                       {/* Driver */}
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-2">
-                          <FiUser className="w-4 h-4 text-gray-400 shrink-0" />
-                          <span className="font-medium text-gray-800">
-                            {driverDisplay}
-                          </span>
+                      <td className="px-6 py-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
+                            <FiUser className="h-4 w-4 text-gray-500" />
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900">
+                              {item.driver?.name || "Driver"}
+                            </p>
+
+                            <p className="text-xs text-gray-500">
+                              {item.driver?.phone || item.driver?.nik || "-"}
+                            </p>
+                          </div>
                         </div>
                       </td>
 
                       {/* Route */}
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-2 max-w-xs">
-                          <FiMapPin className="w-4 h-4 text-gray-400 shrink-0" />
-                          <span className="text-gray-600 truncate">
-                            {routeDisplay}
-                          </span>
+                      <td className="px-6 py-4">
+                        <div className="flex items-start gap-2 max-w-xs">
+                          <FiMapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-gray-800">
+                              {item.route?.routeName || "Rute Perjalanan"}
+                            </p>
+
+                            <p className="text-xs text-gray-500">
+                              {item.route?.routeCode || "-"}
+                            </p>
+                          </div>
                         </div>
                       </td>
 
                       {/* Direction */}
-                      <td className="py-4 px-6">
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <FiNavigation className="w-4 h-4 text-gray-400 shrink-0" />
-                          <span className="font-medium text-gray-700">
-                            {directionDisplay}
+                          <FiNavigation className="h-4 w-4 text-gray-400" />
+
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                              item.direction === DirectionType.FORWARD
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-orange-50 text-orange-700"
+                            }`}
+                          >
+                            {item.direction}
                           </span>
                         </div>
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-6 text-center">
+                      <td className="px-6 py-4 text-center">
                         {renderStatusBadge(item.status)}
                       </td>
                     </tr>
