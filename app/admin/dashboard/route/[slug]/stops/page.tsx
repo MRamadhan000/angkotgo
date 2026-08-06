@@ -16,14 +16,24 @@ import {
   FiCompass,
   FiArrowRightCircle,
   FiArrowLeftCircle,
+  FiClock,
 } from "react-icons/fi";
 import RouteStopModal from "@/components/route/RouteStop/RouteStopModal";
 import RouteMap from "@/components/route/RoutePath/RouteMap";
 import Breadcrumb from "@/components/Breadcrumb";
+import { useStopIntervals } from "@/hooks/routes/useStopIntervals";
 
 const TABLE_HEADERS = [
   "Urutan & Halte",
   "Koordinat (Latitude, Longitude)",
+  "Aksi",
+];
+
+const INTERVAL_HEADERS = [
+  "Dari Halte",
+  "Ke Halte",
+  "Jarak (Meter)",
+  "Durasi (Detik)",
   "Aksi",
 ];
 
@@ -43,20 +53,34 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
   const routeIdNum = rawSlug ? Number(rawSlug) : NaN;
 
   const [activeTab, setActiveTab] = useState<DirectionType>(
-    DirectionType.FORWARD,
+    DirectionType.FORWARD
   );
 
+  // State Modal Route Stop
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [selectedStopData, setSelectedStopData] = useState<any>(null);
 
+  // Hook Route Stops
   const forwardHook = useRouteStops();
   const returnHook = useRouteStops();
+
+  // Hook Stop Intervals
+  const forwardIntervalHook = useStopIntervals({
+    routeId: isNaN(routeIdNum) ? undefined : routeIdNum,
+    initialDirection: DirectionType.FORWARD,
+  });
+  const returnIntervalHook = useStopIntervals({
+    routeId: isNaN(routeIdNum) ? undefined : routeIdNum,
+    initialDirection: DirectionType.RETURN,
+  });
 
   const loadData = () => {
     if (!isNaN(routeIdNum)) {
       forwardHook.fetchRouteStops(routeIdNum, DirectionType.FORWARD);
       returnHook.fetchRouteStops(routeIdNum, DirectionType.RETURN);
+      forwardIntervalHook.refetch();
+      returnIntervalHook.refetch();
     }
   };
 
@@ -64,6 +88,7 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
     loadData();
   }, [routeIdNum]);
 
+  // Hook Aktif Berdasarkan Tab
   const currentHook =
     activeTab === DirectionType.FORWARD ? forwardHook : returnHook;
   const {
@@ -75,6 +100,18 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
     deleteRouteStop,
   } = currentHook;
 
+  // Hook Interval Aktif Berdasarkan Tab
+  const currentIntervalHook =
+    activeTab === DirectionType.FORWARD ? forwardIntervalHook : returnIntervalHook;
+  const {
+    intervals,
+    loading: intervalLoading,
+    error: intervalError,
+    createInterval,
+    deleteInterval,
+  } = currentIntervalHook;
+
+  // Handler Modal Route Stop
   const handleOpenCreateModal = () => {
     setModalMode("CREATE");
     setSelectedStopData({
@@ -132,6 +169,56 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
     }
   };
 
+  // Handler Stop Interval
+  const handleOpenCreateIntervalModal = () => {
+    if (routeStops.length < 2) {
+      alert("Minimal harus ada 2 halte terdaftar untuk membuat interval jarak & durasi!");
+      return;
+    }
+
+    const fromStopIdStr = prompt("Masukkan ID Halte Asal (From Stop ID):");
+    const toStopIdStr = prompt("Masukkan ID Halte Tujuan (To Stop ID):");
+    const distanceStr = prompt("Masukkan Jarak dalam Meter (misal: 1500):");
+    const durationStr = prompt("Masukkan Durasi dalam Detik (misal: 300):");
+
+    if (!fromStopIdStr || !toStopIdStr || !distanceStr || !durationStr) return;
+
+    createInterval({
+      routeId: routeIdNum,
+      direction: activeTab,
+      fromStopId: Number(fromStopIdStr),
+      toStopId: Number(toStopIdStr),
+      distanceInMeters: Number(distanceStr),
+      durationInSeconds: Number(durationStr),
+    }).then((res: any) => {
+      if (res?.success) {
+        currentIntervalHook.refetch();
+      } else {
+        alert(res?.message || "Gagal membuat interval.");
+      }
+    });
+  };
+
+  const handleDeleteInterval = async (id: number) => {
+    if (confirm("Apakah Anda yakin ingin menghapus data interval ini?")) {
+      const res: any = await deleteInterval(id);
+      if (res?.success) {
+        currentIntervalHook.refetch();
+      } else {
+        alert(res?.message || "Gagal menghapus interval.");
+      }
+    }
+  };
+
+  // Helper untuk mencocokkan Nama Halte
+  const getStopDisplayInfo = (stopId: number, stopRelationObj: any) => {
+    if (stopRelationObj && stopRelationObj.stopName) {
+      return `${stopRelationObj.stopName} (Urutan #${stopRelationObj.stopOrder || "?"})`;
+    }
+    const found = [...forwardHook.routeStops, ...returnHook.routeStops].find((s) => s.id === stopId);
+    return found ? `${found.stopName} (Urutan #${found.stopOrder})` : `Halte ID: ${stopId}`;
+  };
+
   if (isNaN(routeIdNum)) {
     return (
       <div className="p-6 max-w-[1700px] mx-auto space-y-6">
@@ -145,6 +232,13 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
       </div>
     );
   }
+
+  const rawIntervalsData = intervals as any;
+  const safeIntervals = Array.isArray(rawIntervalsData)
+    ? rawIntervalsData
+    : Array.isArray(rawIntervalsData?.data)
+    ? rawIntervalsData.data
+    : [];
 
   return (
     <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
@@ -160,37 +254,30 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Manajemen Halte Trayek (Route Stops)
+            Manajemen Halte Trayek & Interval
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Kelola titik pemberhentian/halte untuk Route ID{" "}
+            Kelola titik pemberhentian dan durasi interval perjalanan untuk Route ID{" "}
             <span className="font-semibold text-gray-800">{routeIdNum}</span>{" "}
             (Slug: {rawSlug}).
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
-          >
-            <FiPlus className="w-4 h-4" />
-            Tambah Halte ({activeTab})
-          </button>
-          <button
             onClick={loadData}
             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
           >
             <FiRefreshCw className="w-4 h-4" />
-            Refresh
+            Refresh Data
           </button>
         </div>
       </div>
 
       {/* ERROR MESSAGE */}
-      {error && (
+      {(error || intervalError) && (
         <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
           <FiAlertCircle className="w-5 h-5 shrink-0" />
-          <span>Gagal memuat data: {error}</span>
+          <span>Gagal memuat data: {error || intervalError}</span>
         </div>
       )}
 
@@ -228,7 +315,7 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
         })}
       </div>
 
-      {/* MAIN LAYOUT: VERTICAL STACK (ATAS: MAPS, BAWAH: TABEL) */}
+      {/* MAIN LAYOUT */}
       <div className="space-y-6">
         {/* BAGIAN ATAS: PETA LEAFLET */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4">
@@ -247,19 +334,28 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* BAGIAN BAWAH: TABEL DATA */}
+        {/* BAGIAN TENGAH: TABEL DAFTAR HALTE */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
               <FiCompass className="w-4 h-4 text-blue-600" />
               Daftar Halte ({activeTab})
             </h2>
-            <span className="text-xs text-gray-400 font-mono">
-              Total: {routeStops.length} Halte
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400 font-mono">
+                Total: {routeStops.length} Halte
+              </span>
+              <button
+                onClick={handleOpenCreateModal}
+                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all"
+              >
+                <FiPlus className="w-3.5 h-3.5" />
+                Tambah Halte
+              </button>
+            </div>
           </div>
 
-          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
             <table className="w-full text-left border-collapse">
               <thead className="sticky top-0 bg-white z-10 shadow-xs">
                 <tr className="border-b border-gray-100 bg-gray-50/80 text-xs font-bold text-gray-400 uppercase tracking-wider">
@@ -293,7 +389,6 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
                       key={stop.id}
                       className="hover:bg-gray-50/40 transition-colors align-middle"
                     >
-                      {/* Urutan & Nama Halte */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div className="p-1.5 bg-gray-100 rounded-lg text-gray-600 shrink-0">
@@ -309,16 +404,12 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
                           </div>
                         </div>
                       </td>
-
-                      {/* Latitude & Longitude */}
                       <td className="py-3 px-4 text-xs font-mono text-gray-600">
                         <div>Lat: {stop.latitude}</div>
                         <div className="text-gray-400 mt-0.5">
                           Lng: {stop.longitude}
                         </div>
                       </td>
-
-                      {/* Aksi */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Link
@@ -351,9 +442,100 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
             </table>
           </div>
         </div>
+
+        {/* BAGIAN BAWAH: TABEL INTERVAL ANTAR HALTE */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+              <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <FiClock className="w-4 h-4 text-emerald-600" />
+                Interval Waktu & Jarak Antar Halte ({activeTab})
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Mengatur estimasi durasi dan jarak fisik antar halte secara berurutan.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400 font-mono">
+                Total: {safeIntervals.length} Interval
+              </span>
+              <button
+                onClick={handleOpenCreateIntervalModal}
+                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all"
+              >
+                <FiPlus className="w-3.5 h-3.5" />
+                Tambah Interval
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 bg-white z-10 shadow-xs">
+                <tr className="border-b border-gray-100 bg-gray-50/80 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  {INTERVAL_HEADERS.map((header) => (
+                    <th key={header} className="py-3 px-4">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
+                {intervalLoading ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-gray-400">
+                      <div className="flex justify-center items-center gap-2">
+                        <FiRefreshCw className="w-5 h-5 animate-spin" />
+                        <span>Memuat data interval...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : safeIntervals.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-gray-400">
+                      Belum ada data interval jarak/waktu untuk arah{" "}
+                      <span className="font-bold">{activeTab}</span>.
+                    </td>
+                  </tr>
+                ) : (
+                  safeIntervals.map((item: any) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-gray-50/40 transition-colors align-middle"
+                    >
+                      <td className="py-3 px-4 text-xs font-semibold text-gray-900">
+                        {getStopDisplayInfo(item.fromStopId, item.fromStop)}
+                      </td>
+                      <td className="py-3 px-4 text-xs font-semibold text-gray-900">
+                        {getStopDisplayInfo(item.toStopId, item.toStop)}
+                      </td>
+                      <td className="py-3 px-4 text-xs font-mono text-gray-600">
+                        {item.distanceInMeters} meter
+                      </td>
+                      <td className="py-3 px-4 text-xs font-mono text-gray-600">
+                        {item.durationInSeconds} detik ({Math.round(item.durationInSeconds / 60)} menit)
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleDeleteInterval(item.id)}
+                            title="Hapus Interval"
+                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      {/* MODAL COMPONENT */}
+      {/* MODAL COMPONENT ROUTE STOP */}
       <RouteStopModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
