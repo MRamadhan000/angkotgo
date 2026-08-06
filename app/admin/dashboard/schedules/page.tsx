@@ -25,6 +25,7 @@ import {
 } from "@/utils/assignment.util";
 import ErrorAlert from "@/components/common/ErrorAlert";
 import { CreateVehicleAssignmentInput } from "@/types/vehicles/vehicle-assignments.type";
+import StatusFilterButton from "@/components/schedules/StatusFilterButton";
 
 const ASSIGNMENT_STATUS_FILTERS = [
   { key: "ALL", label: "Semua" },
@@ -39,14 +40,12 @@ export default function OperationalBoardPage() {
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
-  // State untuk modal Create Assignment
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sortField, setSortField] = useState<string>("time");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-
   const { assignments, loading, error, fetchAssignments, createAssignment } =
     useVehicleAssignments();
 
@@ -54,17 +53,11 @@ export default function OperationalBoardPage() {
     fetchAssignments();
   };
 
-  // Handler saat berhasil menyimpan jadwal baru dari modal
   const handleCreateAssignment = async (
     newAssignmentData: CreateVehicleAssignmentInput,
   ) => {
     try {
-      // TODO: Ganti dengan service call API create assignment Anda yang sebenarnya, contoh:
       await createAssignment(newAssignmentData);
-
-      console.log("Data Assignment Baru Dikirim:", newAssignmentData);
-
-      // Refresh data tabel setelah berhasil
       fetchAssignments();
     } catch (err: any) {
       throw new Error(
@@ -134,7 +127,7 @@ export default function OperationalBoardPage() {
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
           >
             <FiPlus className="w-4 h-4" />
             Tambah Jadwal
@@ -155,36 +148,30 @@ export default function OperationalBoardPage() {
       {error && <ErrorAlert message={`Gagal memuat data: ${error}`} />}
 
       {/* FILTER & SEARCH TOOLBAR */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm">
-        {/* Search Input */}
-        <div className="relative w-full md:w-80">
-          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:grid-cols-2 lg:items-center">
+        <div className="relative w-full">
+          <FiSearch className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Cari unit, driver, rute, atau arah..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:border-gray-400 transition-all text-gray-800 placeholder-gray-400"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:outline-none"
           />
         </div>
 
-        {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-          <FiFilter className="w-4 h-4 text-gray-400 shrink-0 mr-1 hidden sm:block" />
-
-          {ASSIGNMENT_STATUS_FILTERS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setStatusFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                statusFilter === tab.key
-                  ? "bg-gray-900 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200/70"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Status Filter */}
+        <div className="flex justify-end overflow-x-auto pb-1 scrollbar-hide">
+          <div className="flex flex-wrap items-center gap-2">
+            {ASSIGNMENT_STATUS_FILTERS.map((tab) => (
+              <StatusFilterButton
+                key={tab.key}
+                status={tab.key}
+                active={statusFilter === tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
