@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   FiRefreshCw,
-  FiCalendar,
   FiTruck,
   FiUser,
   FiMapPin,
   FiAlertCircle,
-  FiChevronDown,
-  FiCheck,
   FiSearch,
   FiFilter,
   FiArrowUp,
@@ -17,27 +14,29 @@ import {
   FiNavigation,
 } from "react-icons/fi";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
+import DateDropdownModal from "@/components/schedules/DateDropdownModal";
 import { renderStatusBadge } from "@/components/schedules/StatusBadge";
 import { formatDateLabel } from "@/utils/format";
+import {
+  VehicleAssignment,
+  AssignmentStatus,
+  DirectionType,
+} from "@/types/vehicles/vehicle.type";
+import { filterAndSortAssignments } from "@/utils/assignment.util";
 
-const getEntityDisplay = (field: any, keys: string[], fallback: string) => {
-  if (!field) return fallback;
-  if (typeof field === "object") {
-    for (const key of keys) {
-      if (field[key]) return field[key];
-    }
-    return fallback;
-  }
-  return String(field);
-};
+const ASSIGNMENT_STATUS_FILTERS = [
+  { key: "ALL", label: "Semua" },
+  { key: AssignmentStatus.SCHEDULED, label: "Scheduled" },
+  { key: AssignmentStatus.ONGOING, label: "Ongoing" },
+  { key: AssignmentStatus.COMPLETED, label: "Completed" },
+  { key: AssignmentStatus.CANCELLED, label: "Cancelled" },
+] as const;
 
 export default function OperationalBoardPage() {
   const todayString = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // State untuk Search, Status Filter, dan Sorting
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sortField, setSortField] = useState<string>("time");
@@ -50,29 +49,14 @@ export default function OperationalBoardPage() {
     fetchAssignments();
   };
 
-  // Tutup dropdown jika klik di luar elemen
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Ekstrak daftar tanggal unik dari database/assignments dan urutkan dari terbaru ke terlama
   const availableDates = useMemo(() => {
+    const typedAssignments: VehicleAssignment[] = assignments || [];
     const dates = Array.from(
       new Set(
-        (assignments || []).map(
-          (item: any) => item.date || item.assignmentDate || todayString,
-        ),
+        typedAssignments.map((item) => item.assignmentDate || todayString),
       ),
-    ).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime());
+    ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
     if (!dates.includes(todayString)) {
       dates.unshift(todayString);
@@ -80,104 +64,25 @@ export default function OperationalBoardPage() {
     return dates;
   }, [assignments, todayString]);
 
-  // Filter & Sort data secara komprehensif
+  // Filter & Sort data secara komprehensif menggunakan tipe data asli
   const processedAssignments = useMemo(() => {
-    let list = assignments || [];
-
-    // 1. Filter berdasarkan Tanggal Terpilih
-    list = list.filter((item: any) => {
-      const itemDate = item.date || item.assignmentDate || todayString;
-      return itemDate === selectedDate;
-    });
-
-    // 2. Filter berdasarkan Status Dropdown
-    if (statusFilter !== "ALL") {
-      list = list.filter((item: any) => item.status === statusFilter);
-    }
-
-    // 3. Filter berdasarkan Search Query
-    if (searchQuery.trim() !== "") {
-      const query = searchQuery.toLowerCase();
-      list = list.filter((item: any) => {
-        const vehicleDisplay = getEntityDisplay(
-          item.vehicle,
-          ["code", "name", "plateNumber"],
-          item.vehicleCode || "",
-        ).toLowerCase();
-        const driverDisplay = getEntityDisplay(
-          item.driver,
-          ["name", "fullName"],
-          item.driverName || "",
-        ).toLowerCase();
-        const routeDisplay =
-          typeof item.route === "object" && item.route !== null
-            ? `${item.route.routeCode || ""} ${item.route.routeName || ""}`.toLowerCase()
-            : String(item.route || "").toLowerCase();
-        const directionDisplay = getEntityDisplay(
-          item.direction,
-          ["name", "code"],
-          "",
-        ).toLowerCase();
-
-        return (
-          vehicleDisplay.includes(query) ||
-          driverDisplay.includes(query) ||
-          routeDisplay.includes(query) ||
-          directionDisplay.includes(query)
-        );
-      });
-    }
-
-    // 4. Sorting Data
-    return [...list].sort((a: any, b: any) => {
-      let valA = "";
-      let valB = "";
-
-      if (sortField === "time") {
-        valA = a.timeSlot || a.startTime || "00:00";
-        valB = b.timeSlot || b.startTime || "00:00";
-      } else if (sortField === "vehicle") {
-        valA = getEntityDisplay(
-          a.vehicle,
-          ["code", "name"],
-          a.vehicleCode || "",
-        );
-        valB = getEntityDisplay(
-          b.vehicle,
-          ["code", "name"],
-          b.vehicleCode || "",
-        );
-      } else if (sortField === "driver") {
-        valA = getEntityDisplay(
-          a.driver,
-          ["name", "fullName"],
-          a.driverName || "",
-        );
-        valB = getEntityDisplay(
-          b.driver,
-          ["name", "fullName"],
-          b.driverName || "",
-        );
-      } else if (sortField === "direction") {
-        valA = getEntityDisplay(a.direction, ["name", "code"], "");
-        valB = getEntityDisplay(b.direction, ["name", "code"], "");
-      } else if (sortField === "status") {
-        valA = a.status || "";
-        valB = b.status || "";
-      }
-
-      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
-      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
-      return 0;
+    return filterAndSortAssignments({
+      assignments,
+      selectedDate,
+      todayString,
+      statusFilter,
+      searchQuery,
+      sortField,
+      sortDirection,
     });
   }, [
     assignments,
     selectedDate,
+    todayString,
     statusFilter,
     searchQuery,
     sortField,
     sortDirection,
-    todayString,
   ]);
 
   const handleSortChange = (field: string) => {
@@ -204,86 +109,20 @@ export default function OperationalBoardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* CUSTOM DATE DROPDOWN MODAL */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-3 bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:border-gray-300 transition-all text-gray-700"
-            >
-              <FiCalendar className="w-4 h-4 text-gray-500 shrink-0" />
-              <span>{formatDateLabel(selectedDate)}</span>
-              <FiChevronDown
-                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
-                  isDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {/* DROPDOWN MENU / MODAL */}
-            {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Pilih Tanggal Operasional
-                </div>
-                <div className="max-h-64 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                  {availableDates.map((date: any) => {
-                    const isSelected = date === selectedDate;
-                    const count = (assignments || []).filter(
-                      (item: any) =>
-                        (item.date || item.assignmentDate || todayString) ===
-                        date,
-                    ).length;
-
-                    return (
-                      <button
-                        key={date}
-                        onClick={() => {
-                          setSelectedDate(date);
-                          setIsDropdownOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                          isSelected
-                            ? "bg-gray-900 text-white shadow-sm"
-                            : "text-gray-700 hover:bg-gray-50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span>{formatDateLabel(date)}</span>
-                          {date === todayString && (
-                            <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
-                                isSelected
-                                  ? "bg-gray-800 text-gray-200"
-                                  : "bg-gray-100 text-gray-600"
-                              }`}
-                            >
-                              Hari Ini
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full ${
-                              isSelected
-                                ? "bg-gray-800 text-gray-300"
-                                : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            {count} unit
-                          </span>
-                          {isSelected && <FiCheck className="w-3.5 h-3.5" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* MODULAR DATE DROPDOWN COMPONENT */}
+          <DateDropdownModal
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            isDropdownOpen={isDropdownOpen}
+            setIsDropdownOpen={setIsDropdownOpen}
+            availableDates={availableDates}
+            assignments={assignments}
+            todayString={todayString}
+          />
 
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
           >
             <FiRefreshCw
               className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
@@ -318,17 +157,12 @@ export default function OperationalBoardPage() {
         {/* Status Filter Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
           <FiFilter className="w-4 h-4 text-gray-400 shrink-0 mr-1 hidden sm:block" />
-          {[
-            { key: "ALL", label: "Semua" },
-            { key: "SCHEDULED", label: "Scheduled" },
-            { key: "ONGOING", label: "Ongoing" },
-            { key: "COMPLETED", label: "Completed" },
-            { key: "CANCELLED", label: "Cancelled" },
-          ].map((tab) => (
+
+          {ASSIGNMENT_STATUS_FILTERS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setStatusFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 statusFilter === tab.key
                   ? "bg-gray-900 text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200/70"
@@ -440,29 +274,18 @@ export default function OperationalBoardPage() {
                   </td>
                 </tr>
               ) : (
-                processedAssignments.map((item: any) => {
-                  const vehicleDisplay = getEntityDisplay(
-                    item.vehicle,
-                    ["plateNumber", "name", "code"],
-                    item.vehicleCode || "UNIT-XX",
-                  );
-                  const driverDisplay = getEntityDisplay(
-                    item.driver,
-                    ["name", "fullName"],
-                    item.driverName || "Driver",
-                  );
-                  const routeDisplay =
-                    typeof item.route === "object" && item.route !== null
-                      ? `${item.route.routeCode ? `${item.route.routeCode} - ` : ""}${item.route.routeName || "Rute"}`
-                      : item.route || "Rute Perjalanan";
-                  const directionDisplay = getEntityDisplay(
-                    item.direction,
-                    ["name", "code"],
-                    item.direction || "ARAH",
-                  );
-                  const timeDisplay =
-                    item.timeSlot ||
-                    `${item.startTime || "xx:xx"} - ${item.endTime || "xx:xx"}`;
+                processedAssignments.map((item) => {
+                  const vehicleDisplay =
+                    item.vehicle?.vehicleCode ||
+                    item.vehicle?.plateNumber ||
+                    "UNIT-XX";
+                  const driverDisplay = item.driver?.name || "Driver";
+                  const routeDisplay = item.route
+                    ? `${item.route.routeCode ? `${item.route.routeCode} - ` : ""}${item.route.routeName}`
+                    : "Rute Perjalanan";
+                  const directionDisplay =
+                    item.direction || DirectionType.FORWARD;
+                  const timeDisplay = `${item.startTime || "xx:xx"} - ${item.endTime || "xx:xx"}`;
 
                   return (
                     <tr
