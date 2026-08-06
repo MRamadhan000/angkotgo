@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Driver, UpdateDriverInput } from "@/types/driver.type";
+import {
+  Driver,
+  UpdateDriverInput,
+  BankAccountInfo,
+} from "@/types/driver.type";
 import { useDrivers } from "@/hooks/useDrivers";
 import { EditDriverModal } from "@/components/driver/EditDriverModal";
 import {
@@ -12,6 +16,8 @@ import {
   FiClock,
   FiAlertCircle,
   FiEdit3,
+  FiCalendar,
+  FiCreditCard,
 } from "react-icons/fi";
 
 function extractDriverList(response: unknown): Driver[] {
@@ -28,9 +34,11 @@ const TABLE_HEADERS = [
   "NIK",
   "SIM & Expired",
   "Alamat",
+  "Info Bank",
   "Performa",
   "Status Akun",
   "Verifikasi",
+  "Waktu (Dibuat/Diubah)",
   "Aksi",
 ];
 
@@ -140,7 +148,7 @@ export default function DriverDashboardPage() {
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400">
+                  <td colSpan={10} className="py-12 text-center text-gray-400">
                     <div className="flex justify-center items-center gap-2">
                       <FiRefreshCw className="w-5 h-5 animate-spin" />
                       <span>Memuat data driver...</span>
@@ -149,7 +157,7 @@ export default function DriverDashboardPage() {
                 </tr>
               ) : filteredDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400">
+                  <td colSpan={10} className="py-12 text-center text-gray-400">
                     Tidak ada data driver untuk kategori ini.
                   </td>
                 </tr>
@@ -198,6 +206,26 @@ export default function DriverDashboardPage() {
                       {driver.address || "-"}
                     </td>
 
+                    {/* Info Bank */}
+                    <td className="py-4 px-6">
+                      {driver.bankAccountInfo ? (
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1 font-semibold text-xs text-gray-800">
+                            <FiCreditCard className="w-3.5 h-3.5 text-gray-400" />
+                            <span>{driver.bankAccountInfo.bankName}</span>
+                          </div>
+                          <div className="font-mono text-xs text-gray-600">
+                            {driver.bankAccountInfo.accountNumber}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            a.n. {driver.bankAccountInfo.accountHolderName}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+
                     {/* Performa */}
                     <td className="py-4 px-6 text-xs text-gray-600 whitespace-nowrap">
                       <div className="flex items-center gap-1 font-semibold text-amber-600">
@@ -240,6 +268,29 @@ export default function DriverDashboardPage() {
                         )}
                         {driver.isVerified ? "Verified" : "Unverified"}
                       </span>
+                    </td>
+
+                    {/* Waktu */}
+                    <td className="py-4 px-6 text-[11px] text-gray-500 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <FiCalendar className="w-3 h-3 text-gray-400" />
+                        <span>
+                          Dibuat:{" "}
+                          {driver.createdAt
+                            ? new Date(driver.createdAt).toLocaleDateString(
+                                "id-ID",
+                              )
+                            : "-"}
+                        </span>
+                      </div>
+                      <div className="text-gray-400 mt-0.5">
+                        Diubah:{" "}
+                        {driver.updatedAt
+                          ? new Date(driver.updatedAt).toLocaleDateString(
+                              "id-ID",
+                            )
+                          : "-"}
+                      </div>
                     </td>
 
                     {/* Aksi (Edit Saja) */}
