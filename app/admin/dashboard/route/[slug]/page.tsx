@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { CreateRoutePathInput } from "@/types/routes/route-path.type";
 import { DirectionType } from "@/types/vehicle.type";
 import { useRoutePaths } from "@/hooks/routes/useRoutePath";
@@ -17,53 +16,10 @@ import {
   FiCompass,
   FiArrowRightCircle,
   FiArrowLeftCircle,
-  FiChevronRight,
-  FiHome,
 } from "react-icons/fi";
 import RoutePathModal from "@/components/route/RoutePath/RoutePathModal";
-
-// Import Leaflet secara dinamis khusus client-side untuk menghindari error SSR Next.js
-const MapContainer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.MapContainer),
-  { ssr: false },
-);
-const TileLayer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.TileLayer),
-  { ssr: false },
-);
-const Polyline = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Polyline),
-  { ssr: false },
-);
-const Marker = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Marker),
-  { ssr: false },
-);
-const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
-  ssr: false,
-});
-
-// Komponen tambahan untuk mengatur animasi/fokus center dan auto zoom peta secara dinamis
-import { useMap } from "react-leaflet";
-function MapController({ coordinates }: { coordinates: [number, number][] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (coordinates.length > 0) {
-      if (coordinates.length === 1) {
-        // Jika hanya ada 1 titik, langsung set view ke titik tersebut dengan zoom 15
-        map.setView(coordinates[0], 15, { animate: true });
-      } else {
-        // Jika ada banyak titik, otomatis fit bounds agar semua titik masuk ke dalam frame peta
-        map.fitBounds(coordinates, {
-          padding: [50, 50], // Memberikan jarak/margin pinggir dalam piksel agar marker tidak mepet tepi peta
-          animate: true,
-          maxZoom: 16, // Batas maksimal zoom agar tidak terlalu dekat jika titiknya saling berdekatan
-        });
-      }
-    }
-  }, [coordinates, map]);
-  return null;
-}
+import RouteMap from "@/components/route/RoutePath/RouteMap";
+import Breadcrumb from "@/components/Breadcrumb";
 
 const TABLE_HEADERS = [
   "ID & Urutan",
@@ -94,16 +50,6 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [selectedPathData, setSelectedPathData] = useState<any>(null);
-  const [isMounted, setIsMounted] = useState(false);
-  const [L, setL] = useState<any>(null);
-
-  useEffect(() => {
-    setIsMounted(true);
-    // Import leaflet secara dinamis untuk kustomisasi DivIcon marker
-    import("leaflet").then((leaflet) => {
-      setL(leaflet);
-    });
-  }, []);
 
   const forwardHook = useRoutePaths();
   const returnHook = useRoutePaths();
@@ -130,11 +76,12 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
     deleteRoutePath,
   } = currentHook;
 
+  // DIUBAH: Dibuat kosong / default dinamis tanpa koordinat hardcoded
   const handleOpenCreateModal = () => {
     setModalMode("CREATE");
     setSelectedPathData({
-      latitude: -7.9666,
-      longitude: 112.6326,
+      latitude: "" as unknown as number, // Dibuat kosong agar diisi user melalui input form
+      longitude: "" as unknown as number, // Dibuat kosong agar diisi user melalui input form
       sequenceOrder: routePaths.length + 1,
       direction: activeTab,
     });
@@ -185,47 +132,6 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
     }
   };
 
-  // Persiapan koordinat untuk polyline & center peta
-  const sortedRoutePaths = [...routePaths].sort(
-    (a: any, b: any) => a.sequenceOrder - b.sequenceOrder,
-  );
-  const polylineCoordinates = sortedRoutePaths.map(
-    (path: any) => [path.latitude, path.longitude] as [number, number],
-  );
-
-  const defaultCenter: [number, number] =
-    routePaths.length > 0
-      ? [routePaths[0].latitude, routePaths[0].longitude]
-      : [-7.9666, 112.6326]; // Default Malang
-
-  // Membuat Custom Marker Kecil dengan Nomor Sequence di dalamnya
-  const createSmallNumberedIcon = (
-    sequence: number,
-    direction: DirectionType,
-  ) => {
-    if (!L) return undefined;
-    const bgColor = direction === DirectionType.FORWARD ? "#2563eb" : "#d97706";
-    return L.divIcon({
-      className: "custom-small-marker",
-      html: `<div style="
-        background-color: ${bgColor};
-        color: white;
-        border: 1.5px solid white;
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 9px;
-        font-weight: bold;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      ">${sequence}</div>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
-    });
-  };
-
   if (isNaN(routeIdNum)) {
     return (
       <div className="p-6 max-w-[1700px] mx-auto space-y-6">
@@ -242,24 +148,13 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
 
   return (
     <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
-      {/* BREADCRUMB NAVIGATION */}
-      <nav className="flex items-center text-sm font-medium text-gray-500 space-x-2">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
-        >
-          <FiHome className="w-4 h-4" />
-          <span>Dashboard</span>
-        </Link>
-        <FiChevronRight className="w-4 h-4 text-gray-400" />
-        <Link href="/routes" className="hover:text-blue-600 transition-colors">
-          Daftar Trayek (Routes)
-        </Link>
-        <FiChevronRight className="w-4 h-4 text-gray-400" />
-        <span className="text-gray-900 font-semibold">
-          Route Path #{routeIdNum}
-        </span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", href: "/admin/dashboard" },
+          { label: "Daftar Trayek (Routes)", href: "/admin/dashboard/route" },
+          { label: `Route Path #${routeIdNum}` },
+        ]}
+      />
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
@@ -333,7 +228,7 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
         })}
       </div>
 
-      {/* VISUALISASI PETA LEAFLET (Dengan Auto Center & Auto Zoom / Fit Bounds) */}
+      {/* VISUALISASI PETA LEAFLET */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4">
         <div className="mb-3 flex justify-between items-center px-2">
           <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
@@ -344,58 +239,8 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
             Total Titik: {routePaths.length}
           </span>
         </div>
-        <div className="w-full h-[400px] rounded-2xl overflow-hidden border border-gray-100 z-0 relative">
-          {isMounted && L && (
-            <MapContainer
-              center={defaultCenter}
-              zoom={13}
-              style={{ width: "100%", height: "100%" }}
-              scrollWheelZoom={false}
-            >
-              {/* Controller otomatis center & zoom berdasarkan koordinat titik jalur */}
-              <MapController coordinates={polylineCoordinates} />
 
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {polylineCoordinates.length > 0 && (
-                <Polyline
-                  positions={polylineCoordinates}
-                  color={
-                    activeTab === DirectionType.FORWARD ? "#2563eb" : "#d97706"
-                  }
-                  weight={3}
-                />
-              )}
-              {routePaths.map((path: any) => {
-                const smallIcon = createSmallNumberedIcon(
-                  path.sequenceOrder,
-                  path.direction,
-                );
-                return (
-                  <Marker
-                    key={path.id}
-                    position={[path.latitude, path.longitude]}
-                    {...(smallIcon ? { icon: smallIcon } : {})}
-                  >
-                    <Popup>
-                      <div className="text-xs space-y-1">
-                        <p className="font-bold">
-                          Urutan: #{path.sequenceOrder}
-                        </p>
-                        <p>Arah: {path.direction}</p>
-                        <p className="font-mono text-gray-500">
-                          Lat: {path.latitude}, Lng: {path.longitude}
-                        </p>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
-            </MapContainer>
-          )}
-        </div>
+        <RouteMap routePaths={routePaths} activeTab={activeTab} />
       </div>
 
       {/* TABLE DATA */}
