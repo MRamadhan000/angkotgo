@@ -1,55 +1,47 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   FiRefreshCw,
   FiCalendar,
-  FiClock,
   FiTruck,
   FiUser,
   FiMapPin,
-  FiCheckCircle,
-  FiPlayCircle,
-  FiXCircle,
   FiAlertCircle,
   FiChevronDown,
   FiCheck,
+  FiSearch,
+  FiFilter,
+  FiArrowUp,
+  FiArrowDown,
+  FiNavigation,
 } from "react-icons/fi";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
+import { renderStatusBadge } from "@/components/schedules/StatusBadge";
+import { formatDateLabel } from "@/utils/format";
 
-// Daftar kolom disesuaikan dengan 4 status enum AssignmentStatus yang baru
-const COLUMNS = [
-  {
-    key: "SCHEDULED",
-    label: "Scheduled",
-    icon: FiClock,
-    color: "border-amber-200 bg-amber-50/50 text-amber-800",
-  },
-  {
-    key: "ONGOING",
-    label: "Ongoing",
-    icon: FiPlayCircle,
-    color: "border-blue-200 bg-blue-50/50 text-blue-800",
-  },
-  {
-    key: "COMPLETED",
-    label: "Completed",
-    icon: FiCheckCircle,
-    color: "border-emerald-200 bg-emerald-50/50 text-emerald-800",
-  },
-  {
-    key: "CANCELLED",
-    label: "Cancelled",
-    icon: FiXCircle,
-    color: "border-rose-200 bg-rose-50/50 text-rose-800",
-  },
-];
+const getEntityDisplay = (field: any, keys: string[], fallback: string) => {
+  if (!field) return fallback;
+  if (typeof field === "object") {
+    for (const key of keys) {
+      if (field[key]) return field[key];
+    }
+    return fallback;
+  }
+  return String(field);
+};
 
 export default function OperationalBoardPage() {
-  const todayString = new Date().toISOString().split("T")[0];
+  const todayString = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // State untuk Search, Status Filter, dan Sorting
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [sortField, setSortField] = useState<string>("time");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const { assignments, loading, error, fetchAssignments } =
     useVehicleAssignments();
@@ -72,38 +64,128 @@ export default function OperationalBoardPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Ekstrak daftar tanggal unik dari data assignments dan urutkan dari terbaru ke terlama
-  const availableDates = Array.from(
-    new Set(
-      (assignments || []).map(
-        (item: any) => item.date || item.assignmentDate || todayString,
+  // Ekstrak daftar tanggal unik dari database/assignments dan urutkan dari terbaru ke terlama
+  const availableDates = useMemo(() => {
+    const dates = Array.from(
+      new Set(
+        (assignments || []).map(
+          (item: any) => item.date || item.assignmentDate || todayString,
+        ),
       ),
-    ),
-  ).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime());
+    ).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime());
 
-  // Pastikan tanggal hari ini selalu ada dalam pilihan meskipun belum ada data
-  if (!availableDates.includes(todayString)) {
-    availableDates.unshift(todayString);
-  }
+    if (!dates.includes(todayString)) {
+      dates.unshift(todayString);
+    }
+    return dates;
+  }, [assignments, todayString]);
 
-  // Filter data berdasarkan tanggal yang dipilih
-  const filteredByDate = (assignments || []).filter((item: any) => {
-    const itemDate = item.date || item.assignmentDate || todayString;
-    return itemDate === selectedDate;
-  });
+  // Filter & Sort data secara komprehensif
+  const processedAssignments = useMemo(() => {
+    let list = assignments || [];
 
-  // Format tampilan tanggal agar lebih elegan (Contoh: "Kamis, 6 Agu 2026")
-  const formatDateLabel = (dateStr: string) => {
-    try {
-      const options: Intl.DateTimeFormatOptions = {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      };
-      return new Date(dateStr).toLocaleDateString("id-ID", options);
-    } catch {
-      return dateStr;
+    // 1. Filter berdasarkan Tanggal Terpilih
+    list = list.filter((item: any) => {
+      const itemDate = item.date || item.assignmentDate || todayString;
+      return itemDate === selectedDate;
+    });
+
+    // 2. Filter berdasarkan Status Dropdown
+    if (statusFilter !== "ALL") {
+      list = list.filter((item: any) => item.status === statusFilter);
+    }
+
+    // 3. Filter berdasarkan Search Query
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase();
+      list = list.filter((item: any) => {
+        const vehicleDisplay = getEntityDisplay(
+          item.vehicle,
+          ["code", "name", "plateNumber"],
+          item.vehicleCode || "",
+        ).toLowerCase();
+        const driverDisplay = getEntityDisplay(
+          item.driver,
+          ["name", "fullName"],
+          item.driverName || "",
+        ).toLowerCase();
+        const routeDisplay =
+          typeof item.route === "object" && item.route !== null
+            ? `${item.route.routeCode || ""} ${item.route.routeName || ""}`.toLowerCase()
+            : String(item.route || "").toLowerCase();
+        const directionDisplay = getEntityDisplay(
+          item.direction,
+          ["name", "code"],
+          "",
+        ).toLowerCase();
+
+        return (
+          vehicleDisplay.includes(query) ||
+          driverDisplay.includes(query) ||
+          routeDisplay.includes(query) ||
+          directionDisplay.includes(query)
+        );
+      });
+    }
+
+    // 4. Sorting Data
+    return [...list].sort((a: any, b: any) => {
+      let valA = "";
+      let valB = "";
+
+      if (sortField === "time") {
+        valA = a.timeSlot || a.startTime || "00:00";
+        valB = b.timeSlot || b.startTime || "00:00";
+      } else if (sortField === "vehicle") {
+        valA = getEntityDisplay(
+          a.vehicle,
+          ["code", "name"],
+          a.vehicleCode || "",
+        );
+        valB = getEntityDisplay(
+          b.vehicle,
+          ["code", "name"],
+          b.vehicleCode || "",
+        );
+      } else if (sortField === "driver") {
+        valA = getEntityDisplay(
+          a.driver,
+          ["name", "fullName"],
+          a.driverName || "",
+        );
+        valB = getEntityDisplay(
+          b.driver,
+          ["name", "fullName"],
+          b.driverName || "",
+        );
+      } else if (sortField === "direction") {
+        valA = getEntityDisplay(a.direction, ["name", "code"], "");
+        valB = getEntityDisplay(b.direction, ["name", "code"], "");
+      } else if (sortField === "status") {
+        valA = a.status || "";
+        valB = b.status || "";
+      }
+
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [
+    assignments,
+    selectedDate,
+    statusFilter,
+    searchQuery,
+    sortField,
+    sortDirection,
+    todayString,
+  ]);
+
+  const handleSortChange = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
     }
   };
 
@@ -117,7 +199,7 @@ export default function OperationalBoardPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Pantau status perjalanan armada secara real-time berdasarkan jadwal
-            harian.
+            harian dalam format tabel.
           </p>
         </div>
 
@@ -219,105 +301,234 @@ export default function OperationalBoardPage() {
         </div>
       )}
 
-      {/* KANBAN BOARD LAYOUT (4 COLUMNS) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {COLUMNS.map((col) => {
-          const Icon = col.icon;
-          const columnItems = filteredByDate.filter(
-            (item: any) => item.status === col.key,
-          );
+      {/* FILTER & SEARCH TOOLBAR */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm">
+        {/* Search Input */}
+        <div className="relative w-full md:w-80">
+          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Cari unit, driver, rute, atau arah..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:border-gray-400 transition-all text-gray-800 placeholder-gray-400"
+          />
+        </div>
 
-          return (
-            <div
-              key={col.key}
-              className="bg-gray-50/80 border border-gray-200/60 rounded-3xl p-5 flex flex-col gap-4 shadow-sm"
+        {/* Status Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+          <FiFilter className="w-4 h-4 text-gray-400 shrink-0 mr-1 hidden sm:block" />
+          {[
+            { key: "ALL", label: "Semua" },
+            { key: "SCHEDULED", label: "Scheduled" },
+            { key: "ONGOING", label: "Ongoing" },
+            { key: "COMPLETED", label: "Completed" },
+            { key: "CANCELLED", label: "Cancelled" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setStatusFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                statusFilter === tab.key
+                  ? "bg-gray-900 text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200/70"
+              }`}
             >
-              {/* COLUMN HEADER */}
-              <div
-                className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${col.color}`}
-              >
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <Icon className="w-4 h-4" />
-                  <span>{col.label}</span>
-                </div>
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white shadow-xs">
-                  {columnItems.length}
-                </span>
-              </div>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-              {/* CARDS CONTAINER */}
-              <div className="flex flex-col gap-3 min-h-[400px]">
-                {loading ? (
-                  <div className="py-20 text-center text-gray-400 text-sm">
-                    Memuat data...
+      {/* TABLE CONTAINER */}
+      <div className="bg-white border border-gray-200/80 rounded-3xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50/70 border-b border-gray-200 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                <th
+                  onClick={() => handleSortChange("vehicle")}
+                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Unit Kendaraan</span>
+                    {sortField === "vehicle" &&
+                      (sortDirection === "asc" ? (
+                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
+                      ) : (
+                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
+                      ))}
                   </div>
-                ) : columnItems.length === 0 ? (
-                  <div className="py-20 text-center text-gray-400 text-xs italic bg-white/50 rounded-2xl border border-dashed border-gray-200">
-                    Tidak ada data {col.label.toLowerCase()}
+                </th>
+                <th
+                  onClick={() => handleSortChange("time")}
+                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Waktu / Sesi</span>
+                    {sortField === "time" &&
+                      (sortDirection === "asc" ? (
+                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
+                      ) : (
+                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
+                      ))}
                   </div>
-                ) : (
-                  columnItems.map((item: any) => {
-                    const vehicleDisplay =
-                      typeof item.vehicle === "object" && item.vehicle !== null
-                        ? item.vehicle.code || item.vehicle.name || "UNIT-00"
-                        : item.vehicleCode || item.vehicle || "UNIT-00";
+                </th>
+                <th
+                  onClick={() => handleSortChange("driver")}
+                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Pengemudi (Driver)</span>
+                    {sortField === "driver" &&
+                      (sortDirection === "asc" ? (
+                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
+                      ) : (
+                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
+                      ))}
+                  </div>
+                </th>
+                <th className="py-4 px-6">Rute Perjalanan</th>
+                <th
+                  onClick={() => handleSortChange("direction")}
+                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Arah (Direction)</span>
+                    {sortField === "direction" &&
+                      (sortDirection === "asc" ? (
+                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
+                      ) : (
+                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
+                      ))}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSortChange("status")}
+                  className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span>Status</span>
+                    {sortField === "status" &&
+                      (sortDirection === "asc" ? (
+                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
+                      ) : (
+                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
+                      ))}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-sm">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-20 text-center text-gray-400">
+                    Memuat data operasional...
+                  </td>
+                </tr>
+              ) : processedAssignments.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="py-20 text-center text-gray-400 italic"
+                  >
+                    Tidak ada jadwal penugasan operasional yang cocok dengan
+                    filter atau pencarian untuk tanggal{" "}
+                    <span className="font-semibold text-gray-600">
+                      {formatDateLabel(selectedDate)}
+                    </span>
+                  </td>
+                </tr>
+              ) : (
+                processedAssignments.map((item: any) => {
+                  const vehicleDisplay = getEntityDisplay(
+                    item.vehicle,
+                    ["plateNumber", "name", "code"],
+                    item.vehicleCode || "UNIT-XX",
+                  );
+                  const driverDisplay = getEntityDisplay(
+                    item.driver,
+                    ["name", "fullName"],
+                    item.driverName || "Driver",
+                  );
+                  const routeDisplay =
+                    typeof item.route === "object" && item.route !== null
+                      ? `${item.route.routeCode ? `${item.route.routeCode} - ` : ""}${item.route.routeName || "Rute"}`
+                      : item.route || "Rute Perjalanan";
+                  const directionDisplay = getEntityDisplay(
+                    item.direction,
+                    ["name", "code"],
+                    item.direction || "ARAH",
+                  );
+                  const timeDisplay =
+                    item.timeSlot ||
+                    `${item.startTime || "xx:xx"} - ${item.endTime || "xx:xx"}`;
 
-                    const driverDisplay =
-                      typeof item.driver === "object" && item.driver !== null
-                        ? item.driver.name || item.driver.fullName || "Driver"
-                        : item.driverName || item.driver || "Driver";
-
-                    const routeDisplay =
-                      typeof item.route === "object" && item.route !== null
-                        ? `${item.route.routeCode ? `${item.route.routeCode} - ` : ""}${item.route.routeName || "Rute"}`
-                        : item.route || "Rute Perjalanan";
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-white p-4 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-all space-y-3"
-                      >
-                        {/* Vehicle Code & Time */}
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 bg-gray-100 rounded-lg text-gray-700">
-                              <FiTruck className="w-4 h-4" />
-                            </div>
-                            <span className="font-bold font-mono text-gray-900 text-sm">
-                              {vehicleDisplay}
-                            </span>
+                  return (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-gray-50/60 transition-colors"
+                    >
+                      {/* Vehicle */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-gray-100 rounded-xl text-gray-700 shrink-0">
+                            <FiTruck className="w-4 h-4" />
                           </div>
-                          <span className="text-[11px] font-mono font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md">
-                            {item.timeSlot ||
-                              `${item.startTime || "06:00"} - ${item.endTime || "12:00"}`}
+                          <span className="font-bold font-mono text-gray-900">
+                            {vehicleDisplay}
                           </span>
                         </div>
+                      </td>
 
-                        <hr className="border-gray-50" />
+                      {/* Time */}
+                      <td className="py-4 px-6">
+                        <span className="inline-block font-mono text-xs font-medium bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg">
+                          {timeDisplay}
+                        </span>
+                      </td>
 
-                        {/* Details: Driver & Route */}
-                        <div className="space-y-1.5 text-xs text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <FiUser className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            <span className="font-medium text-gray-800">
-                              {driverDisplay}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FiMapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            <span className="text-gray-500 truncate">
-                              {routeDisplay}
-                            </span>
-                          </div>
+                      {/* Driver */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2">
+                          <FiUser className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="font-medium text-gray-800">
+                            {driverDisplay}
+                          </span>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          );
-        })}
+                      </td>
+
+                      {/* Route */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2 max-w-xs">
+                          <FiMapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="text-gray-600 truncate">
+                            {routeDisplay}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Direction */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2">
+                          <FiNavigation className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="font-medium text-gray-700">
+                            {directionDisplay}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-6 text-center">
+                        {renderStatusBadge(item.status)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
