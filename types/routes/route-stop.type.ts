@@ -1,4 +1,4 @@
-import { DirectionType } from "../vehicle.type";
+import { DirectionType } from "../vehicles/vehicle.type";
 
 export interface RouteStopType {
     id: number;

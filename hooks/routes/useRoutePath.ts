@@ -6,7 +6,7 @@ import {
   CreateRoutePathInput,
   UpdateRoutePathInput,
 } from "@/types/routes/route-path.type";
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 import { routePathService } from "@/services/routes/route-path.service";
 
 export function useRoutePaths() {

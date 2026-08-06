@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CreateVehicleInput, VehicleStatus, VehicleType } from "@/types/vehicle.type";
+import { CreateVehicleInput, VehicleStatus, VehicleType } from "@/types/vehicles/vehicle.type";
 import { FiX, FiSave } from "react-icons/fi";
 
 interface CreateVehicleModalProps {

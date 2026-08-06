@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 
 // Import Leaflet secara dinamis khusus client-side untuk menghindari error SSR Next.js
 const MapContainer = dynamic(

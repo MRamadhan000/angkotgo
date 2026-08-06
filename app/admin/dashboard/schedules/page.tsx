@@ -1,565 +1,324 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
+import {
+  FiRefreshCw,
+  FiCalendar,
+  FiClock,
+  FiTruck,
+  FiUser,
+  FiMapPin,
+  FiCheckCircle,
+  FiPlayCircle,
+  FiXCircle,
+  FiAlertCircle,
+  FiChevronDown,
+  FiCheck,
+} from "react-icons/fi";
+import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
 
-// --- Types ---
-interface Driver {
-  id: number;
-  name: string;
-  phone: string;
-  licenseNumber: string;
-  status: string;
-}
+// Daftar kolom disesuaikan dengan 4 status enum AssignmentStatus yang baru
+const COLUMNS = [
+  {
+    key: "SCHEDULED",
+    label: "Scheduled",
+    icon: FiClock,
+    color: "border-amber-200 bg-amber-50/50 text-amber-800",
+  },
+  {
+    key: "ONGOING",
+    label: "Ongoing",
+    icon: FiPlayCircle,
+    color: "border-blue-200 bg-blue-50/50 text-blue-800",
+  },
+  {
+    key: "COMPLETED",
+    label: "Completed",
+    icon: FiCheckCircle,
+    color: "border-emerald-200 bg-emerald-50/50 text-emerald-800",
+  },
+  {
+    key: "CANCELLED",
+    label: "Cancelled",
+    icon: FiXCircle,
+    color: "border-rose-200 bg-rose-50/50 text-rose-800",
+  },
+];
 
-interface Vehicle {
-  id: number;
-  plateNumber: string;
-  vehicleCode: string;
-  capacity: number;
-  status: string;
-}
+export default function OperationalBoardPage() {
+  const todayString = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState<string>(todayString);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-interface Trip {
-  id: number;
-  tripNumber: number;
-  status: string;
-}
+  const { assignments, loading, error, fetchAssignments } =
+    useVehicleAssignments();
 
-interface Schedule {
-  id: number;
-  workDate: string;
-  shift: number;
-  driver: Driver;
-  vehicle: Vehicle;
-  trips: Trip[];
-}
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
-// --- Helper Components ---
-const ShiftBadge = ({ shift }: { shift: number }) => {
-  const map: Record<number, { dot: string; text: string; bg: string }> = {
-    1: { dot: "bg-orange-500", text: "text-orange-700", bg: "bg-orange-50" },
-    2: { dot: "bg-blue-500", text: "text-blue-700", bg: "bg-blue-50" },
-    3: { dot: "bg-purple-500", text: "text-purple-700", bg: "bg-purple-50" },
+  const handleRefresh = () => {
+    fetchAssignments();
   };
-  const s = map[shift] || { dot: "bg-gray-500", text: "text-gray-700", bg: "bg-gray-50" };
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-      Shift {shift}
-    </span>
-  );
-};
 
-const StatCard = ({
-  icon, label, value, sub, subColor,
-}: {
-  icon: React.ReactNode; label: string; value: string | number; sub: string; subColor?: string;
-}) => (
-  <div className="bg-white rounded-2xl p-5 flex items-center gap-4 shadow-sm border border-gray-100">
-    <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
-      {icon}
-    </div>
-    <div>
-      <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 leading-none">{value}</p>
-      <p className={`text-xs mt-1 ${subColor ?? "text-gray-400"}`}>{sub}</p>
-    </div>
-  </div>
-);
-
-// --- Main Page ---
-export default function SchedulesPage() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [shiftFilter, setShiftFilter] = useState("Semua Shift");
-
-  // Modal States
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  // Form Data
-  const [formData, setFormData] = useState({
-    driverId: "",
-    vehicleId: "",
-    workDate: "",
-    shift: "",
-  });
-
-  // Selected Schedule for Edit
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
-
+  // Tutup dropdown jika klik di luar elemen
   useEffect(() => {
-    fetchData();
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [schedulesRes, driversRes, vehiclesRes] = await Promise.all([
-        fetch(`${API_URL}/schedules`),
-        fetch(`${API_URL}/drivers`),
-        fetch(`${API_URL}/vehicles`),
-      ]);
+  // Ekstrak daftar tanggal unik dari data assignments dan urutkan dari terbaru ke terlama
+  const availableDates = Array.from(
+    new Set(
+      (assignments || []).map(
+        (item: any) => item.date || item.assignmentDate || todayString,
+      ),
+    ),
+  ).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime());
 
-      if (schedulesRes.ok) setSchedules(await schedulesRes.json());
-      if (driversRes.ok) setDrivers(await driversRes.json());
-      if (vehiclesRes.ok) setVehicles(await vehiclesRes.json());
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Pastikan tanggal hari ini selalu ada dalam pilihan meskipun belum ada data
+  if (!availableDates.includes(todayString)) {
+    availableDates.unshift(todayString);
+  }
 
-  // ==================== ADD SCHEDULE ====================
-  const handleAddScheduleClick = () => {
-    setFormData({ driverId: "", vehicleId: "", workDate: "", shift: "" });
-    setFormError(null);
-    setIsAddModalOpen(true);
-  };
-
-  const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setFormError(null);
-
-    try {
-      const response = await fetch(`${API_URL}/schedules`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          driverId: Number(formData.driverId),
-          vehicleId: Number(formData.vehicleId),
-          workDate: formData.workDate,
-          shift: Number(formData.shift),
-        }),
-      });
-
-      if (!response.ok) throw new Error("Gagal menyimpan jadwal");
-
-      setIsAddModalOpen(false);
-      await fetchData();
-    } catch (err: any) {
-      setFormError(err.message || "Terjadi kesalahan saat menyimpan jadwal.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ==================== EDIT SCHEDULE ====================
-  const handleEditClick = (schedule: Schedule) => {
-    setSelectedSchedule(schedule);
-    setFormData({
-      driverId: schedule.driver.id.toString(),
-      vehicleId: schedule.vehicle.id.toString(),
-      workDate: schedule.workDate,
-      shift: schedule.shift.toString(),
-    });
-    setFormError(null);
-    setIsEditModalOpen(true);
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSchedule) return;
-
-    setIsSubmitting(true);
-    setFormError(null);
-
-    try {
-      const response = await fetch(`${API_URL}/schedules/${selectedSchedule.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workDate: formData.workDate,
-          shift: Number(formData.shift),
-          // createdAt tidak di-update dari form (sesuai DTO)
-        }),
-      });
-
-      if (!response.ok) throw new Error("Gagal memperbarui jadwal");
-
-      setIsEditModalOpen(false);
-      setSelectedSchedule(null);
-      await fetchData();
-    } catch (err: any) {
-      setFormError(err.message || "Terjadi kesalahan saat memperbarui jadwal.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ==================== DELETE SCHEDULE ====================
-  const handleDeleteClick = async (scheduleId: number) => {
-    const confirmDelete = window.confirm("Apakah Anda yakin ingin menghapus jadwal ini?");
-    if (!confirmDelete) return;
-
-    try {
-      const response = await fetch(`${API_URL}/schedules/${scheduleId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal menghapus jadwal");
-      }
-
-      await fetchData();
-    } catch (err: any) {
-      alert(err.message || "Terjadi kesalahan saat menghapus jadwal.");
-    }
-  };
-
-  // ==================== FILTER ====================
-  const filtered = schedules.filter((s) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      s.driver?.name.toLowerCase().includes(q) ||
-      s.vehicle?.plateNumber.toLowerCase().includes(q) ||
-      s.workDate.includes(q);
-
-    const matchShift = shiftFilter === "Semua Shift" || `Shift ${s.shift}` === shiftFilter;
-    return matchSearch && matchShift;
+  // Filter data berdasarkan tanggal yang dipilih
+  const filteredByDate = (assignments || []).filter((item: any) => {
+    const itemDate = item.date || item.assignmentDate || todayString;
+    return itemDate === selectedDate;
   });
 
-  // Stats
-  const totalSchedules = schedules.length;
-  const todayDate = new Date().toISOString().split("T")[0];
-  const todaySchedulesCount = schedules.filter((s) => s.workDate === todayDate).length;
-  const totalTrips = schedules.reduce((acc, curr) => acc + (curr.trips?.length || 0), 0);
+  // Format tampilan tanggal agar lebih elegan (Contoh: "Kamis, 6 Agu 2026")
+  const formatDateLabel = (dateStr: string) => {
+    try {
+      const options: Intl.DateTimeFormatOptions = {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      };
+      return new Date(dateStr).toLocaleDateString("id-ID", options);
+    } catch {
+      return dateStr;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Manajemen Jadwal</h1>
-            <p className="text-sm text-gray-500 mt-1">Atur penugasan supir dan kendaraan harian</p>
+    <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Jadwal & Status Operasional Angkot
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Pantau status perjalanan armada secara real-time berdasarkan jadwal
+            harian.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* CUSTOM DATE DROPDOWN MODAL */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-3 bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:border-gray-300 transition-all text-gray-700"
+            >
+              <FiCalendar className="w-4 h-4 text-gray-500 shrink-0" />
+              <span>{formatDateLabel(selectedDate)}</span>
+              <FiChevronDown
+                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                  isDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {/* DROPDOWN MENU / MODAL */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Pilih Tanggal Operasional
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                  {availableDates.map((date: any) => {
+                    const isSelected = date === selectedDate;
+                    const count = (assignments || []).filter(
+                      (item: any) =>
+                        (item.date || item.assignmentDate || todayString) ===
+                        date,
+                    ).length;
+
+                    return (
+                      <button
+                        key={date}
+                        onClick={() => {
+                          setSelectedDate(date);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          isSelected
+                            ? "bg-gray-900 text-white shadow-sm"
+                            : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>{formatDateLabel(date)}</span>
+                          {date === todayString && (
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                                isSelected
+                                  ? "bg-gray-800 text-gray-200"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              Hari Ini
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              isSelected
+                                ? "bg-gray-800 text-gray-300"
+                                : "bg-gray-100 text-gray-500"
+                            }`}
+                          >
+                            {count} unit
+                          </span>
+                          {isSelected && <FiCheck className="w-3.5 h-3.5" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+
           <button
-            onClick={handleAddScheduleClick}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+            onClick={handleRefresh}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Tambah Jadwal
+            <FiRefreshCw
+              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
           </button>
         </div>
+      </div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <StatCard
-            icon={<svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
-            label="Total Jadwal"
-            value={totalSchedules}
-            sub="Seluruh jadwal tercatat"
-          />
-          <StatCard
-            icon={<svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-            label="Jadwal Hari Ini"
-            value={todaySchedulesCount}
-            sub="Jadwal untuk beroperasi hari ini"
-            subColor="text-green-500"
-          />
-          <StatCard
-            icon={<svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
-            label="Total Trip (Berjalan)"
-            value={totalTrips}
-            sub="Keseluruhan trip supir"
-            subColor="text-purple-500"
-          />
+      {/* ERROR MESSAGE */}
+      {error && (
+        <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
+          <FiAlertCircle className="w-5 h-5 shrink-0" />
+          <span>Gagal memuat data: {error}</span>
         </div>
+      )}
 
-        {/* Table Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row gap-3 p-5 border-b border-gray-100">
-            <div className="relative flex-1 min-w-0">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              <input
-                type="text"
-                placeholder="Cari berdasarkan tanggal, nama supir, atau plat kendaraan..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
-              />
-            </div>
+      {/* KANBAN BOARD LAYOUT (4 COLUMNS) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {COLUMNS.map((col) => {
+          const Icon = col.icon;
+          const columnItems = filteredByDate.filter(
+            (item: any) => item.status === col.key,
+          );
 
-            <div className="flex gap-2 flex-shrink-0">
-              <div className="relative">
-                <select
-                  value={shiftFilter}
-                  onChange={(e) => setShiftFilter(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 cursor-pointer"
-                >
-                  <option>Semua Shift</option>
-                  <option>Shift 1</option>
-                  <option>Shift 2</option>
-                  <option>Shift 3</option>
-                </select>
-                <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          return (
+            <div
+              key={col.key}
+              className="bg-gray-50/80 border border-gray-200/60 rounded-3xl p-5 flex flex-col gap-4 shadow-sm"
+            >
+              {/* COLUMN HEADER */}
+              <div
+                className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${col.color}`}
+              >
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <Icon className="w-4 h-4" />
+                  <span>{col.label}</span>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white shadow-xs">
+                  {columnItems.length}
+                </span>
+              </div>
+
+              {/* CARDS CONTAINER */}
+              <div className="flex flex-col gap-3 min-h-[400px]">
+                {loading ? (
+                  <div className="py-20 text-center text-gray-400 text-sm">
+                    Memuat data...
+                  </div>
+                ) : columnItems.length === 0 ? (
+                  <div className="py-20 text-center text-gray-400 text-xs italic bg-white/50 rounded-2xl border border-dashed border-gray-200">
+                    Tidak ada data {col.label.toLowerCase()}
+                  </div>
+                ) : (
+                  columnItems.map((item: any) => {
+                    const vehicleDisplay =
+                      typeof item.vehicle === "object" && item.vehicle !== null
+                        ? item.vehicle.code || item.vehicle.name || "UNIT-00"
+                        : item.vehicleCode || item.vehicle || "UNIT-00";
+
+                    const driverDisplay =
+                      typeof item.driver === "object" && item.driver !== null
+                        ? item.driver.name || item.driver.fullName || "Driver"
+                        : item.driverName || item.driver || "Driver";
+
+                    const routeDisplay =
+                      typeof item.route === "object" && item.route !== null
+                        ? `${item.route.routeCode ? `${item.route.routeCode} - ` : ""}${item.route.routeName || "Rute"}`
+                        : item.route || "Rute Perjalanan";
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-white p-4 rounded-2xl border border-gray-100 shadow-xs hover:shadow-md transition-all space-y-3"
+                      >
+                        {/* Vehicle Code & Time */}
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-gray-100 rounded-lg text-gray-700">
+                              <FiTruck className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold font-mono text-gray-900 text-sm">
+                              {vehicleDisplay}
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-mono font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md">
+                            {item.timeSlot ||
+                              `${item.startTime || "06:00"} - ${item.endTime || "12:00"}`}
+                          </span>
+                        </div>
+
+                        <hr className="border-gray-50" />
+
+                        {/* Details: Driver & Route */}
+                        <div className="space-y-1.5 text-xs text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <FiUser className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span className="font-medium text-gray-800">
+                              {driverDisplay}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <FiMapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span className="text-gray-500 truncate">
+                              {routeDisplay}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
-          </div>
-
-          {isLoading ? (
-            <div className="p-12 text-center text-slate-500">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-300 border-t-blue-600 mb-4" />
-              <p className="text-sm font-medium">Memuat data jadwal...</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/50">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tanggal</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Shift</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Supir</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Kendaraan</th>
-                    <th className="text-center px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Jumlah Trip</th>
-                    <th className="text-center px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-5 py-12 text-center text-gray-400 text-sm">
-                        Tidak ada jadwal yang cocok dengan pencarian Anda.
-                      </td>
-                    </tr>
-                  ) : (
-                    filtered.map((schedule) => (
-                      <tr key={schedule.id} className="hover:bg-blue-50/30 transition-colors group">
-                        <td className="px-5 py-4 font-medium text-gray-700">
-                          {new Date(schedule.workDate).toLocaleDateString("id-ID", {
-                            weekday: "short", day: "numeric", month: "short", year: "numeric"
-                          })}
-                        </td>
-                        <td className="px-5 py-4">
-                          <ShiftBadge shift={schedule.shift} />
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-gray-800 text-sm">{schedule.driver?.name}</span>
-                            <span className="text-xs text-blue-500 mt-0.5">{schedule.driver?.phone}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-gray-800 text-sm">{schedule.vehicle?.plateNumber}</span>
-                            <span className="text-xs text-gray-500 mt-0.5">Kapasitas: {schedule.vehicle?.capacity}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-center">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 font-bold text-sm">
-                            {schedule.trips?.length || 0}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditClick(schedule)}
-                              className="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(schedule.id)}
-                              className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                            >
-                              Hapus
-                            </button>
-                            <Link
-                              href={`/admin/dashboard/schedules/${schedule.id}`}
-                              className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                              Detail
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400">
-              Menampilkan {filtered.length} dari {totalSchedules} jadwal
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ==================== ADD MODAL ==================== */}
-      {isAddModalOpen && (
-        <Modal title="Tambah Jadwal Baru" onClose={() => setIsAddModalOpen(false)}>
-          <ScheduleForm
-            formData={formData}
-            setFormData={setFormData}
-            drivers={drivers}
-            vehicles={vehicles}
-            onSubmit={handleAddSubmit}
-            isSubmitting={isSubmitting}
-            formError={formError}
-            submitLabel="Simpan Jadwal"
-          />
-        </Modal>
-      )}
-
-      {/* ==================== EDIT MODAL ==================== */}
-      {isEditModalOpen && selectedSchedule && (
-        <Modal title="Edit Jadwal" onClose={() => { setIsEditModalOpen(false); setSelectedSchedule(null); }}>
-          <ScheduleForm
-            formData={formData}
-            setFormData={setFormData}
-            drivers={drivers}
-            vehicles={vehicles}
-            onSubmit={handleEditSubmit}
-            isSubmitting={isSubmitting}
-            formError={formError}
-            submitLabel="Simpan Perubahan"
-            isEditMode={true}
-          />
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// ==================== REUSABLE MODAL ====================
-function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 mx-4">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">✕</button>
-        </div>
-        {children}
+          );
+        })}
       </div>
     </div>
-  );
-}
-
-// ==================== REUSABLE FORM ====================
-function ScheduleForm({
-  formData,
-  setFormData,
-  drivers,
-  vehicles,
-  onSubmit,
-  isSubmitting,
-  formError,
-  submitLabel,
-  isEditMode = false,
-}: {
-  formData: any;
-  setFormData: any;
-  drivers: Driver[];
-  vehicles: Vehicle[];
-  onSubmit: (e: React.FormEvent) => void;
-  isSubmitting: boolean;
-  formError: string | null;
-  submitLabel: string;
-  isEditMode?: boolean;
-}) {
-  return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      {formError && (
-        <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl font-medium">
-          {formError}
-        </div>
-      )}
-
-      {!isEditMode && (
-        <>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Supir</label>
-            <select
-              required
-              value={formData.driverId}
-              onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
-              className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="" disabled>-- Pilih Supir --</option>
-              {drivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>{driver.name} - {driver.licenseNumber}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Kendaraan</label>
-            <select
-              required
-              value={formData.vehicleId}
-              onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
-              className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="" disabled>-- Pilih Kendaraan --</option>
-              {vehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>{vehicle.plateNumber} (Kap: {vehicle.capacity})</option>
-              ))}
-            </select>
-          </div>
-        </>
-      )}
-
-      <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tanggal Kerja</label>
-        <input
-          type="date"
-          required
-          value={formData.workDate}
-          onChange={(e) => setFormData({ ...formData, workDate: e.target.value })}
-          className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pilih Shift</label>
-        <select
-          required
-          value={formData.shift}
-          onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
-          className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-        >
-          <option value="" disabled>-- Pilih Shift --</option>
-          <option value="1">Shift 1 (Pagi)</option>
-          <option value="2">Shift 2 (Siang)</option>
-          <option value="3">Shift 3 (Malam)</option>
-        </select>
-      </div>
-
-      <div className="flex gap-3 mt-8">
-        <button
-          type="button"
-          onClick={() => window.location.reload()} // simple close
-          className="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors text-sm"
-        >
-          Batal
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm shadow-sm"
-        >
-          {isSubmitting ? "Menyimpan..." : submitLabel}
-        </button>
-      </div>
-    </form>
   );
 }

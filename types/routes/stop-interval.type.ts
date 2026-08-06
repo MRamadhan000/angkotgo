@@ -1,4 +1,4 @@
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 
 export interface StopInterval {
   id: number;

@@ -2,7 +2,7 @@ import {
   Vehicle, 
   CreateVehicleInput, 
   UpdateVehicleInput 
-} from "@/types/vehicle.type";
+} from "@/types/vehicles/vehicle.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 

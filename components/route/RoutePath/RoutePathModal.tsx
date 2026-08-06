@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 import { FiX, FiMapPin, FiCompass, FiSave, FiRefreshCw } from "react-icons/fi";
 
 interface RoutePathModalProps {

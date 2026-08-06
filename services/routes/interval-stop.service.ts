@@ -3,7 +3,7 @@ import {
   CreateStopIntervalInput,
   UpdateStopIntervalInput,
 } from "@/types/routes/stop-interval.type";
-import { DirectionType } from "@/types/vehicle.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
