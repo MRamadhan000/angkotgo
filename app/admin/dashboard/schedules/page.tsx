@@ -1,504 +1,291 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-  FiRefreshCw,
-  FiTruck,
-  FiUser,
-  FiMapPin,
-  FiSearch,
-  FiArrowUp,
-  FiArrowDown,
-  FiNavigation,
-  FiPlus,
-  FiEdit2,
-  FiTrash2,
-} from "react-icons/fi";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
-import DateDropdownModal from "@/components/schedules/DateDropdownModal";
-import CreateAssignmentModal from "@/components/schedules/CreateAssignmentModal";
-import UpdateAssignmentModal from "@/components/schedules/UpdateAssignmentModal";
-import { renderStatusBadge } from "@/components/schedules/StatusBadge";
-import { formatDateLabel } from "@/utils/format";
-import { AssignmentStatus, DirectionType } from "@/types/vehicles/vehicle.type";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import {
-  filterAndSortAssignments,
-  getAvailableAssignmentDates,
-} from "@/utils/assignment.util";
-import ErrorAlert from "@/components/common/ErrorAlert";
-import {
-  CreateVehicleAssignmentInput,
-  VehicleAssignment,
-} from "@/types/vehicles/vehicle-assignments.type";
-import StatusFilterButton from "@/components/schedules/StatusFilterButton";
+  Bus,
+  CalendarDays,
+  AlertTriangle,
+  Navigation,
+  ArrowRightCircle,
+  ArrowLeftCircle,
+  Route,
+} from "lucide-react";
 
-const ASSIGNMENT_STATUS_FILTERS = [
-  { key: "ALL", label: "Semua" },
-  { key: AssignmentStatus.SCHEDULED, label: "Scheduled" },
-  { key: AssignmentStatus.ONGOING, label: "Ongoing" },
-  { key: AssignmentStatus.COMPLETED, label: "Completed" },
-  { key: AssignmentStatus.CANCELLED, label: "Cancelled" },
-] as const;
-
-export default function OperationalBoardPage() {
-  const todayString = useMemo(() => new Date().toISOString().split("T")[0], []);
+export default function VehicleSchedulesPage0() {
+  const todayString = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
-  // Modal States
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
-  const [selectedAssignment, setSelectedAssignment] =
-    useState<VehicleAssignment | null>(null);
+  const { schedules, schedulesLoading, schedulesError, fetchSchedulesByDate } =
+    useVehicleAssignments();
 
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [sortField, setSortField] = useState<string>("time");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  useEffect(() => {
+    fetchSchedulesByDate(selectedDate);
+  }, [selectedDate, fetchSchedulesByDate]);
 
-  const {
-    assignments,
-    loading,
-    error,
-    fetchAssignments,
-    createAssignment,
-    updateAssignment,
-    deleteAssignment,
-  } = useVehicleAssignments();
+  // Grouping data berdasarkan routeCode + direction, lalu di-flatten per HALTE
+  // (bukan per armada) — tiap halte menyimpan daftar armada yang lewat & jam tibanya.
+  const groupedSchedules = useMemo(() => {
+    type Arrival = {
+      assignmentId: string;
+      estimatedArrivalTime: string;
+      vehicle: (typeof schedules)[number]["vehicle"];
+    };
 
-  const handleRefresh = () => {
-    fetchAssignments();
-  };
+    const routeMap = new Map<
+      string,
+      {
+        routeCode: string;
+        routeName: string;
+        direction: string;
+        vehicleIds: Set<string>;
+        stopsMap: Map<
+          string,
+          { stopOrder: number; stopName: string; arrivals: Arrival[] }
+        >;
+      }
+    >();
 
-  const handleCreateAssignment = async (
-    newAssignmentData: CreateVehicleAssignmentInput,
-  ) => {
-    try {
-      await createAssignment(newAssignmentData);
-      fetchAssignments();
-    } catch (err: any) {
-      throw new Error(
-        err?.message || "Gagal menyimpan data penugasan kendaraan.",
-      );
-    }
-  };
+    schedules.forEach((item) => {
+      const key = `${item.routeCode}-${item.direction}`;
+      if (!routeMap.has(key)) {
+        routeMap.set(key, {
+          routeCode: item.routeCode,
+          routeName: item.routeName,
+          direction: item.direction,
+          vehicleIds: new Set(),
+          stopsMap: new Map(),
+        });
+      }
+      const routeGroup = routeMap.get(key)!;
+      routeGroup.vehicleIds.add(item.assignmentId.toString());
 
-  const handleUpdateAssignment = async (updatedData: any, id: string) => {
-    let numericId: number;
-    try {
-      numericId = parseInt(id, 10);
-    } catch (err) {
-      throw new Error("ID penugasan tidak valid.");
-    }
-    try {
-      await updateAssignment(numericId, updatedData);
-      fetchAssignments();
-    } catch (err: any) {
-      throw new Error(
-        err?.message || "Gagal memperbarui data penugasan kendaraan.",
-      );
-    }
-  };
-
-  const handleDeleteAssignment = async (
-    e: React.MouseEvent,
-    id: string | number,
-  ) => {
-    e.stopPropagation();
-
-    const confirmDelete = window.confirm(
-      "Apakah Anda yakin ingin menghapus penugasan ini?",
-    );
-    if (!confirmDelete) return;
-
-    let numericId: number;
-    try {
-      numericId = typeof id === "number" ? id : parseInt(id, 10);
-    } catch (err) {
-      alert("ID penugasan tidak valid.");
-      return;
-    }
-
-    try {
-      await deleteAssignment(numericId);
-      fetchAssignments();
-    } catch (err: any) {
-      alert(err?.message || "Gagal menghapus data penugasan kendaraan.");
-    }
-  };
-
-  const handleRowClick = (item: VehicleAssignment) => {
-    setSelectedAssignment(item);
-    setIsUpdateModalOpen(true);
-  };
-
-  const availableDates = useMemo(
-    () => getAvailableAssignmentDates(assignments ?? [], todayString),
-    [assignments, todayString],
-  );
-
-  const processedAssignments = useMemo(() => {
-    return filterAndSortAssignments({
-      assignments,
-      selectedDate,
-      todayString,
-      statusFilter,
-      searchQuery,
-      sortField,
-      sortDirection,
+      item.estimatedStopsSchedule.forEach((stop) => {
+        if (!routeGroup.stopsMap.has(stop.stopId.toString())) {
+          routeGroup.stopsMap.set(stop.stopId.toString(), {
+            stopOrder: stop.stopOrder,
+            stopName: stop.stopName,
+            arrivals: [],
+          });
+        }
+        routeGroup.stopsMap.get(stop.stopId.toString())!.arrivals.push({
+          assignmentId: item.assignmentId.toString(),
+          estimatedArrivalTime: stop.estimatedArrivalTime,
+          vehicle: item.vehicle,
+        });
+      });
     });
-  }, [
-    assignments,
-    selectedDate,
-    todayString,
-    statusFilter,
-    searchQuery,
-    sortField,
-    sortDirection,
-  ]);
 
-  const handleSortChange = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
+    return Array.from(routeMap.values()).map((group) => ({
+      routeCode: group.routeCode,
+      routeName: group.routeName,
+      direction: group.direction,
+      vehicleCount: group.vehicleIds.size,
+      stops: Array.from(group.stopsMap.values())
+        .sort((a, b) => a.stopOrder - b.stopOrder)
+        .map((stop) => ({
+          ...stop,
+          arrivals: [...stop.arrivals].sort((a, b) =>
+            a.estimatedArrivalTime.localeCompare(b.estimatedArrivalTime)
+          ),
+        })),
+    }));
+  }, [schedules]);
 
   return (
-    <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Jadwal & Status Operasional Angkot
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Pantau status perjalanan armada secara real-time berdasarkan jadwal
-            harian dalam format tabel. (Klik baris tabel untuk mengedit)
-          </p>
-        </div>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-10">
+      <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+              <Bus size={22} strokeWidth={2.25} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 leading-tight">
+                Jadwal & Estimasi Kedatangan Angkot
+              </h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Estimasi waktu tiba angkot di setiap halte, berdasarkan rute.
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <DateDropdownModal
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
-            isDropdownOpen={isDropdownOpen}
-            setIsDropdownOpen={setIsDropdownOpen}
-            availableDates={availableDates}
-            assignments={assignments}
-            todayString={todayString}
-          />
-
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
-          >
-            <FiPlus className="w-4 h-4" />
-            Tambah Jadwal
-          </button>
-
-          <button
-            onClick={handleRefresh}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
-          >
-            <FiRefreshCw
-              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+          {/* Date Picker Filter */}
+          <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex items-center gap-2 pl-2 text-slate-500">
+              <CalendarDays size={16} />
+              <label htmlFor="schedule-date" className="text-sm font-medium">
+                Pilih Tanggal
+              </label>
+            </div>
+            <input
+              id="schedule-date"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-3 py-1.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {error && <ErrorAlert message={`Gagal memuat data: ${error}`} />}
-
-      {/* FILTER & SEARCH TOOLBAR */}
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:grid-cols-2 lg:items-center">
-        <div className="relative w-full">
-          <FiSearch className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cari unit, driver, rute, atau arah..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:outline-none"
-          />
-        </div>
-
-        {/* Status Filter */}
-        <div className="flex justify-end overflow-x-auto pb-1 scrollbar-hide">
-          <div className="flex flex-wrap items-center gap-2">
-            {ASSIGNMENT_STATUS_FILTERS.map((tab) => (
-              <StatusFilterButton
-                key={tab.key}
-                status={tab.key}
-                active={statusFilter === tab.key}
-                onClick={() => setStatusFilter(tab.key)}
-              />
-            ))}
           </div>
         </div>
-      </div>
 
-      {/* TABLE CONTAINER */}
-      <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/70 border-b border-gray-200 text-gray-500 text-xs font-bold uppercase tracking-wider">
-                <th
-                  onClick={() => handleSortChange("vehicle")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Unit Kendaraan</span>
-                    {sortField === "vehicle" &&
-                      (sortDirection === "asc" ? (
-                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
-                      ) : (
-                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
-                      ))}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSortChange("time")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Waktu / Sesi</span>
-                    {sortField === "time" &&
-                      (sortDirection === "asc" ? (
-                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
-                      ) : (
-                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
-                      ))}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSortChange("driver")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Pengemudi (Driver)</span>
-                    {sortField === "driver" &&
-                      (sortDirection === "asc" ? (
-                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
-                      ) : (
-                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
-                      ))}
-                  </div>
-                </th>
-                <th className="py-4 px-6">Rute Perjalanan</th>
-                <th
-                  onClick={() => handleSortChange("direction")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Arah (Direction)</span>
-                    {sortField === "direction" &&
-                      (sortDirection === "asc" ? (
-                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
-                      ) : (
-                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
-                      ))}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSortChange("status")}
-                  className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
-                >
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span>Status</span>
-                    {sortField === "status" &&
-                      (sortDirection === "asc" ? (
-                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
-                      ) : (
-                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
-                      ))}
-                  </div>
-                </th>
-                <th className="py-4 px-6 text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-20 text-center text-gray-400">
-                    Memuat data operasional...
-                  </td>
-                </tr>
-              ) : processedAssignments.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="py-20 text-center text-gray-400 italic"
-                  >
-                    Tidak ada jadwal penugasan operasional yang cocok dengan
-                    filter atau pencarian untuk tanggal{" "}
-                    <span className="font-semibold text-gray-600">
-                      {formatDateLabel(selectedDate)}
-                    </span>
-                  </td>
-                </tr>
-              ) : (
-                processedAssignments.map((item) => {
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => handleRowClick(item)}
-                      className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
-                      title="Klik untuk mengedit penugasan"
-                    >
-                      {/* Vehicle */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 group-hover:bg-blue-100 group-hover:text-blue-700 text-gray-700 shrink-0 transition-colors">
-                            <FiTruck className="h-5 w-5" />
-                          </div>
+        {/* Error State */}
+        {schedulesError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+            <AlertTriangle size={16} className="shrink-0" />
+            <span>{schedulesError}</span>
+          </div>
+        )}
 
-                          <div className="min-w-0">
-                            <p className="font-mono font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                              {item.vehicle?.vehicleCode || "UNIT-XX"}
-                            </p>
+        {/* Loading State */}
+        {schedulesLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-200 border-t-blue-600"></div>
+            <p className="text-sm">Memuat jadwal...</p>
+          </div>
+        ) : groupedSchedules.length === 0 ? (
+          /* Empty State */
+          <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+              <Bus size={22} />
+            </div>
+            <p className="text-slate-500 text-base">
+              Tidak ada jadwal penugasan kendaraan pada tanggal{" "}
+              <span className="font-semibold text-slate-800">
+                {selectedDate}
+              </span>
+              .
+            </p>
+          </div>
+        ) : (
+          /* List of Grouped Routes */
+          <div className="grid grid-cols-1 gap-6">
+            {groupedSchedules.map((group, index) => {
+              const isForward = group.direction?.toUpperCase() === "FORWARD";
+              const directionBadgeClass = isForward
+                ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                : "bg-amber-100 text-amber-800 border-amber-200";
+              const DirectionIcon = isForward
+                ? ArrowRightCircle
+                : ArrowLeftCircle;
 
-                            <p className="text-xs text-gray-500">
-                              {item.vehicle?.plateNumber || "-"}
-                            </p>
-
-                            <span
-                              className={`mt-1 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                                item.vehicle?.type === "PREMIUM"
-                                  ? "bg-amber-100 text-amber-800 border-amber-300"
-                                  : "bg-emerald-100 text-emerald-700 border-emerald-200"
-                              }`}
-                            >
-                              {item.vehicle?.type || "-"}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Schedule */}
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          <span className="inline-flex rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-medium text-gray-700">
-                            {item.startTime || "--:--"} -{" "}
-                            {item.endTime || "--:--"}
+              return (
+                <div
+                  key={index}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                >
+                  {/* Header Rute */}
+                  <div className="bg-white px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 text-white font-bold text-sm rounded-lg shadow-sm">
+                        <Route size={14} />
+                        {group.routeCode}
+                      </span>
+                      <div>
+                        <h2 className="text-slate-900 font-bold text-lg">
+                          {group.routeName}
+                        </h2>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-slate-500">
+                            Arah / Jalur:
                           </span>
-
-                          <p className="text-xs text-gray-500">
-                            {item.assignmentDate}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* Driver */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
-                            <FiUser className="h-4 w-4 text-gray-500" />
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900">
-                              {item.driver?.name || "Driver"}
-                            </p>
-
-                            <p className="text-xs text-gray-500">
-                              {item.driver?.phone || item.driver?.nik || "-"}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Route */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-start gap-2 max-w-xs">
-                          <FiMapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-gray-800">
-                              {item.route?.routeName || "Rute Perjalanan"}
-                            </p>
-
-                            <p className="text-xs text-gray-500">
-                              {item.route?.routeCode || "-"}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Direction */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <FiNavigation className="h-4 w-4 text-gray-400" />
-
                           <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              item.direction === DirectionType.FORWARD
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-orange-50 text-orange-700"
-                            }`}
+                            className={`flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full border ${directionBadgeClass}`}
                           >
-                            {item.direction}
+                            <DirectionIcon size={12} />
+                            {group.direction}
                           </span>
                         </div>
-                      </td>
+                      </div>
+                    </div>
+                    <span className="flex items-center gap-1.5 text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl font-medium border border-slate-200 self-start md:self-auto">
+                      <Bus size={14} />
+                      {group.vehicleCount} Armada Beroperasi
+                    </span>
+                  </div>
 
-                      {/* Status */}
-                      <td className="px-6 py-4 text-center">
-                        {renderStatusBadge(item.status)}
-                      </td>
+                  {/* Body: Garis Rute per Halte — fokus pada halte, bukan armada */}
+                  <div className="p-6 md:p-8">
+                    <h5 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-4 md:mb-8 flex items-center gap-1.5">
+                      <Navigation size={12} />
+                      Estimasi Waktu Tiba di Halte
+                    </h5>
 
-                      {/* Actions */}
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRowClick(item);
-                            }}
-                            className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                            title="Edit"
-                          >
-                            <FiEdit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteAssignment(e, item.id)}
-                            className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                            title="Hapus"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                    <div className="md:overflow-x-auto md:pb-2 md:[scrollbar-width:thin]">
+                      <div className="flex flex-col md:flex-row md:items-start gap-0 md:gap-0 md:min-w-max md:px-1">
+                        {group.stops.map((stop, i, arr) => {
+                          const isFirst = i === 0;
+                          const isLast = i === arr.length - 1;
+                          const dotClass = isFirst
+                            ? "bg-emerald-600 border-emerald-600 text-white"
+                            : isLast
+                            ? "bg-rose-600 border-rose-600 text-white"
+                            : "bg-white border-blue-600 text-blue-600";
+
+                          return (
+                            <Fragment key={stop.stopName + stop.stopOrder}>
+                              {/* Node: dot + nama halte + daftar armada yang lewat */}
+                              <div className="flex md:flex-col items-start md:items-center gap-3 md:gap-3 md:w-56 md:shrink-0 md:text-center">
+                                <div
+                                  className={`relative z-10 w-7 h-7 md:w-9 md:h-9 mt-0.5 md:mt-0 shrink-0 rounded-full border-2 flex items-center justify-center text-[10px] md:text-xs font-bold shadow-sm ${dotClass}`}
+                                >
+                                  {stop.stopOrder}
+                                </div>
+                                <div className="min-w-0 flex-1 md:flex-none md:w-full">
+                                  <p
+                                    className="text-sm md:text-[15px] font-semibold text-slate-800 md:leading-tight md:mb-3"
+                                    title={stop.stopName}
+                                  >
+                                    {stop.stopName}
+                                  </p>
+                                  <div className="mt-1.5 md:mt-0 flex flex-wrap md:flex-col gap-1 md:gap-1.5 md:items-stretch">
+                                    {stop.arrivals.map((arrival) => {
+                                      const isPremium =
+                                        arrival.vehicle?.type?.toUpperCase() ===
+                                        "PREMIUM";
+                                      const chipClass = isPremium
+                                        ? "bg-purple-50 text-purple-700 border-purple-100"
+                                        : "bg-blue-50 text-blue-700 border-blue-100";
+                                      return (
+                                        <span
+                                          key={arrival.assignmentId}
+                                          className={`inline-flex items-center justify-center md:justify-between gap-1 text-[10px] md:text-xs font-bold px-1.5 md:px-2.5 py-0.5 md:py-1.5 rounded-md border ${chipClass}`}
+                                        >
+                                          <span className="inline-flex items-center gap-1">
+                                            <Bus size={10} className="shrink-0" />
+                                            {arrival.vehicle?.plateNumber}
+                                          </span>
+                                          <span className="opacity-50 md:hidden">
+                                            ·
+                                          </span>
+                                          <span>{arrival.estimatedArrivalTime}</span>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Connector: vertikal di mobile, horizontal di desktop */}
+                              {!isLast && (
+                                <div
+                                  className="w-0.5 h-6 ml-[15px] border-l-2 border-dashed border-slate-300
+                                             md:w-auto md:h-0 md:ml-0 md:mt-[17px] md:flex-1 md:min-w-10 md:self-start
+                                             md:border-l-0 md:border-t-2"
+                                />
+                              )}
+                            </Fragment>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {/* CREATE ASSIGNMENT MODAL */}
-      <CreateAssignmentModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={handleCreateAssignment}
-      />
-
-      {/* UPDATE ASSIGNMENT MODAL */}
-      <UpdateAssignmentModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => {
-          setIsUpdateModalOpen(false);
-          setSelectedAssignment(null);
-        }}
-        onSuccess={handleUpdateAssignment}
-        initialData={selectedAssignment}
-      />
     </div>
   );
 }
