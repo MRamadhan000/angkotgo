@@ -44,7 +44,7 @@ export interface Vehicle {
   capacity: number;
   currentOdometer: number;
   status: VehicleStatus;
-  type: VehicleType;
+  type: VehicleType;  
   assignments?: VehicleAssignment[];
   services?: VehicleService[];
   createdAt: string | Date;
