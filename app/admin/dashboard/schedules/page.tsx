@@ -17,12 +17,11 @@ import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
 import DateDropdownModal from "@/components/schedules/DateDropdownModal";
 import { renderStatusBadge } from "@/components/schedules/StatusBadge";
 import { formatDateLabel } from "@/utils/format";
+import { AssignmentStatus, DirectionType } from "@/types/vehicles/vehicle.type";
 import {
-  VehicleAssignment,
-  AssignmentStatus,
-  DirectionType,
-} from "@/types/vehicles/vehicle.type";
-import { filterAndSortAssignments } from "@/utils/assignment.util";
+  filterAndSortAssignments,
+  getAvailableAssignmentDates,
+} from "@/utils/assignment.util";
 
 const ASSIGNMENT_STATUS_FILTERS = [
   { key: "ALL", label: "Semua" },
@@ -49,22 +48,11 @@ export default function OperationalBoardPage() {
     fetchAssignments();
   };
 
-  // Ekstrak daftar tanggal unik dari database/assignments dan urutkan dari terbaru ke terlama
-  const availableDates = useMemo(() => {
-    const typedAssignments: VehicleAssignment[] = assignments || [];
-    const dates = Array.from(
-      new Set(
-        typedAssignments.map((item) => item.assignmentDate || todayString),
-      ),
-    ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  const availableDates = useMemo(
+    () => getAvailableAssignmentDates(assignments ?? [], todayString),
+    [assignments, todayString],
+  );
 
-    if (!dates.includes(todayString)) {
-      dates.unshift(todayString);
-    }
-    return dates;
-  }, [assignments, todayString]);
-
-  // Filter & Sort data secara komprehensif menggunakan tipe data asli
   const processedAssignments = useMemo(() => {
     return filterAndSortAssignments({
       assignments,
@@ -109,7 +97,6 @@ export default function OperationalBoardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* MODULAR DATE DROPDOWN COMPONENT */}
           <DateDropdownModal
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}

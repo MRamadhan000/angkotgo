@@ -99,3 +99,22 @@ export function filterAndSortAssignments({
 
   return list;
 }
+
+export function getAvailableAssignmentDates(
+  assignments: VehicleAssignment[],
+  todayString: string,
+): string[] {
+  const dates = Array.from(
+    new Set(
+      assignments.map(
+        (assignment) => assignment.assignmentDate || todayString,
+      ),
+    ),
+  ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+  if (!dates.includes(todayString)) {
+    dates.unshift(todayString);
+  }
+
+  return dates;
+}
