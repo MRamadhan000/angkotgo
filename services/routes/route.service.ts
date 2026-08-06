@@ -1,4 +1,4 @@
-import { Route, CreateRouteInput, UpdateRouteInput } from "@/types/route.type";
+import { Route, CreateRouteInput, UpdateRouteInput } from "@/types/routes/route.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 

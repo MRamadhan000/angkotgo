@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CreateRouteInput } from "@/types/route.type";
+import { CreateRouteInput } from "@/types/routes/route.type";
 import { FiX, FiSave } from "react-icons/fi";
 
 interface CreateRouteModalProps {
