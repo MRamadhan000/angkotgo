@@ -1,3 +1,4 @@
+import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
 import {
   VehicleAssignment,
   CreateVehicleAssignmentInput,
@@ -64,6 +65,58 @@ export const vehicleAssignmentService = {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         errorData.message || "Gagal mengambil data jadwal estimasi halte.",
+      );
+    }
+
+    const result = await response.json();
+    return Array.isArray(result) ? result : result.data || [];
+  },
+
+  async getDriverTripHistory(
+    driverId: number | string,
+  ): Promise<TripHistoryItem[]> {
+    const response = await fetch(
+      `${API_URL}/vehicle-assignments/driver/${driverId}/history`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message ||
+          `Gagal mengambil riwayat trip untuk driver ID ${driverId}.`,
+      );
+    }
+
+    const result = await response.json();
+    return Array.isArray(result) ? result : result.data || [];
+  },
+
+  async getConductorTripHistory(
+    conductorId: number | string,
+  ): Promise<TripHistoryItem[]> {
+    const response = await fetch(
+      `${API_URL}/vehicle-assignments/conductor/${conductorId}/history`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message ||
+          `Gagal mengambil riwayat trip untuk kondektur ID ${conductorId}.`,
       );
     }
 
