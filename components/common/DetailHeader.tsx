@@ -47,13 +47,14 @@ export function DetailHeader({
         {/* Informasi Header */}
         <div className="space-y-1.5 min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white break-words leading-tight">
+            <h1 className="text-base sm:text-2xl font-bold tracking-tight text-white break-words leading-tight">
               {title}
             </h1>
           </div>
 
+          {/* Deskripsi di-hide pada mobile (hidden), muncul di layar sm ke atas (sm:block) */}
           {description && (
-            <p className="text-xs sm:text-sm text-blue-200 line-clamp-2">
+            <p className="hidden sm:block text-xs sm:text-sm text-blue-200 line-clamp-2">
               {description}
             </p>
           )}
