@@ -87,3 +87,30 @@ export function useConductors() {
     loginConductor,
   };
 }
+
+export function useConductorDetail(id: number | string | null) {
+  const [conductor, setConductor] = useState<Conductor | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchDetail = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await conductorService.getConductorById(id);
+        setConductor(data);
+      } catch (err: any) {
+        setError(err.message || "Gagal memuat detail kondektur");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDetail();
+  }, [id]);
+
+  return { conductor, loading, error };
+}

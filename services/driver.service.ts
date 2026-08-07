@@ -4,6 +4,7 @@ import {
   CreateDriverInput,
   UpdateDriverInput,
 } from "@/types/driver.type";
+import { json } from "stream/consumers";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -66,7 +67,9 @@ export const driverService = {
       );
     }
 
-    return response.json();
+    const json = await response.json();
+
+    return json.data;
   },
 
   async registerDriver(data: CreateDriverInput): Promise<Driver> {

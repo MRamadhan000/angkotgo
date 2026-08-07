@@ -2,29 +2,25 @@
 
 import { InfoRow } from "@/components/ui/InfoRow";
 import { useAuth } from "@/context/AuthContext";
-import { useDriverDetail } from "@/hooks/useDrivers";
+import { useConductorDetail } from "@/hooks/useConductors";
 import Link from "next/link";
 import {
   FiUser,
   FiMail,
   FiPhone,
   FiMapPin,
-  FiShield,
-  FiCreditCard,
-  FiAward,
   FiCheckCircle,
   FiClock,
   FiAlertCircle,
   FiArrowLeft,
   FiRefreshCw,
-  FiStar,
   FiTruck,
 } from "react-icons/fi";
 
-export default function DriverProfilePage() {
+export default function ConductorProfilePage() {
   const { user } = useAuth();
 
-  const { driver, loading, error } = useDriverDetail(user?.id ?? null);
+  const { conductor, loading, error } = useConductorDetail(user?.id ?? null);
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800 antialiased">
@@ -32,7 +28,7 @@ export default function DriverProfilePage() {
         {/* HEADER & BACK BUTTON */}
         <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
           <Link
-            href="/driver/dashboard"
+            href="/conductor/dashboard"
             className="flex-shrink-0 rounded-xl bg-gray-50 p-2.5 text-gray-600 transition-colors hover:bg-gray-100 sm:rounded-2xl sm:p-3"
           >
             <FiArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -42,7 +38,7 @@ export default function DriverProfilePage() {
               Profil Saya
             </h1>
             <p className="truncate text-xs text-gray-500 sm:text-sm">
-              Informasi data diri dan status akun pengemudi Anda.
+              Informasi data diri dan status akun kondektur Anda.
             </p>
           </div>
         </div>
@@ -60,7 +56,7 @@ export default function DriverProfilePage() {
             <FiAlertCircle className="h-5 w-5 shrink-0" />
             <span>Gagal memuat profil: {error}</span>
           </div>
-        ) : !driver ? (
+        ) : !conductor ? (
           <div className="rounded-2xl border border-gray-100 bg-white p-10 text-center text-sm text-gray-400 shadow-sm sm:rounded-3xl">
             Data profil tidak ditemukan.
           </div>
@@ -70,10 +66,10 @@ export default function DriverProfilePage() {
             <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-white bg-blue-50 text-blue-600 shadow-md sm:h-24 sm:w-24">
-                  {driver.photoUrl ? (
+                  {conductor.photoUrl ? (
                     <img
-                      src={driver.photoUrl}
-                      alt={driver.name}
+                      src={conductor.photoUrl}
+                      alt={conductor.name}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -86,38 +82,40 @@ export default function DriverProfilePage() {
                 <div className="min-w-0 flex-1 text-center sm:text-left">
                   <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                     <h2 className="truncate text-lg font-bold text-gray-900 sm:text-xl">
-                      {driver.name}
+                      {conductor.name}
                     </h2>
                     <span
                       className={`inline-flex w-fit items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                        driver.isVerified
+                        conductor.isVerified
                           ? "bg-green-100 text-green-700"
                           : "bg-amber-100 text-amber-700"
                       }`}
                     >
-                      {driver.isVerified ? (
+                      {conductor.isVerified ? (
                         <FiCheckCircle className="h-3 w-3" />
                       ) : (
                         <FiClock className="h-3 w-3" />
                       )}
-                      {driver.isVerified ? "Terverifikasi" : "Belum Verifikasi"}
+                      {conductor.isVerified
+                        ? "Terverifikasi"
+                        : "Belum Verifikasi"}
                     </span>
                   </div>
 
                   <p className="mt-0.5 font-mono text-xs text-gray-500">
-                    NIK: {driver.nik || "-"}
+                    NIK: {conductor.nik || "-"}
                   </p>
                 </div>
               </div>
 
-              {/* Stat pills */}
-              <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:gap-3">
+              {/* Stat pills (2 items for Conductor) */}
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
                 <div className="rounded-xl border border-gray-100 bg-gray-50 px-2 py-2 text-center sm:px-3 sm:py-2.5">
                   <span className="block text-[9px] font-bold uppercase text-gray-400 sm:text-[10px]">
-                    Status
+                    Status Tugas
                   </span>
                   <span className="mt-0.5 block truncate text-xs font-bold text-gray-800 sm:text-sm">
-                    {driver.status}
+                    {conductor.status}
                   </span>
                 </div>
                 <div className="rounded-xl border border-gray-100 bg-gray-50 px-2 py-2 text-center sm:px-3 sm:py-2.5">
@@ -125,85 +123,30 @@ export default function DriverProfilePage() {
                     <FiTruck className="h-3 w-3" /> Total Trip
                   </span>
                   <span className="mt-0.5 block text-xs font-bold text-gray-800 sm:text-sm">
-                    {driver.totalTrips ?? 0}
-                  </span>
-                </div>
-                <div className="rounded-xl border border-gray-100 bg-gray-50 px-2 py-2 text-center sm:px-3 sm:py-2.5">
-                  <span className="flex items-center justify-center gap-1 text-[9px] font-bold uppercase text-gray-400 sm:text-[10px]">
-                    <FiStar className="h-3 w-3" /> Rating
-                  </span>
-                  <span className="mt-0.5 block text-xs font-bold text-amber-600 sm:text-sm">
-                    {driver.averageRating ?? 0}
+                    {conductor.totalTrips ?? 0}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* DETAIL GRID */}
-            <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
-              {/* Kontak & Alamat */}
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
-                <h3 className="mb-3 border-b border-gray-100 pb-2.5 text-sm font-bold text-gray-900">
-                  Informasi Kontak
-                </h3>
+            {/* DETAIL SECTION */}
+            <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
+              <h3 className="mb-3 border-b border-gray-100 pb-2.5 text-sm font-bold text-gray-900">
+                Informasi Kontak & Alamat
+              </h3>
 
-                <div className="space-y-2 text-xs sm:text-sm">
-                  <InfoRow icon={FiMail} label="Email" value={driver.email} />
-                  <InfoRow
-                    icon={FiPhone}
-                    label="Nomor Telepon"
-                    value={driver.phone || "-"}
-                  />
-                  <InfoRow
-                    icon={FiMapPin}
-                    label="Alamat Domisili"
-                    value={driver.address || "-"}
-                  />
-                </div>
-              </div>
-
-              {/* Lisensi & Pembayaran */}
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6">
-                <h3 className="mb-3 border-b border-gray-100 pb-2.5 text-sm font-bold text-gray-900">
-                  Lisensi & Keuangan
-                </h3>
-
-                <div className="space-y-2 text-xs sm:text-sm">
-                  <InfoRow
-                    icon={FiShield}
-                    label="Nomor SIM (License)"
-                    value={driver.licenseNumber || "-"}
-                    mono
-                  />
-                  <InfoRow
-                    icon={FiAward}
-                    label="Masa Berlaku SIM"
-                    value={
-                      driver.licenseExpiryDate
-                        ? new Date(driver.licenseExpiryDate).toLocaleDateString(
-                            "id-ID",
-                          )
-                        : "-"
-                    }
-                  />
-                  <InfoRow
-                    icon={FiCreditCard}
-                    label="Informasi Rekening Bank"
-                    value={
-                      driver.bankAccountInfo ? (
-                        <>
-                          {driver.bankAccountInfo.bankName} -{" "}
-                          {driver.bankAccountInfo.accountNumber}
-                          <span className="mt-0.5 block text-[11px] font-normal text-gray-500">
-                            a.n. {driver.bankAccountInfo.accountHolderName}
-                          </span>
-                        </>
-                      ) : (
-                        "Belum diatur"
-                      )
-                    }
-                  />
-                </div>
+              <div className="space-y-2 text-xs sm:text-sm">
+                <InfoRow icon={FiMail} label="Email" value={conductor.email} />
+                <InfoRow
+                  icon={FiPhone}
+                  label="Nomor Telepon"
+                  value={conductor.phone || "-"}
+                />
+                <InfoRow
+                  icon={FiMapPin}
+                  label="Alamat Domisili"
+                  value={conductor.address || "-"}
+                />
               </div>
             </div>
           </div>
