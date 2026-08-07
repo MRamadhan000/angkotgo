@@ -1,115 +1,163 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoginDriverData } from "@/types/auth/auth-driver.type";
-import { authDriverService } from "@/services/auth.service";
 
-// Definisikan tipe union untuk role yang tersedia
-export type UserRole = "driver" | "conductor" | "user";
+export type UserRole = "driver" | "conductor" | "admin" | "user";
 
-interface AuthUser {
-  id: string | number;
+export interface AuthUser {
+  id: string;
   name: string;
   role: UserRole;
+  token?: string;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
-  id: string | number | null;
+
+  id: string | null;
   name: string | null;
   role: UserRole | null;
+
+  isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
-  login: (credentials: LoginDriverData) => Promise<void>;
+
+  login: (user: AuthUser) => void;
+
   logout: () => void;
+
+  updateUser: (user: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const STORAGE_KEY = "auth";
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
+  const [isLoading, setIsLoading] = useState(true);
+
+  /**
+   * Restore Session
+   */
   useEffect(() => {
-    const storedId = localStorage.getItem("driverId");
-    const storedName = localStorage.getItem("driverName");
-    const storedRole = localStorage.getItem("driverRole") as UserRole;
+    try {
+      const storage = localStorage.getItem(STORAGE_KEY);
 
-    if (storedId) {
-      setUser({
-        id: storedId,
-        name: storedName || "Pengguna",
-        role: storedRole || "driver",
-      });
+      if (storage) {
+        const parsed: AuthUser = JSON.parse(storage);
+
+        setUser(parsed);
+      }
+    } catch (err) {
+      console.error(err);
+
+      localStorage.removeItem(STORAGE_KEY);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
-  const login = async (credentials: LoginDriverData) => {
-    setIsLoading(true);
-    setError(null);
+  const login = (authUser: AuthUser) => {
+    setUser(authUser);
 
-    try {
-      const response: any = await authDriverService.login(credentials);
-      const driverData = response?.data || response;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
 
-      if (driverData && driverData.id) {
-        const userData: AuthUser = {
-          id: driverData.id,
-          name: driverData.name || "Pengguna",
-          role: driverData.role || "driver", // Pastikan backend mengirimkan role yang sesuai
-        };
-
-        setUser(userData);
-
-        localStorage.setItem("driverId", userData.id.toString());
-        localStorage.setItem("driverName", userData.name);
-        localStorage.setItem("driverRole", userData.role);
-
+    switch (authUser.role) {
+      case "driver":
         router.push("/driver/dashboard");
-      }
-    } catch (err: any) {
-      const errorMessage =
-        err.message || "Gagal masuk, periksa kembali email dan password.";
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
+        break;
+
+      case "conductor":
+        router.push("/conductor/dashboard");
+        break;
+
+      case "admin":
+        router.push("/admin/dashboard");
+        break;
+
+      default:
+        router.push("/");
     }
   };
 
   const logout = () => {
-    localStorage.removeItem("driverId");
-    localStorage.removeItem("driverName");
-    localStorage.removeItem("driverRole");
+    const currentRole = user?.role;
+
+    localStorage.removeItem(STORAGE_KEY);
     setUser(null);
-    router.push("/driver/auth/login");
+
+    switch (currentRole) {
+      case "driver":
+        router.push("/driver/auth/login");
+        break;
+
+      case "conductor":
+        router.push("/conductor/auth/login");
+        break;
+
+      case "admin":
+        router.push("/admin/auth/login");
+        break;
+
+      case "user":
+        router.push("/auth/login");
+        break;
+
+      default:
+        router.push("/");
+        break;
+    }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        id: user?.id ?? null,
-        name: user?.name ?? null,
-        role: user?.role ?? null,
-        isLoading,
-        error,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const updateUser = (data: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+
+      const updated = {
+        ...prev,
+        ...data,
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+      return updated;
+    });
+  };
+
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+
+      id: user?.id ?? null,
+      name: user?.name ?? null,
+      role: user?.role ?? null,
+
+      isAuthenticated: !!user,
+
+      isLoading,
+
+      login,
+
+      logout,
+
+      updateUser,
+    }),
+    [user, isLoading],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
+
   if (!context) {
-    throw new Error("useAuth harus digunakan di dalam AuthProvider");
+    throw new Error("useAuth must be used inside AuthProvider");
   }
+
   return context;
 }
