@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { FiCalendar, FiChevronDown, FiCheck } from "react-icons/fi";
-import { formatDateLabel } from "@/utils/format";
+import { formatDateLabel } from "@/utils/format-date";
 import { VehicleAssignment } from "@/types/vehicles/vehicle.type";
 
 interface DateDropdownModalProps {

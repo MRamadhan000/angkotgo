@@ -20,7 +20,7 @@ import DateDropdownModal from "@/components/schedules/DateDropdownModal";
 import CreateAssignmentModal from "@/components/schedules/CreateAssignmentModal";
 import UpdateAssignmentModal from "@/components/schedules/UpdateAssignmentModal";
 import { renderStatusBadge } from "@/components/schedules/StatusBadge";
-import { formatDateLabel } from "@/utils/format";
+import { formatDateLabel } from "@/utils/format-date";
 import { AssignmentStatus, DirectionType } from "@/types/vehicles/vehicle.type";
 import {
   filterAndSortAssignments,
