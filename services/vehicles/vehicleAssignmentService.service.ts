@@ -29,7 +29,8 @@ export const vehicleAssignmentService = {
     return Array.isArray(result) ? result : result.data || [];
   },
 
-  async getById(id: number): Promise<VehicleAssignment> {
+  async getById(id: number): Promise<VehicleSchedule> {
+    console.log("Fetching vehicle assignment by ID:", id);
     const response = await fetch(`${API_URL}/vehicle-assignments/${id}`, {
       method: "GET",
       headers: {

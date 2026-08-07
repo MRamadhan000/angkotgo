@@ -1,17 +1,16 @@
 import { useState, useCallback } from "react";
 import { vehicleAssignmentService } from "@/services/vehicles/vehicleAssignmentService.service";
 import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
+import { VehicleSchedule } from "@/types/vehicles/vehicle-schedule.type";
 
 export function usePersonnelSchedule() {
   const [activeSchedule, setActiveSchedule] = useState<TripHistoryItem[]>([]);
   const [activeLoading, setActiveLoading] = useState<boolean>(false);
   const [activeError, setActiveError] = useState<string | null>(null);
 
-  const [personnelSchedule, setPersonnelSchedule] = useState<TripHistoryItem[]>(
-    [],
-  );
-  const [personnelLoading, setPersonnelLoading] = useState<boolean>(false);
-  const [personnelError, setPersonnelError] = useState<string | null>(null);
+  const [assignmentDetail, setAssignmentDetail] = useState<VehicleSchedule | null>(null);
+  const [detailLoading, setDetailLoading] = useState<boolean>(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const fetchActiveScheduleByPersonnel = useCallback(
     async (params: {
@@ -38,26 +37,23 @@ export function usePersonnelSchedule() {
     [],
   );
 
-  const fetchScheduleByPersonnelId = useCallback(
-    async (params: { driverId?: number; conductorId?: number }) => {
-      setPersonnelLoading(true);
-      setPersonnelError(null);
-      try {
-        const data =
-          await vehicleAssignmentService.getScheduleByPersonnelId(params);
-        setPersonnelSchedule(data);
-        return data;
-      } catch (err: any) {
-        const message = err.message || "Gagal memuat riwayat jadwal personel.";
-        setPersonnelError(message);
-        setPersonnelSchedule([]);
-        throw new Error(message);
-      } finally {
-        setPersonnelLoading(false);
-      }
-    },
-    [],
-  );
+  const getAssignmentById = useCallback(async (id: number) => {
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const data = await vehicleAssignmentService.getById(id);
+      setAssignmentDetail(data);
+      return data;
+    } catch (err: any) {
+      const message =
+        err.message || `Gagal memuat detail penugasan dengan ID ${id}.`;
+      setDetailError(message);
+      setAssignmentDetail(null);
+      throw new Error(message);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
 
   return {
     activeSchedule,
@@ -65,9 +61,9 @@ export function usePersonnelSchedule() {
     activeError,
     fetchActiveScheduleByPersonnel,
 
-    personnelSchedule,
-    personnelLoading,
-    personnelError,
-    fetchScheduleByPersonnelId,
+    assignmentDetail,
+    detailLoading,
+    detailError,
+    getAssignmentById,
   };
 }

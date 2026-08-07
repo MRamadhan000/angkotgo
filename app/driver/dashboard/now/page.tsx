@@ -177,7 +177,7 @@ export default function DriverActivePage() {
                       return (
                         <Link
                           key={item.assignmentId}
-                          href={`/vehicle-assignments/${item.assignmentId}`}
+                          href={`/driver/dashboard/now/${item.assignmentId}`}
                           className="group bg-white rounded-xl border border-gray-200 p-3.5 sm:p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between gap-3 cursor-pointer relative"
                         >
                           <div className="space-y-2.5 sm:space-y-3">
