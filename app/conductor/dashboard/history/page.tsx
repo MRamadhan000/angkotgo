@@ -21,9 +21,11 @@ import {
   FiArrowLeft,
   FiStar,
 } from "react-icons/fi";
-import { AssignmentStatus, DirectionType, VehicleType } from "@/types/vehicles/vehicle.type";
-import { Type } from "lucide-react";
-
+import {
+  AssignmentStatus,
+  DirectionType,
+  VehicleType,
+} from "@/types/vehicles/vehicle.type";
 
 const STATUS_CONFIG: Record<
   string,
