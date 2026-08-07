@@ -124,6 +124,77 @@ export const vehicleAssignmentService = {
     return Array.isArray(result) ? result : result.data || [];
   },
 
+  async getActiveScheduleByPersonnel(params: {
+    targetDate?: string;
+    driverId?: number;
+    conductorId?: number;
+  }): Promise<TripHistoryItem[]> {
+    const queryParams = new URLSearchParams();
+    if (params.targetDate) {
+      queryParams.append("date", params.targetDate);
+    }
+    if (params.driverId) {
+      queryParams.append("driverId", params.driverId.toString());
+    }
+    if (params.conductorId) {
+      queryParams.append("conductorId", params.conductorId.toString());
+    }
+
+    const response = await fetch(
+      `${API_URL}/vehicle-assignments/active-schedule-by-personnel?${queryParams.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || "Gagal mengambil jadwal aktif personel.",
+      );
+    }
+
+    const result = await response.json();
+    return Array.isArray(result) ? result : result.data || [];
+  },
+
+  async getScheduleByPersonnelId(params: {
+    driverId?: number;
+    conductorId?: number;
+  }): Promise<TripHistoryItem[]> {
+    const queryParams = new URLSearchParams();
+    if (params.driverId)
+      queryParams.append("driverId", params.driverId.toString());
+    if (params.conductorId)
+      queryParams.append("conductorId", params.conductorId.toString());
+
+    const response = await fetch(
+      `${API_URL}/vehicle-assignments/personnel-schedule?${queryParams.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message ||
+          "Gagal mengambil riwayat jadwal penugasan personel.",
+      );
+    }
+
+    const result = await response.json();
+    return Array.isArray(result) ? result : result.data || [];
+  },
+
   async create(data: CreateVehicleAssignmentInput): Promise<VehicleAssignment> {
     const response = await fetch(`${API_URL}/vehicle-assignments`, {
       method: "POST",
