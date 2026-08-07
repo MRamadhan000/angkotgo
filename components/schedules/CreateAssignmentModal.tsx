@@ -15,41 +15,16 @@ import {
 } from "react-icons/fi";
 import { DirectionType, AssignmentStatus } from "@/types/vehicles/vehicle.type";
 import { useVehicles } from "@/hooks/vehicles/useVehicles";
-import { useRoutes } from "@/hooks/routes/useRoutes"; // Sesuaikan path hook routes Anda
+import { useRoutes } from "@/hooks/routes/useRoutes";
 import { useDrivers } from "@/hooks/useDrivers";
+import { useConductors } from "@/hooks/useConductors";
 import { CreateVehicleAssignmentInput } from "@/types/vehicles/vehicle-assignments.type";
+import { FieldSelect } from "../common/FieldSelect";
 
 interface CreateAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (data: CreateVehicleAssignmentInput) => Promise<void> | void;
-}
-
-// Select dengan ikon kiri dan indikator loading di kanan
-function FieldSelect({
-  icon: Icon,
-  loading,
-  children,
-  ...props
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  loading?: boolean;
-} & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div className="relative">
-      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-      <select
-        {...props}
-        disabled={loading || props.disabled}
-        className="w-full bg-gray-50 border border-gray-200 pl-10 pr-9 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
-      >
-        {children}
-      </select>
-      {loading && (
-        <FiLoader className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
-      )}
-    </div>
-  );
 }
 
 export default function CreateAssignmentModal({
@@ -60,6 +35,7 @@ export default function CreateAssignmentModal({
   const { drivers, loading: loadingDrivers } = useDrivers();
   const { vehicles, loading: loadingVehicles } = useVehicles();
   const { routes, loading: loadingRoutes } = useRoutes();
+  const { conductors, loading: loadingConductors } = useConductors();
 
   const todayString = new Date().toISOString().split("T")[0];
 
@@ -212,7 +188,36 @@ export default function CreateAssignmentModal({
               </FieldSelect>
             </div>
 
-            {/* 3. Pilih Rute (Route) */}
+            {/* 3. Pilih Kondektur (Conductor) */}
+            <div>
+              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
+                Kondektur (Opsional)
+              </label>
+              <FieldSelect
+                icon={FiUser}
+                loading={loadingConductors}
+                value={formData.conductorId || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    conductorId: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+              >
+                <option value="">
+                  {loadingConductors
+                    ? "Memuat kondektur..."
+                    : "-- Pilih Kondektur (Opsional) --"}
+                </option>
+                {conductors.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </FieldSelect>
+            </div>
+
+            {/* 4. Pilih Rute (Route) */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Rute Perjalanan
@@ -238,7 +243,7 @@ export default function CreateAssignmentModal({
               </FieldSelect>
             </div>
 
-            {/* 4. Arah Perjalanan (Direction) */}
+            {/* 5. Arah Perjalanan (Direction) */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Arah (Direction)
@@ -258,7 +263,7 @@ export default function CreateAssignmentModal({
               </FieldSelect>
             </div>
 
-            {/* 5. Tanggal Penugasan */}
+            {/* 6. Tanggal Penugasan */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Tanggal Operasional
@@ -277,7 +282,7 @@ export default function CreateAssignmentModal({
               </div>
             </div>
 
-            {/* 6. Status Awal */}
+            {/* 7. Status Awal */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Status Penugasan
@@ -299,7 +304,7 @@ export default function CreateAssignmentModal({
               </select>
             </div>
 
-            {/* 7. Jam Mulai (Start Time) */}
+            {/* 8. Jam Mulai (Start Time) */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Jam Mulai (Start Time)
@@ -318,7 +323,7 @@ export default function CreateAssignmentModal({
               </div>
             </div>
 
-            {/* 8. Jam Selesai (End Time) */}
+            {/* 9. Jam Selesai (End Time) */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Jam Selesai (End Time)

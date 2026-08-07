@@ -43,6 +43,8 @@ export function filterAndSortAssignments({
         "";
 
       const driver = item.driver?.name || "";
+      
+      const conductor = item.conductor?.name || "";
 
       const route =
         item.route?.routeName ||
@@ -51,7 +53,7 @@ export function filterAndSortAssignments({
 
       const direction = item.direction || "";
 
-      return [vehicle, driver, route, direction].some((value) =>
+      return [vehicle, driver, conductor, route, direction].some((value) =>
         value.toLowerCase().includes(query)
       );
     });
@@ -76,6 +78,11 @@ export function filterAndSortAssignments({
       case "driver":
         valA = a.driver?.name || "";
         valB = b.driver?.name || "";
+        break;
+      
+      case "conductor":
+        valA = a.conductor?.name || "";
+        valB = b.conductor?.name || "";
         break;
 
       case "direction":

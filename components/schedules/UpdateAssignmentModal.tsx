@@ -17,39 +17,14 @@ import { DirectionType, AssignmentStatus } from "@/types/vehicles/vehicle.type";
 import { useVehicles } from "@/hooks/vehicles/useVehicles";
 import { useRoutes } from "@/hooks/routes/useRoutes";
 import { useDrivers } from "@/hooks/useDrivers";
+import { useConductors } from "@/hooks/useConductors";
+import { FieldSelect } from "../common/FieldSelect";
 
 interface UpdateAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (data: any, id: string) => Promise<void>;
   initialData: VehicleAssignment | null;
-}
-
-// Select dengan ikon kiri dan indikator loading di kanan
-function FieldSelect({
-  icon: Icon,
-  loading,
-  children,
-  ...props
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  loading?: boolean;
-} & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div className="relative">
-      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-      <select
-        {...props}
-        disabled={loading || props.disabled}
-        className="w-full bg-gray-50 border border-gray-200 pl-10 pr-9 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
-      >
-        {children}
-      </select>
-      {loading && (
-        <FiLoader className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
-      )}
-    </div>
-  );
 }
 
 export default function UpdateAssignmentModal({
@@ -61,10 +36,12 @@ export default function UpdateAssignmentModal({
   const { drivers, loading: loadingDrivers } = useDrivers();
   const { vehicles, loading: loadingVehicles } = useVehicles();
   const { routes, loading: loadingRoutes } = useRoutes();
+  const { conductors, loading: loadingConductors } = useConductors();
 
   const [formData, setFormData] = useState({
     vehicleId: "",
     driverId: "",
+    conductorId: "",
     routeId: "",
     assignmentDate: "",
     startTime: "",
@@ -84,6 +61,7 @@ export default function UpdateAssignmentModal({
           initialData.vehicle?.id || initialData.vehicleId || "",
         ),
         driverId: String(initialData.driver?.id || initialData.driverId || ""),
+        conductorId: initialData.conductor?.id || initialData.conductorId ? String(initialData.conductor?.id || initialData.conductorId) : "",
         routeId: String(initialData.route?.id || initialData.routeId || ""),
         assignmentDate: initialData.assignmentDate || "",
         startTime: initialData.startTime || "",
@@ -113,9 +91,18 @@ export default function UpdateAssignmentModal({
       return;
     }
 
+    // Format data payload sebelum dikirim (mengubah string kosong kondektur menjadi undefined jika diperlukan)
+    const payload = {
+      ...formData,
+      vehicleId: Number(formData.vehicleId),
+      driverId: Number(formData.driverId),
+      conductorId: formData.conductorId ? Number(formData.conductorId) : undefined,
+      routeId: Number(formData.routeId),
+    };
+
     try {
       setLoading(true);
-      await onSuccess(formData, String(initialData.id));
+      await onSuccess(payload, String(initialData.id));
       onClose();
     } catch (err: any) {
       setError(err?.message || "Terjadi kesalahan saat memperbarui data.");
@@ -209,7 +196,32 @@ export default function UpdateAssignmentModal({
               </FieldSelect>
             </div>
 
-            {/* 3. Pilih Rute */}
+            {/* 3. Pilih Kondektur */}
+            <div>
+              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
+                Kondektur (Opsional)
+              </label>
+              <FieldSelect
+                icon={FiUser}
+                loading={loadingConductors}
+                name="conductorId"
+                value={formData.conductorId}
+                onChange={handleChange}
+              >
+                <option value="">
+                  {loadingConductors
+                    ? "Memuat kondektur..."
+                    : "-- Pilih Kondektur (Opsional) --"}
+                </option>
+                {conductors.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </FieldSelect>
+            </div>
+
+            {/* 4. Pilih Rute */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Rute Perjalanan
@@ -234,7 +246,7 @@ export default function UpdateAssignmentModal({
               </FieldSelect>
             </div>
 
-            {/* 4. Arah Perjalanan */}
+            {/* 5. Arah Perjalanan */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Arah (Direction)
@@ -250,7 +262,7 @@ export default function UpdateAssignmentModal({
               </FieldSelect>
             </div>
 
-            {/* 5. Tanggal Penugasan */}
+            {/* 6. Tanggal Penugasan */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Tanggal Operasional
@@ -268,7 +280,7 @@ export default function UpdateAssignmentModal({
               </div>
             </div>
 
-            {/* 6. Status Penugasan */}
+            {/* 7. Status Penugasan */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Status Penugasan
@@ -286,7 +298,7 @@ export default function UpdateAssignmentModal({
               </select>
             </div>
 
-            {/* 7. Jam Mulai */}
+            {/* 8. Jam Mulai */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Jam Mulai (Start Time)
@@ -304,7 +316,7 @@ export default function UpdateAssignmentModal({
               </div>
             </div>
 
-            {/* 8. Jam Selesai */}
+            {/* 9. Jam Selesai */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Jam Selesai (End Time)
