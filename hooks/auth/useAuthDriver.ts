@@ -1,23 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { LoginDriverData } from "@/types/auth/auth-driver.type";
-import { Driver } from "@/types/driver.type";
+import { useState } from "react";
+
+import { useAuth } from "@/context/AuthContext";
 import { authDriverService } from "@/services/auth.service";
 
-export function useAuthDriver() {
-  const router = useRouter();
-  const [driver, setDriver] = useState<Driver | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+import { Driver } from "@/types/driver.type";
+import { LoginDriverData } from "@/types/auth/auth-driver.type";
 
-  useEffect(() => {
-    const driverId = localStorage.getItem("driverId");
-    if (driverId) {
-      setDriver({ id: driverId } as unknown as Driver);
-    }
-  }, []);
+export function useAuthDriver() {
+  const { login, user, logout } = useAuth();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loginDriver = async (
     credentials: LoginDriverData,
@@ -30,34 +25,35 @@ export function useAuthDriver() {
 
       const driverData = response?.data || response;
 
-      if (driverData && driverData.id) {
-        localStorage.setItem("driverId", driverData.id.toString());
-        setDriver(driverData);
+      if (!driverData?.id) {
+        throw new Error("Data driver tidak ditemukan.");
       }
 
-      router.push("/driver/dashboard");
-      return driverData;
+      login({
+        id: driverData.id.toString(),
+        name: driverData.name ?? "Driver",
+        role: "driver",
+        token: driverData.token,
+      });
+
+      return driverData as Driver;
     } catch (err: any) {
       const errorMessage =
         err.message || "Gagal masuk, periksa kembali email dan password.";
+
       setError(errorMessage);
+
       throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logoutDriver = () => {
-    localStorage.removeItem("driverId");
-    setDriver(null);
-    router.push("/driver/auth/login");
-  };
-
   return {
-    driver,
+    driver: user?.role === "driver" ? (user as unknown as Driver) : null,
     isLoading,
     error,
     loginDriver,
-    logoutDriver,
+    logoutDriver: logout,
   };
 }

@@ -12,7 +12,7 @@ import {
 
 import { useAuth } from "@/context/AuthContext";
 
-export default function DriverDashboardPage() {
+export default function ConductorDashboardPage() {
   const { user, logout } = useAuth();
 
   const shortcuts = [
@@ -20,7 +20,7 @@ export default function DriverDashboardPage() {
       title: "Jadwal Mendatang",
       description:
         "Lihat dan pantau penugasan trip aktif atau yang akan datang.",
-      href: "/driver/dashboard/now",
+      href: "/conductor/dashboard/now",
       icon: FiCalendar,
       iconBg: "bg-amber-50 text-amber-600",
       ring: "group-hover:ring-amber-100",
@@ -29,7 +29,7 @@ export default function DriverDashboardPage() {
       title: "Riwayat Trip",
       description:
         "Arsip perjalanan dan tugas operasional yang telah diselesaikan.",
-      href: "/driver/dashboard/history",
+      href: "/conductor/dashboard/history",
       icon: FiClock,
       iconBg: "bg-green-50 text-green-600",
       ring: "group-hover:ring-green-100",
@@ -37,7 +37,7 @@ export default function DriverDashboardPage() {
     {
       title: "Profil Saya",
       description: "Kelola informasi data diri, kontak, dan status akun Anda.",
-      href: "/driver/dashboard/profile",
+      href: "/conductor/dashboard/profile",
       icon: FiUser,
       iconBg: "bg-blue-50 text-blue-600",
       ring: "group-hover:ring-blue-100",

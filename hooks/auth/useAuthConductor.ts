@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { Conductor } from "@/types/conductor.type";
 import { conductorService } from "@/services/conductor.service";
 import { LoginConductorData } from "@/types/auth/auth-condectur.type";
+import { useAuth } from "@/context/AuthContext";
 
 export function useAuthConductor() {
-  const router = useRouter();
   const [conductor, setConductor] = useState<Conductor | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { login } = useAuth();
 
   useEffect(() => {
     const conductorId = localStorage.getItem("conductorId");
@@ -27,29 +29,31 @@ export function useAuthConductor() {
 
     try {
       const response: any = await conductorService.login(credentials);
+
       const conductorData = response?.data || response;
 
-      if (conductorData && conductorData.id) {
-        localStorage.setItem("conductorId", conductorData.id.toString());
-        setConductor(conductorData);
+      if (!conductorData?.id) {
+        throw new Error("Data conductor tidak ditemukan.");
       }
 
-      router.push("/conductor/dashboard");
-      return conductorData;
+      login({
+        id: conductorData.id.toString(),
+        name: conductorData.name ?? "Conductor",
+        role: "conductor",
+        token: conductorData.token,
+      });
+
+      return conductorData as Conductor;
     } catch (err: any) {
       const errorMessage =
         err.message || "Gagal masuk, periksa kembali email dan password.";
+
       setError(errorMessage);
+
       throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const logoutConductor = () => {
-    localStorage.removeItem("conductorId");
-    setConductor(null);
-    router.push("/conductor/auth/login");
   };
 
   return {
@@ -57,6 +61,5 @@ export function useAuthConductor() {
     isLoading,
     error,
     loginConductor,
-    logoutConductor,
   };
 }
