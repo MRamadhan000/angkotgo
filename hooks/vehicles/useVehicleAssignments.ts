@@ -6,6 +6,7 @@ import {
 } from "@/types/vehicles/vehicle-assignments.type";
 import { vehicleAssignmentService } from "@/services/vehicles/vehicleAssignmentService.service";
 import { VehicleSchedule } from "@/types/vehicles/vehicle-schedule.type";
+import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
 
 export function useVehicleAssignments() {
   const [assignments, setAssignments] = useState<VehicleAssignment[]>([]);
@@ -15,6 +16,14 @@ export function useVehicleAssignments() {
   const [schedules, setSchedules] = useState<VehicleSchedule[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState<boolean>(false);
   const [schedulesError, setSchedulesError] = useState<string | null>(null);
+
+  const [driverHistory, setDriverHistory] = useState<TripHistoryItem[]>([]);
+  const [driverHistoryLoading, setDriverHistoryLoading] = useState<boolean>(false);
+  const [driverHistoryError, setDriverHistoryError] = useState<string | null>(null);
+
+  const [conductorHistory, setConductorHistory] = useState<TripHistoryItem[]>([]);
+  const [conductorHistoryLoading, setConductorHistoryLoading] = useState<boolean>(false);
+  const [conductorHistoryError, setConductorHistoryError] = useState<string | null>(null);
 
   const fetchAssignments = useCallback(async () => {
     setLoading(true);
@@ -50,6 +59,42 @@ export function useVehicleAssignments() {
       setSchedules([]);
     } finally {
       setSchedulesLoading(false);
+    }
+  }, []);
+
+  const fetchDriverTripHistory = useCallback(async (driverId: number | string) => {
+    if (!driverId) return;
+
+    setDriverHistoryLoading(true);
+    setDriverHistoryError(null);
+    try {
+      const data = await vehicleAssignmentService.getDriverTripHistory(driverId);
+      setDriverHistory(data);
+    } catch (err: any) {
+      setDriverHistoryError(
+        err.message || "Terjadi kesalahan saat memuat riwayat trip driver.",
+      );
+      setDriverHistory([]);
+    } finally {
+      setDriverHistoryLoading(false);
+    }
+  }, []);
+
+  const fetchConductorTripHistory = useCallback(async (conductorId: number | string) => {
+    if (!conductorId) return;
+
+    setConductorHistoryLoading(true);
+    setConductorHistoryError(null);
+    try {
+      const data = await vehicleAssignmentService.getConductorTripHistory(conductorId);
+      setConductorHistory(data);
+    } catch (err: any) {
+      setConductorHistoryError(
+        err.message || "Terjadi kesalahan saat memuat riwayat trip kondektur.",
+      );
+      setConductorHistory([]);
+    } finally {
+      setConductorHistoryLoading(false);
     }
   }, []);
 
@@ -100,5 +145,15 @@ export function useVehicleAssignments() {
     schedulesLoading,
     schedulesError,
     fetchSchedulesByDate,
+
+    driverHistory,
+    driverHistoryLoading,
+    driverHistoryError,
+    fetchDriverTripHistory,
+
+    conductorHistory,
+    conductorHistoryLoading,
+    conductorHistoryError,
+    fetchConductorTripHistory,
   };
 }
