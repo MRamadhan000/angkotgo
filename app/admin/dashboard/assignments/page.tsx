@@ -13,6 +13,7 @@ import {
   FiPlus,
   FiEdit2,
   FiTrash2,
+  FiUserPlus,
 } from "react-icons/fi";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
 import DateDropdownModal from "@/components/schedules/DateDropdownModal";
@@ -90,8 +91,16 @@ export default function OperationalBoardPage() {
     } catch (err) {
       throw new Error("ID penugasan tidak valid.");
     }
+
+    const payload = {
+      ...updatedData,
+      conductorId: updatedData.conductorId
+        ? Number(updatedData.conductorId)
+        : null,
+    };
+
     try {
-      await updateAssignment(numericId, updatedData);
+      await updateAssignment(numericId, payload);
       fetchAssignments();
     } catch (err: any) {
       throw new Error(
@@ -289,6 +298,20 @@ export default function OperationalBoardPage() {
                       ))}
                   </div>
                 </th>
+                <th
+                  onClick={() => handleSortChange("conductor")}
+                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Conductor</span>
+                    {sortField === "conductor" &&
+                      (sortDirection === "asc" ? (
+                        <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
+                      ) : (
+                        <FiArrowDown className="w-3.5 h-3.5 text-gray-800" />
+                      ))}
+                  </div>
+                </th>
                 <th className="py-4 px-6">Rute Perjalanan</th>
                 <th
                   onClick={() => handleSortChange("direction")}
@@ -407,6 +430,26 @@ export default function OperationalBoardPage() {
 
                             <p className="text-xs text-gray-500">
                               {item.driver?.phone || item.driver?.nik || "-"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
+                            <FiUserPlus className="h-4 w-4 text-gray-500" />
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900">
+                              {item.conductor?.name || "Conductor"}
+                            </p>
+
+                            <p className="text-xs text-gray-500">
+                              {item.conductor?.phone ||
+                                item.conductor?.nik ||
+                                "-"}
                             </p>
                           </div>
                         </div>
