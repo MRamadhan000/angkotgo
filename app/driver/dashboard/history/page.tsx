@@ -198,29 +198,32 @@ const STATUS_FILTERS: { key: string; label: string }[] = [
   { key: AssignmentStatus.CANCELLED, label: "Dibatalkan" },
 ];
 
-export default function ConductorHistoryPage() {
+export default function DriverHistoryPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
   const {
-    conductorHistory,
-    conductorHistoryLoading,
-    conductorHistoryError,
-    fetchConductorTripHistory,
+    fetchDriverTripHistory,
+    driverHistory,
+    driverHistoryLoading,
+    driverHistoryError,
   } = useVehicleAssignments();
 
+  // State untuk Filter & Sort
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  // State untuk collapse per tanggal (default semua terbuka)
   const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (user?.id) {
-      fetchConductorTripHistory(user.id);
+      fetchDriverTripHistory(user.id);
     }
-  }, [user, fetchConductorTripHistory]);
+  }, [user, fetchDriverTripHistory]);
 
+  // Filter & Sort Data
   const filteredAndSortedHistory = useMemo(() => {
-    let result = [...conductorHistory];
+    let result = [...driverHistory];
 
     if (statusFilter !== "ALL") {
       result = result.filter((trip) => trip.status === statusFilter);
@@ -233,8 +236,9 @@ export default function ConductorHistoryPage() {
     });
 
     return result;
-  }, [conductorHistory, statusFilter, sortOrder]);
+  }, [driverHistory, statusFilter, sortOrder]);
 
+  // Grouping berdasarkan Tanggal (Date)
   const groupedByDate = useMemo(() => {
     const groups: Record<string, typeof filteredAndSortedHistory> = {};
     filteredAndSortedHistory.forEach((trip) => {
@@ -304,7 +308,7 @@ export default function ConductorHistoryPage() {
                     Arsip Perjalanan
                   </p>
                   <h1 className="mt-0.5 text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight text-white truncate leading-snug">
-                    Riwayat Trip Kondektur
+                    Riwayat Trip Driver
                   </h1>
                 </div>
                 <p className="text-xs text-blue-100 truncate">
@@ -372,7 +376,7 @@ export default function ConductorHistoryPage() {
           </div>
 
           {/* Loading State */}
-          {conductorHistoryLoading && (
+          {driverHistoryLoading && (
             <div className="p-12 text-center">
               <FiRefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin text-blue-600" />
               <p className="text-sm font-medium text-gray-500">
@@ -382,16 +386,16 @@ export default function ConductorHistoryPage() {
           )}
 
           {/* Error State */}
-          {conductorHistoryError && (
+          {driverHistoryError && (
             <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               <FiAlertCircle className="h-5 w-5 flex-shrink-0" />
-              <span>{conductorHistoryError}</span>
+              <span>{driverHistoryError}</span>
             </div>
           )}
 
           {/* Empty State */}
-          {!conductorHistoryLoading &&
-            !conductorHistoryError &&
+          {!driverHistoryLoading &&
+            !driverHistoryError &&
             filteredAndSortedHistory.length === 0 && (
               <div className="rounded-2xl border border-dashed border-gray-200 p-12 text-center">
                 <p className="text-sm font-medium text-gray-500">
@@ -401,7 +405,7 @@ export default function ConductorHistoryPage() {
             )}
 
           {/* Daftar Riwayat Trip dengan Grouping Tanggal */}
-          {!conductorHistoryLoading && filteredAndSortedHistory.length > 0 && (
+          {!driverHistoryLoading && filteredAndSortedHistory.length > 0 && (
             <div className="space-y-6">
               {Object.entries(groupedByDate).map(([date, trips]) => {
                 const isCollapsed = collapsedDates[date];
