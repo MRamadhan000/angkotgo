@@ -34,7 +34,7 @@ export function EstimatedStopsTimeline({
       >
         <h2 className="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
           <FaMapMarkerAlt className="text-blue-600 shrink-0 text-sm sm:text-base" />
-          <span className="leading-tight">Estimasi Waktu Halte Perjalanan</span>
+          <span className="leading-tight">Halte Perjalanan</span>
         </h2>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-[11px] sm:text-xs text-gray-400 font-medium">
