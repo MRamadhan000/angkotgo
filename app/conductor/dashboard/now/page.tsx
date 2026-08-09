@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
 import {
   FaMapMarkedAlt,
   FaBus,
@@ -15,6 +14,15 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { usePersonnelSchedule } from "@/hooks/vehicles/usePersonalSchedules";
 import { DetailHeader } from "@/components/common/DetailHeader";
+import { useSeatManagement } from "@/hooks/vehicles/useSeatManagement";
+import { SeatGridControl } from "@/components/now/SeatGridControl";
+import {
+  AssignmentStatus,
+  DirectionType,
+  VehicleStatus,
+  VehicleType,
+} from "@/types/vehicles/vehicle.type";
+import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
 
 export default function ConductorActivePage() {
   const { user, logout } = useAuth();
@@ -29,6 +37,52 @@ export default function ConductorActivePage() {
   const [selectedDate, setSelectedDate] =
     useState<string>(getTodayDateString());
 
+  // Mock fallback assignment for local visual testing when activeSchedule is empty
+  const MOCK_ACTIVE_ASSIGNMENTS: TripHistoryItem[] = [
+    {
+      assignmentId: 888888,
+      date: getTodayDateString(),
+      status: AssignmentStatus.ONGOING,
+      routeCode: "MK-02",
+      routeName: "Rute Kondektur Mock",
+      direction: DirectionType.FORWARD,
+      startTime: "08:00",
+      endTime: "10:00",
+      vehicle: {
+        id: 0,
+        plateNumber: "D 5678 YY",
+        vehicleCode: "V-MOCK2",
+        capacity: 8,
+        currentOdometer: 0,
+        status: VehicleStatus.ACTIVE,
+        type: VehicleType.REGULER,
+        createdAt: getTodayDateString(),
+        updatedAt: getTodayDateString(),
+      },
+      driver: {
+        id: 0,
+        name: "Siti Mock",
+        nik: "0000000000",
+        email: "siti.mock@example.com",
+        phone: "081234567890",
+        licenseNumber: "SIM-123456",
+        licenseExpiryDate: getTodayDateString(),
+        isVerified: true,
+        status: "ACTIVE",
+        averageRating: 5,
+        totalTrips: 0,
+        createdAt: getTodayDateString(),
+        updatedAt: getTodayDateString(),
+      },
+    },
+  ];
+
+  // Prefer mock displaySchedule when backend returns empty
+  const displaySchedule: TripHistoryItem[] =
+    activeSchedule && activeSchedule.length > 0
+      ? activeSchedule
+      : MOCK_ACTIVE_ASSIGNMENTS;
+
   useEffect(() => {
     if (user?.id) {
       fetchActiveScheduleByPersonnel({
@@ -42,7 +96,7 @@ export default function ConductorActivePage() {
   const groupedSchedule = useMemo(() => {
     const groups: { [key: string]: typeof activeSchedule } = {};
 
-    activeSchedule.forEach((item) => {
+    displaySchedule.forEach((item: any) => {
       const dateKey =
         typeof item.date === "string"
           ? item.date.split("T")[0]
@@ -66,11 +120,11 @@ export default function ConductorActivePage() {
         }),
         items: groups[dateKey],
       }));
-  }, [activeSchedule]);
+  }, [displaySchedule]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
-      <div className="mx-auto w-full max-w-[1200px] space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8">
+      <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8">
         <DetailHeader
           user={user}
           title="Jadwal Penugasan Kondektur"
@@ -134,7 +188,7 @@ export default function ConductorActivePage() {
             </div>
           )}
 
-          {!activeLoading && !activeError && activeSchedule.length === 0 && (
+          {!activeLoading && !activeError && displaySchedule.length === 0 && (
             <div className="text-center py-10 px-4 text-xs sm:text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
               {selectedDate
                 ? `Tidak ada jadwal penugasan aktif untuk tanggal ${selectedDate}.`
@@ -142,7 +196,7 @@ export default function ConductorActivePage() {
             </div>
           )}
 
-          {!activeLoading && !activeError && activeSchedule.length > 0 && (
+          {!activeLoading && !activeError && displaySchedule.length > 0 && (
             <div className="space-y-4 sm:space-y-6">
               {groupedSchedule.map((group) => (
                 <div
@@ -162,9 +216,9 @@ export default function ConductorActivePage() {
 
                   {/* Grid Card dalam Container Tanggal Tersebut */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                    {group.items.map((item) => {
+                    {group.items.map((item: TripHistoryItem) => {
                       const statusBadge =
-                        item.status === "ONGOING"
+                        item.status === AssignmentStatus.ONGOING
                           ? "bg-emerald-100 text-emerald-800 border-emerald-200"
                           : "bg-blue-100 text-blue-800 border-blue-200";
 
@@ -174,10 +228,9 @@ export default function ConductorActivePage() {
                           : "bg-slate-100 text-slate-700 border-slate-200";
 
                       return (
-                        <Link
+                        <div
                           key={item.assignmentId}
-                          href={`/vehicle-assignments/${item.assignmentId}`}
-                          className="group bg-white rounded-xl border border-gray-200 p-3.5 sm:p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between gap-3 cursor-pointer relative"
+                          className="group bg-white rounded-xl border border-gray-200 p-3.5 sm:p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between gap-3 relative"
                         >
                           <div className="space-y-2.5 sm:space-y-3">
                             <div className="flex items-center justify-between gap-2">
@@ -194,18 +247,6 @@ export default function ConductorActivePage() {
                                     {item.vehicle.type}
                                   </span>
                                 )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <div className="text-[11px] sm:text-xs text-gray-400 font-medium">
-                                Rute Perjalanan
-                              </div>
-                              <div className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5 mt-0.5">
-                                <FaRoute className="text-blue-500 shrink-0 text-xs sm:text-sm" />
-                                <span className="truncate">
-                                  {item.routeCode} - {item.routeName}
-                                </span>
                               </div>
                               <div className="flex items-center gap-1.5 mt-1">
                                 <span className="text-[11px] sm:text-xs text-gray-500">
@@ -251,7 +292,14 @@ export default function ConductorActivePage() {
                             </div>
                           </div>
 
-                          <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px] sm:text-xs">
+                          {/* Seat control for conductor (isUserConductor = true) */}
+                          <div className="mt-2">
+                            <AssignmentSeatWidget
+                              assignmentId={item.assignmentId}
+                            />
+                          </div>
+
+                          <div className="pt-2.5 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] sm:text-xs">
                             <div className="text-gray-500 truncate pr-2">
                               Driver:{" "}
                               <span className="font-medium text-slate-700">
@@ -263,7 +311,7 @@ export default function ConductorActivePage() {
                               <FaArrowRight className="text-[9px] sm:text-[10px]" />
                             </span>
                           </div>
-                        </Link>
+                        </div>
                       );
                     })}
                   </div>
@@ -273,6 +321,64 @@ export default function ConductorActivePage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function AssignmentSeatWidget({ assignmentId }: { assignmentId: number }) {
+  const {
+    status,
+    loading: seatsLoading,
+    error: seatsError,
+    canControl,
+    toggleSeat,
+    toggleJourneyStatus,
+  } = useSeatManagement(String(assignmentId), true);
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-gray-800">
+            Kontrol Perjalanan
+          </h3>
+          <p className="text-xs text-gray-500">
+            Status:{" "}
+            <span className="font-semibold text-slate-800">
+              {status?.status || "-"}
+            </span>
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={!canControl || !status}
+          onClick={toggleJourneyStatus}
+          className={`px-3 py-2 text-xs font-semibold rounded-lg transition ${
+            canControl && status
+              ? "bg-blue-600 text-white hover:bg-blue-700"
+              : "bg-gray-200 text-gray-500 cursor-not-allowed"
+          }`}
+        >
+          {status?.status === AssignmentStatus.ONGOING
+            ? "Set Selesai"
+            : "Mulai Perjalanan"}
+        </button>
+      </div>
+
+      <SeatGridControl
+        seats={status?.seats || []}
+        canControl={canControl}
+        onToggleSeat={toggleSeat}
+        hasConductor={status?.hasConductor || false}
+        isUserConductor={true}
+      />
+
+      {seatsLoading && (
+        <div className="text-xs text-gray-400 mt-2">Memuat status kursi...</div>
+      )}
+      {seatsError && (
+        <div className="text-xs text-rose-600 mt-2">{seatsError}</div>
+      )}
     </div>
   );
 }
