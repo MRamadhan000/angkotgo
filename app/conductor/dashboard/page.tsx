@@ -51,12 +51,10 @@ function DashboardBody() {
               href={item.href}
               className="group relative flex items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-xs transition-all hover:-translate-y-1.5 hover:border-blue-300 hover:shadow-lg sm:flex-col sm:items-center sm:text-center sm:p-8"
             >
-              {/* Ikon Bulat */}
               <div className="flex-shrink-0 rounded-full bg-blue-50 p-3.5 sm:p-5 sm:mb-3 text-blue-700 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-105">
                 <Icon className="h-5 w-5 sm:h-8 sm:w-8" />
               </div>
 
-              {/* Teks Judul & Deskripsi */}
               <div className="min-w-0 flex-1 sm:flex-none sm:w-full">
                 <h3 className="text-sm sm:text-lg lg:text-xl font-bold text-gray-900 transition-colors group-hover:text-blue-700 break-words">
                   {item.title}
@@ -69,7 +67,6 @@ function DashboardBody() {
                 </p>
               </div>
 
-              {/* Panah Indikator (Mobile & Desktop) */}
               <div className="flex-shrink-0 text-gray-300 transition-transform duration-300 group-hover:translate-x-1.5 group-hover:text-blue-600 sm:absolute sm:bottom-5 sm:right-5">
                 <FaArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
