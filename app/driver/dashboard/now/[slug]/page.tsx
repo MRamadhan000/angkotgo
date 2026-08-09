@@ -12,6 +12,8 @@ import { DetailLoading } from "@/components/common/DetaiLoading";
 import ErrorAlert from "@/components/common/ErrorAlert";
 import { AssignmentStatusCard } from "@/components/common/AssignmentStatusCard";
 import { UpdateStatusModal } from "@/components/now/UpdateStatusModal";
+import { useSeatManagement } from "@/hooks/vehicles/useSeatManagement";
+import { SeatGridControl } from "@/components/now/SeatGridControl";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
@@ -85,6 +87,11 @@ export default function AssignmentDetailPage() {
               onOpenModal={() => setIsStatusModalOpen(true)}
             />
 
+            {/* Seat control for driver (driver is not conductor) */}
+            <div>
+              <DriverSeatControl assignmentId={assignmentId} />
+            </div>
+
             {/* Konten Timeline Halte */}
             <EstimatedStopsTimeline
               stops={assignmentDetail.estimatedStopsSchedule}
@@ -103,6 +110,34 @@ export default function AssignmentDetailPage() {
         onSave={handleUpdateStatus}
         isUpdating={isUpdatingStatus}
       />
+    </div>
+  );
+}
+
+function DriverSeatControl({ assignmentId }: { assignmentId: number }) {
+  const {
+    status,
+    loading: seatsLoading,
+    error: seatsError,
+    canControl,
+    toggleSeat,
+  } = useSeatManagement(String(assignmentId), false);
+
+  return (
+    <div>
+      <SeatGridControl
+        seats={status?.seats || []}
+        canControl={canControl}
+        onToggleSeat={toggleSeat}
+        hasConductor={status?.hasConductor || false}
+        isUserConductor={false}
+      />
+      {seatsLoading && (
+        <div className="text-xs text-gray-400 mt-2">Memuat status kursi...</div>
+      )}
+      {seatsError && (
+        <div className="text-xs text-rose-600 mt-2">{seatsError}</div>
+      )}
     </div>
   );
 }
