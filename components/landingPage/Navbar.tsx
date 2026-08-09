@@ -28,15 +28,14 @@ export default function Navbar() {
     <nav
       className={`fixed left-0 right-0 top-0 z-[60] transition-all duration-300 ${
         scrolled || isOpen
-          ? "bg-white/90 border-b border-slate-100 shadow-sm backdrop-blur-md"
+          ? "bg-white/95 border-b border-slate-100 shadow-sm backdrop-blur-md"
           : "bg-white/0 border-b border-transparent"
       }`}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         
         {/* ================= DESKTOP LOGO ================= */}
-        {/* Hanya muncul di layar desktop (md ke atas) */}
-        <a href="/#beranda" className="hidden items-center gap-3 md:flex">
+        <a href="/#beranda" className="flex items-center gap-3">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-2xl shadow-sm"
             style={{ backgroundColor: COLORS.primary }}
@@ -48,21 +47,7 @@ export default function Navbar() {
           </span>
         </a>
 
-        {/* ================= MOBILE BUTTON (PENGGANTI LOGO) ================= */}
-        {/* Hanya muncul di layar mobile, menggantikan peran logo */}
-        <a
-          href="/rute"
-          className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white transition-all active:scale-95 md:hidden"
-          style={{
-            backgroundColor: COLORS.accent,
-            boxShadow: "0 4px 10px rgb(37 99 235 / .2)",
-          }}
-        >
-          <FaRoute className="text-sm" />
-          Mulai Tracking
-        </a>
-
-        {/* Desktop Menu - Menggunakan Loop */}
+        {/* Desktop Menu */}
         <div className="hidden items-center gap-9 md:flex">
           {navItems.map((item, index) => (
             <a
@@ -78,7 +63,7 @@ export default function Navbar() {
         {/* Desktop Action */}
         <div className="hidden items-center gap-3 md:flex">
           <a
-            href="/driver/auth/login"
+            href="/portal"
             className="flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-all hover:bg-slate-50"
             style={{
               borderColor: COLORS.accent,
@@ -86,9 +71,11 @@ export default function Navbar() {
             }}
           >
             <FaUser />
-            Login Driver
+            Login
           </a>
 
+          {/* Tombol Mulai Tracking Desktop di-hide/komentari */}
+          {/* 
           <a
             href="/rute"
             className="flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -99,7 +86,8 @@ export default function Navbar() {
           >
             <FaRoute />
             Mulai Tracking
-          </a>
+          </a> 
+          */}
         </div>
 
         {/* Mobile Hamburger Button */}
@@ -116,41 +104,36 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Dropdown Menu */}
+      {/* ================= MOBILE DROPDOWN MENU ================= */}
       <div
-        className={`grid transition-all duration-300 md:hidden ${
-          isOpen
-            ? "grid-rows-[1fr] opacity-100 border-t border-slate-100 bg-white"
-            : "grid-rows-[0fr] opacity-0 overflow-hidden pointer-events-none"
+        className={`overflow-hidden transition-all duration-300 ease-in-out md:hidden bg-white border-b border-slate-100 ${
+          isOpen ? "max-h-96 opacity-150 py-5" : "max-h-0 opacity-0 py-0 border-transparent"
         }`}
       >
-        <div className="overflow-hidden">
-          <div className="flex flex-col gap-4 px-6 py-5">
-            {/* Mobile Menu - Menggunakan Loop */}
-            {navItems.map((item, index) => (
-              <a
-                key={index}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`${TYPOGRAPHY.navLink} text-slate-600 hover:text-blue-600`}
-              >
-                {item.label}
-              </a>
-            ))}
-
+        <div className="flex flex-col gap-4 px-6">
+          {navItems.map((item, index) => (
             <a
-              href="/driver/auth/login"
+              key={index}
+              href={item.href}
               onClick={() => setIsOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 rounded-full border py-3 text-sm font-semibold transition-all hover:bg-slate-50"
-              style={{
-                borderColor: COLORS.accent,
-                color: COLORS.accent,
-              }}
+              className={`${TYPOGRAPHY.navLink} text-slate-600 hover:text-blue-600 py-1`}
             >
-              <FaUser />
-              Login Driver
+              {item.label}
             </a>
-          </div>
+          ))}
+
+          <a
+            href="/portal"
+            onClick={() => setIsOpen(false)}
+            className="mt-2 flex items-center justify-center gap-2 rounded-full border py-3 text-sm font-semibold transition-all hover:bg-slate-50"
+            style={{
+              borderColor: COLORS.accent,
+              color: COLORS.accent,
+            }}
+          >
+            <FaUser />
+            Login
+          </a>
         </div>
       </div>
     </nav>

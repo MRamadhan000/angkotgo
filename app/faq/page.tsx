@@ -97,7 +97,7 @@ export default function FAQPage() {
             </Link>
 
             <Link
-              href="/info-rute"
+              href="/list-rute"
               className="hover:text-blue-600 transition duration-200"
             >
               Info Rute
@@ -186,7 +186,7 @@ export default function FAQPage() {
               FAQ
             </Link>
             <Link
-              href="/info-rute"
+              href="/list-rute"
               onClick={() => setIsSidebarOpen(false)}
               className="px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-sm sm:text-base hover:bg-blue-50 hover:text-blue-600 transition"
             >
@@ -198,17 +198,17 @@ export default function FAQPage() {
 
           <div className="flex flex-col gap-2 sm:gap-3">
             <Link
-              href="/driver/auth/login"
+              href="/portal"
               className="bg-slate-100 py-2 sm:py-3 rounded-lg text-center font-semibold text-sm sm:text-base hover:bg-slate-200 transition"
             >
-              Login Driver
+              Login
             </Link>
 
             <Link
               href="/admin/auth/login"
               className="bg-blue-600 text-white py-2 sm:py-3 rounded-lg text-center font-semibold text-sm sm:text-base"
             >
-              Login Admin
+              Login
             </Link>
           </div>
         </div>

@@ -44,7 +44,7 @@ export default function HeroSection() {
             {/* Buttons */}
             <div className="flex flex-wrap gap-4 pt-2">
               <Link
-                href="/info-rute"
+                href="/list-rute"
                 className="group flex items-center gap-2.5 rounded-full px-8 py-[15px] text-white transition hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   backgroundColor: COLORS.accent,
@@ -56,7 +56,7 @@ export default function HeroSection() {
               </Link>
 
               <Link
-                href="/schedule"
+                href="/schedules"
                 className="flex items-center gap-2.5 rounded-full border-2 bg-white/80 px-8 py-[15px] backdrop-blur transition hover:bg-white hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   borderColor: COLORS.primary,
