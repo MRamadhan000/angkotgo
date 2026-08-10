@@ -13,17 +13,17 @@ import {
   FaCheckCircle,
   FaRoute,
   FaIdCard,
-  FaUserCheck,
+  FaUserTie,
   FaInfoCircle,
   FaThLarge,
-  FaPlay,
-  FaCheck,
   FaMapMarkedAlt,
+  FaLock,
   FaArrowRight,
 } from "react-icons/fa";
 
 import { useAuth } from "@/context/AuthContext";
 import { usePersonnelSchedule } from "@/hooks/vehicles/usePersonalSchedules";
+import { useSeatManagement } from "@/hooks/vehicles/useSeatManagement";
 import { SeatGridControl } from "@/components/now/SeatGridControl";
 import {
   AssignmentStatus,
@@ -36,9 +36,9 @@ import DriverMap from "@/app/driver/dashboard/DriverMap";
 
 // 1. Header Profil Driver
 function DriverHeaderProfile() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const driverName = "Siti Aminah";
+  const driverName = user?.name || "Budi Susanto";
 
   return (
     <header className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
@@ -57,7 +57,7 @@ function DriverHeaderProfile() {
             </span>
           </div>
           <p className="text-xs text-slate-500 font-medium">
-            Portal Operasional Pengemudi Non-Kondektur
+            Portal Operasional Pengemudi (Dengan Kondektur)
           </p>
         </div>
       </div>
@@ -69,7 +69,7 @@ function DriverHeaderProfile() {
           className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 transition text-slate-700 text-xs font-semibold cursor-pointer"
         >
           <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
-            S
+            {driverName.charAt(0).toUpperCase()}
           </div>
           <span className="hidden sm:inline">{driverName}</span>
           <FaChevronDown className="text-slate-400 text-xs" />
@@ -107,165 +107,118 @@ function DriverHeaderProfile() {
   );
 }
 
-// 2. Widget Kontrol Perjalanan + Live Map Kondisional
-function InteractiveDriverWidget({
+// 2. Read-Only Widget untuk Perjalanan + Live Map Tracking
+function ReadOnlyDriverWidget({
   assignmentItem,
-  capacity = 8,
-  onTripCompleted,
+  hasConductor,
 }: {
   assignmentItem: TripHistoryItem;
-  capacity?: number;
-  onTripCompleted: (assignmentId: number | string) => void;
+  hasConductor: boolean;
 }) {
-  const [tripStatus, setTripStatus] = useState<AssignmentStatus>(
-    assignmentItem.status || AssignmentStatus.SCHEDULED,
+  const { status, loading, error } = useSeatManagement(
+    String(assignmentItem.assignmentId),
+    false,
   );
-  const [occupiedCount, setOccupiedCount] = useState<number>(0);
 
-  const seats = useMemo(() => {
-    return Array.from({ length: capacity }, (_, i) => ({
-      seatNumber: i + 1,
-      isOccupied: i < occupiedCount,
-    }));
-  }, [capacity, occupiedCount]);
-
-  const handleStartTrip = () => {
-    setTripStatus(AssignmentStatus.ONGOING);
-  };
-
-  const handleFinishTrip = () => {
-    setTripStatus(AssignmentStatus.COMPLETED);
-    setOccupiedCount(0);
-    onTripCompleted(assignmentItem.assignmentId);
-  };
-
-  const handleSelectSeatCapacity = (seatNumber: number) => {
-    setOccupiedCount(
-      occupiedCount === seatNumber ? seatNumber - 1 : seatNumber,
-    );
-  };
+  const currentStatus =
+    status?.status || assignmentItem.status || AssignmentStatus.SCHEDULED;
 
   return (
     <div className="space-y-4 pt-2">
-      {/* STATE 1: PENUGASAN SUDAH SELESAI */}
-      {tripStatus === AssignmentStatus.COMPLETED ? (
-        <div className="bg-emerald-50 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 text-emerald-900">
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-            <FaCheck className="text-sm" />
+      {/* LIVE MAP TRACKING (Muncul jika perjalanan dalam status ONGOING) */}
+      {currentStatus === AssignmentStatus.ONGOING && (
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <FaMapMarkedAlt className="text-emerald-600 text-sm" /> Live Map
+              Tracking Perjalanan
+            </h2>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              GPS Aktif
+            </span>
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-              Penugasan Hari Ini Selesai
-            </p>
-            <p className="text-xs font-medium text-emerald-700 mt-0.5">
-              Terima kasih atas pelayanan Anda! Data perjalanan telah berhasil
-              dicatat.
-            </p>
+          <div className="h-72 rounded-2xl overflow-hidden border border-slate-100 relative">
+            <DriverMap />
           </div>
         </div>
-      ) : (
-        /* STATE 2: BELUM MULAI (SCHEDULED) ATAU SEDANG BERJALAN (ONGOING) */
-        <>
-          {/* MAP HANYA MUNCUL JIKA TRIP BERJALAN (ONGOING) */}
-          {tripStatus === AssignmentStatus.ONGOING && (
-            <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-100 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                  <FaMapMarkedAlt className="text-emerald-600 text-sm" /> Live
-                  Map Tracking Perjalanan
-                </h2>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  GPS Aktif
-                </span>
-              </div>
-              <div className="h-72 rounded-2xl overflow-hidden border border-slate-100 relative">
-                <DriverMap />
-              </div>
-            </div>
-          )}
-
-          {/* BAR KONTROL UTAMA */}
-          <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                <FaUserCheck className="text-emerald-600 text-sm" /> Kendali
-                Perjalanan Driver
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-slate-500">
-                  Status Perjalanan:
-                </span>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    tripStatus === AssignmentStatus.ONGOING
-                      ? "bg-emerald-600 text-white"
-                      : "bg-amber-100 text-amber-800"
-                  }`}
-                >
-                  {tripStatus === AssignmentStatus.ONGOING
-                    ? "Berjalan (ON)"
-                    : "Belum Dimulai"}
-                </span>
-              </div>
-            </div>
-
-            {/* Tombol Mulai / Selesai */}
-            {tripStatus === AssignmentStatus.SCHEDULED ? (
-              <button
-                type="button"
-                onClick={handleStartTrip}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm cursor-pointer"
-              >
-                <FaPlay className="text-xs" />
-                Mulai Perjalanan
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleFinishTrip}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white shadow-sm cursor-pointer"
-              >
-                <FaCheckCircle className="text-xs" />
-                Selesaikan Perjalanan
-              </button>
-            )}
-          </div>
-
-          {/* CONTROL SEAT (Hanya muncul jika tripStatus === ONGOING) */}
-          {tripStatus === AssignmentStatus.ONGOING && (
-            <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                  <FaThLarge className="text-emerald-600 text-sm" />{" "}
-                  Ketersediaan Kursi
-                </span>
-                <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
-                  {occupiedCount} / {capacity} Terisi
-                </span>
-              </div>
-
-              <div className="pt-1">
-                <SeatGridControl
-                  seats={seats}
-                  canControl={true}
-                  onToggleSeat={(seatNumber: number) =>
-                    handleSelectSeatCapacity(seatNumber)
-                  }
-                  hasConductor={false}
-                  isUserConductor={false}
-                />
-              </div>
-            </div>
-          )}
-        </>
       )}
+
+      {/* BAR STATUS & WEWENANG PERJALANAN */}
+      <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <FaUserTie className="text-emerald-600 text-sm" /> Status Perjalanan
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-500">
+              Kondisi Operasional:
+            </span>
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-bold ${
+                currentStatus === AssignmentStatus.ONGOING
+                  ? "bg-emerald-600 text-white"
+                  : currentStatus === AssignmentStatus.COMPLETED
+                    ? "bg-slate-200 text-slate-800"
+                    : "bg-amber-100 text-amber-800"
+              }`}
+            >
+              {currentStatus === AssignmentStatus.ONGOING
+                ? "Berjalan (ON)"
+                : currentStatus === AssignmentStatus.COMPLETED
+                  ? "Selesai"
+                  : "Belum Dimulai"}
+            </span>
+          </div>
+        </div>
+
+        {/* Informational Badge: Dibuat persis seperti Dikelola Kondektur (Read-Only) */}
+        <div className="w-full sm:w-auto px-3 py-1.5 bg-amber-50 border border-amber-200/60 rounded-xl flex items-center gap-2 text-amber-800 text-xs font-medium">
+          <FaLock className="text-amber-600 shrink-0 text-xs" />
+          <span>
+            Pembaruan status perjalanan dikelola sepenuhnya oleh Kondektur.
+          </span>
+        </div>
+      </div>
+
+      {/* PANTAU KETERSEDIAAN KURSI (READ-ONLY) */}
+      <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <FaThLarge className="text-emerald-600 text-sm" /> Ketersediaan
+            Kursi (Pantau Mode)
+          </span>
+          <span className="text-xs font-semibold text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">
+            Dikelola oleh Kondektur
+          </span>
+        </div>
+
+        <div className="pt-1">
+          <SeatGridControl
+            seats={status?.seats || []}
+            canControl={false}
+            onToggleSeat={() => {}}
+            hasConductor={hasConductor}
+            isUserConductor={false}
+          />
+        </div>
+
+        {loading && (
+          <p className="text-xs text-slate-400 font-medium pt-1">
+            Memuat data status kursi...
+          </p>
+        )}
+        {error && (
+          <p className="text-xs text-rose-500 font-medium pt-1">{error}</p>
+        )}
+      </div>
     </div>
   );
 }
 
-export default function DriverNonConductorDashboardPage() {
+export default function DriverConductorDashboardPage() {
   const { activeSchedule, activeLoading, activeError } = usePersonnelSchedule();
+  const { user } = useAuth();
 
   const getFormattedDate = (offsetDays = 0) => {
     const d = new Date();
@@ -279,9 +232,9 @@ export default function DriverNonConductorDashboardPage() {
 
   const MOCK_SCHEDULES: TripHistoryItem[] = [
     {
-      assignmentId: 201,
+      assignmentId: 101,
       date: todayStr,
-      status: AssignmentStatus.SCHEDULED,
+      status: AssignmentStatus.ONGOING,
       routeCode: "MK-01",
       routeName: "Rute Utama - Kota Pasar",
       direction: DirectionType.FORWARD,
@@ -298,9 +251,24 @@ export default function DriverNonConductorDashboardPage() {
         createdAt: todayStr,
         updatedAt: todayStr,
       },
+      conductor: {
+        id: 1,
+        name: "Ahmad Fauzi",
+        nik: "3500000001",
+        email: "ahmad.fauzi@angkotgo.com",
+        phone: "081234567890",
+        password: "",
+        address: "Malang",
+        photoUrl: null,
+        isVerified: true,
+        status: "ACTIVE",
+        totalTrips: 15,
+        createdAt: todayStr,
+        updatedAt: todayStr,
+      },
     },
     {
-      assignmentId: 202,
+      assignmentId: 102,
       date: tomorrowStr,
       status: AssignmentStatus.SCHEDULED,
       routeCode: "MK-02",
@@ -319,35 +287,67 @@ export default function DriverNonConductorDashboardPage() {
         createdAt: todayStr,
         updatedAt: todayStr,
       },
+      conductor: {
+        id: 2,
+        name: "Budi Santoso",
+        nik: "3500000002",
+        email: "budi.santoso@angkotgo.com",
+        phone: "081234567891",
+        password: "",
+        address: "Malang",
+        photoUrl: null,
+        isVerified: true,
+        status: "ACTIVE",
+        totalTrips: 10,
+        createdAt: todayStr,
+        updatedAt: todayStr,
+      },
+    },
+    {
+      assignmentId: 99,
+      date: "2026-08-09",
+      status: AssignmentStatus.COMPLETED,
+      routeCode: "MK-01",
+      routeName: "Rute Utama - Kota Pasar",
+      direction: DirectionType.FORWARD,
+      startTime: "08:00",
+      endTime: "16:30",
+      vehicle: {
+        id: 1,
+        plateNumber: "N 1234 AB",
+        vehicleCode: "AG-01",
+        capacity: 8,
+        currentOdometer: 11900,
+        status: VehicleStatus.ACTIVE,
+        type: VehicleType.REGULER,
+        createdAt: todayStr,
+        updatedAt: todayStr,
+      },
+      conductor: {
+        id: 1,
+        name: "Ahmad Fauzi",
+        nik: "3500000001",
+        email: "ahmad.fauzi@angkotgo.com",
+        phone: "081234567890",
+        password: "",
+        address: "Malang",
+        photoUrl: null,
+        isVerified: true,
+        status: "ACTIVE",
+        totalTrips: 15,
+        createdAt: todayStr,
+        updatedAt: todayStr,
+      },
     },
   ];
 
-  const [completedAssignments, setCompletedAssignments] = useState<
-    TripHistoryItem[]
-  >([]);
-
-  const initialData =
+  const allData =
     activeSchedule && activeSchedule.length > 0
       ? activeSchedule
       : MOCK_SCHEDULES;
 
-  const handleTripCompleted = (assignmentId: number | string) => {
-    const completedItem = initialData.find(
-      (item) => item.assignmentId === assignmentId,
-    );
-    if (
-      completedItem &&
-      !completedAssignments.some((item) => item.assignmentId === assignmentId)
-    ) {
-      setCompletedAssignments((prev) => [
-        ...prev,
-        { ...completedItem, status: AssignmentStatus.COMPLETED },
-      ]);
-    }
-  };
-
   const activeSchedules = useMemo(() => {
-    return initialData.filter((item) => {
+    return allData.filter((item) => {
       const itemDate =
         typeof item.date === "string"
           ? item.date.split("T")[0]
@@ -356,7 +356,11 @@ export default function DriverNonConductorDashboardPage() {
       if (selectedDate) return itemDate === selectedDate;
       return itemDate === todayStr || itemDate === tomorrowStr;
     });
-  }, [initialData, selectedDate, todayStr, tomorrowStr]);
+  }, [allData, selectedDate, todayStr, tomorrowStr]);
+
+  const historySchedules = useMemo(() => {
+    return allData.filter((item) => item.status === AssignmentStatus.COMPLETED);
+  }, [allData]);
 
   return (
     <div className="min-h-screen bg-white text-slate-800 p-4 sm:p-6 lg:p-8 font-sans">
@@ -368,9 +372,10 @@ export default function DriverNonConductorDashboardPage() {
         <div className="p-4 bg-blue-50/70 rounded-2xl text-xs text-blue-900 font-medium flex items-center gap-3">
           <FaInfoCircle className="text-blue-600 text-base shrink-0" />
           <span>
-            <strong>Operasional Mandiri:</strong> Armada berjalan tanpa
-            kondektur. Anda memiliki akses kontrol penuh perjalanan, pemantauan
-            lokasi, & kursi penumpang.
+            <strong>Operasional Bersama Kondektur:</strong> Perjalanan
+            didampingi oleh Kondektur. Status perjalanan dan ketersediaan kursi
+            diatur sepenuhnya oleh Kondektur, Anda dapat memantau peta dan
+            informasi rute secara real-time.
           </span>
         </div>
 
@@ -382,7 +387,7 @@ export default function DriverNonConductorDashboardPage() {
               Operasional
             </h2>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Jadwal operasional Kondektur harian
+              Jadwal operasional harian pengemudi & kondektur
             </p>
           </div>
 
@@ -455,7 +460,7 @@ export default function DriverNonConductorDashboardPage() {
                   </div>
                 </div>
 
-                {/* Detail Kendaraan & Pengemudi */}
+                {/* Detail Kendaraan, Pengemudi, & Kondektur */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl">
                   <div>
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
@@ -473,16 +478,17 @@ export default function DriverNonConductorDashboardPage() {
                       Pengemudi
                     </span>
                     <span className="text-xs font-semibold text-slate-900 mt-1 flex items-center gap-1.5">
-                      <FaIdCard className="text-slate-400 text-xs" /> Siti
-                      Aminah
+                      <FaIdCard className="text-slate-400 text-xs" />
+                      {user?.name || "Budi Susanto"}
                     </span>
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                       Kondektur
                     </span>
-                    <span className="text-xs font-normal text-slate-400 mt-1 block">
-                      -
+                    <span className="text-xs font-semibold text-slate-900 mt-1 flex items-center gap-1.5">
+                      <FaUserTie className="text-emerald-600 text-xs" />
+                      {item.conductor?.name || "Ahmad Fauzi"}
                     </span>
                   </div>
                   <div>
@@ -496,11 +502,10 @@ export default function DriverNonConductorDashboardPage() {
                   </div>
                 </div>
 
-                {/* Interactive Driver Control (Sudah termasuk Live Map kondisional di dalamnya) */}
-                <InteractiveDriverWidget
+                {/* Read-Only Driver Widget & Live Map Tracking */}
+                <ReadOnlyDriverWidget
                   assignmentItem={item}
-                  capacity={item.vehicle?.capacity}
-                  onTripCompleted={handleTripCompleted}
+                  hasConductor={Boolean(item.conductor)}
                 />
               </div>
             ))}
@@ -517,10 +522,10 @@ export default function DriverNonConductorDashboardPage() {
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1">
                 <FaCheckCircle className="text-emerald-600 text-xs" />{" "}
-                {completedAssignments.length} Selesai
+                {historySchedules.length} Selesai
               </span>
               <Link
-                href="/driver/dashboard/history2"
+                href="/driver/dashboard/history3"
                 className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 hover:underline transition"
               >
                 Lihat Semua <FaArrowRight className="text-[10px]" />
@@ -543,19 +548,17 @@ export default function DriverNonConductorDashboardPage() {
                 </tr>
               </thead>
               <tbody className="text-xs font-medium text-slate-700">
-                {completedAssignments.length === 0 ? (
+                {historySchedules.length === 0 ? (
                   <tr>
                     <td
                       colSpan={8}
                       className="py-8 px-4 text-center text-slate-400 font-medium"
                     >
-                      Belum ada riwayat penugasan selesai pada sesi ini. Klik
-                      &quot;Mulai Perjalanan&quot; lalu &quot;Selesaikan
-                      Perjalanan&quot; untuk mensimulasikan.
+                      Belum ada riwayat penugasan selesai.
                     </td>
                   </tr>
                 ) : (
-                  completedAssignments.map((hist, index) => (
+                  historySchedules.map((hist, index) => (
                     <tr
                       key={hist.assignmentId}
                       className={`transition-colors ${
@@ -587,11 +590,14 @@ export default function DriverNonConductorDashboardPage() {
                       <td className="py-3.5 px-4 font-semibold text-slate-800 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1.5">
                           <FaIdCard className="text-slate-400 text-xs" />
-                          Siti Aminah
+                          {user?.name || "Budi Susanto"}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-400 whitespace-nowrap">
-                        -
+                      <td className="py-3.5 px-4 font-semibold text-slate-800 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          <FaUserTie className="text-emerald-600 text-xs" />
+                          {hist.conductor?.name || "Ahmad Fauzi"}
+                        </span>
                       </td>
                       <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
                         {hist.startTime} - {hist.endTime}
