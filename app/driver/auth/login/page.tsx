@@ -28,7 +28,7 @@ export default function DriverLoginPage() {
     setFormError("");
 
     if (!email.trim() || !password.trim()) {
-      setFormError("Email dan password wajib diisi.");
+      setFormError("Email/Nomor HP dan password wajib diisi.");
       return;
     }
 
@@ -36,7 +36,7 @@ export default function DriverLoginPage() {
       await loginDriver({ email, password });
     } catch (err: any) {
       setFormError(
-        err.message || "Gagal masuk, periksa kembali email dan password.",
+        err.message || "Gagal masuk, periksa kembali kredensial dan password.",
       );
     }
   };
@@ -92,11 +92,11 @@ export default function DriverLoginPage() {
               {/* FORM */}
               <form onSubmit={handleLogin} className="space-y-4">
                 <TextField
-                  label="Email Driver"
-                  type="email"
+                  label="Email / Nomor HP Driver"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="driver@example.com"
+                  placeholder="driver@example.com atau 08123456789"
                   icon={<FaEnvelope />}
                 />
                 <PasswordField

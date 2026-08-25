@@ -48,12 +48,17 @@ export const SeatGridControl: React.FC<SeatGridControlProps> = ({
             key={seat.seatNumber}
             type="button"
             disabled={!canControl}
+            aria-label={`Kursi ${seat.seatNumber} ${seat.isOccupied ? "Terisi" : "Kosong"}`}
             onClick={() => onToggleSeat(seat.seatNumber)}
             className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${
               seat.isOccupied
                 ? "bg-red-500 text-white border-red-600 shadow-sm"
                 : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-            } ${!canControl ? "opacity-70 cursor-not-allowed" : "active:scale-95 cursor-pointer"}`}
+            } ${
+              !canControl
+                ? "opacity-70 cursor-not-allowed"
+                : "active:scale-95 cursor-pointer"
+            }`}
           >
             <span>K{seat.seatNumber}</span>
             <span className="text-[9px] font-normal mt-0.5">
