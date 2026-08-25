@@ -1,81 +1,71 @@
 "use client";
 
-import React from "react";
 import { SeatState } from "@/types/vehicles/seat-management.type";
 
-interface SeatGridControlProps {
+type SeatGridControlProps = {
   seats: SeatState[];
   canControl: boolean;
-  onToggleSeat: (seatNumber: number) => void;
+  onToggleSeat: (seatNumber: number) => void | Promise<void>;
   hasConductor: boolean;
   isUserConductor: boolean;
-}
+};
 
-export const SeatGridControl: React.FC<SeatGridControlProps> = ({
+export function SeatGridControl({
   seats,
   canControl,
   onToggleSeat,
-  hasConductor,
-  isUserConductor,
-}) => {
-  const occupiedCount = seats.filter((s) => s.isOccupied).length;
-
+}: SeatGridControlProps) {
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-800">
-            Kapasitas Kursi
-          </h3>
-          <p className="text-xs text-gray-500">
-            Terisi:{" "}
-            <span className="font-bold text-blue-600">{occupiedCount}</span> / 8
-            Kursi
-          </p>
-        </div>
-        {!canControl && (
-          <span className="text-[10px] font-medium bg-amber-50 text-amber-600 px-2 py-1 rounded-md border border-amber-200">
-            {hasConductor && !isUserConductor
-              ? "Dikelola Kondektur (Read-Only)"
-              : "Mode Pantau"}
-          </span>
-        )}
+    <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-sm font-bold text-slate-900">Ketersediaan Seat</h2>
+
+        <p className="mt-1 text-xs text-gray-500">
+          Klik nomor seat untuk mengubah jumlah penumpang.
+        </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-2.5 my-2">
-        {seats.map((seat) => (
-          <button
-            key={seat.seatNumber}
-            type="button"
-            disabled={!canControl}
-            aria-label={`Kursi ${seat.seatNumber} ${seat.isOccupied ? "Terisi" : "Kosong"}`}
-            onClick={() => onToggleSeat(seat.seatNumber)}
-            className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${
-              seat.isOccupied
-                ? "bg-red-500 text-white border-red-600 shadow-sm"
-                : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-            } ${
-              !canControl
-                ? "opacity-70 cursor-not-allowed"
-                : "active:scale-95 cursor-pointer"
-            }`}
-          >
-            <span>K{seat.seatNumber}</span>
-            <span className="text-[9px] font-normal mt-0.5">
-              {seat.isOccupied ? "Terisi" : "Kosong"}
+      {seats.length === 0 ? (
+        <p className="py-5 text-center text-xs text-gray-400">
+          Data seat belum tersedia dari server.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
+            {seats.map((seat) => (
+              <button
+                key={seat.seatNumber}
+                type="button"
+                disabled={!canControl}
+                onClick={() => void onToggleSeat(seat.seatNumber)}
+                className={`flex h-14 items-center justify-center rounded-xl border-2 text-sm font-bold transition ${
+                  seat.isOccupied
+                    ? "border-red-500 bg-red-500 text-white hover:bg-red-600"
+                    : "border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
+                } ${
+                  canControl
+                    ? "cursor-pointer"
+                    : "cursor-not-allowed opacity-70"
+                }`}
+              >
+                {seat.seatNumber}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 flex gap-5 text-xs text-gray-500">
+            <span className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-red-500" />
+              Terisi
             </span>
-          </button>
-        ))}
-      </div>
 
-      <div className="w-full bg-gray-100 rounded-full h-2 mt-3 overflow-hidden">
-        <div
-          className={`h-2 transition-all duration-300 ${
-            occupiedCount === 8 ? "bg-red-500" : "bg-blue-600"
-          }`}
-          style={{ width: `${(occupiedCount / 8) * 100}%` }}
-        />
-      </div>
-    </div>
+            <span className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-green-500" />
+              Kosong
+            </span>
+          </div>
+        </>
+      )}
+    </section>
   );
-};
+}

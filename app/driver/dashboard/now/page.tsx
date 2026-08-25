@@ -1,33 +1,33 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  FaMapMarkedAlt,
+  FaArrowRight,
   FaBus,
   FaCalendarAlt,
   FaClock,
+  FaMapMarkedAlt,
   FaRoute,
   FaTimesCircle,
-  FaArrowRight,
+  FaUserAlt,
 } from "react-icons/fa";
 
 import { useAuth } from "@/context/AuthContext";
+import { DetailHeader } from "@/components/common/DetailHeader";
 import { usePersonnelSchedule } from "@/hooks/vehicles/usePersonalSchedules";
 import { useSeatManagement } from "@/hooks/vehicles/useSeatManagement";
 import { SeatGridControl } from "@/components/now/SeatGridControl";
-import { DetailHeader } from "@/components/common/DetailHeader";
-import {
-  AssignmentStatus,
-  DirectionType,
-  VehicleStatus,
-  VehicleType,
-} from "@/types/vehicles/vehicle.type";
+import { AssignmentStatus } from "@/types/vehicles/vehicle.type";
 import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
-import DriverMap from "@/app/driver/dashboard/DriverMap";
+
+function getTodayDateString() {
+  return new Date().toISOString().split("T")[0];
+}
 
 export default function DriverActivePage() {
   const { user, logout } = useAuth();
+
   const {
     activeSchedule,
     activeLoading,
@@ -35,140 +35,26 @@ export default function DriverActivePage() {
     fetchActiveScheduleByPersonnel,
   } = usePersonnelSchedule();
 
-  const getTodayDateString = () => new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] =
     useState<string>(getTodayDateString());
 
-  // Mock fallback assignment for local visual testing when activeSchedule is empty
-  const MOCK_ACTIVE_ASSIGNMENTS: TripHistoryItem[] = [
-    {
-      assignmentId: 999999,
-      date: getTodayDateString(),
-      status: AssignmentStatus.ONGOING,
-      routeCode: "MK-01",
-      routeName: "Rute Mock - Kota",
-      direction: DirectionType.FORWARD,
-      startTime: "07:00",
-      endTime: "09:00",
-      vehicle: {
-        id: 0,
-        plateNumber: "B 1234 XX",
-        vehicleCode: "V-MOCK",
-        capacity: 8,
-        currentOdometer: 0,
-        status: VehicleStatus.ACTIVE,
-        type: VehicleType.REGULER,
-        createdAt: getTodayDateString(),
-        updatedAt: getTodayDateString(),
-      },
-      conductor: {
-        id: 0,
-        name: "Budi Mock",
-        nik: "0000000000",
-        email: "budi.mock@example.com",
-        phone: "081234567890",
-        password: "mockpass",
-        address: "Jl. Contoh No. 1",
-        photoUrl: null,
-        isVerified: true,
-        status: "ACTIVE",
-        totalTrips: 0,
-        createdAt: getTodayDateString(),
-        updatedAt: getTodayDateString(),
-      },
-    },
-  ];
+  useEffect(() => {
+    if (!user?.id) return;
 
-  function AssignmentSeatWidget({
-    assignmentId,
-    initialStatus,
-  }: {
-    assignmentId: number;
-    initialStatus: AssignmentStatus;
-  }) {
-    const {
-      status,
-      loading: seatsLoading,
-      error: seatsError,
-      canControl,
-      toggleSeat,
-      toggleJourneyStatus,
-    } = useSeatManagement(String(assignmentId), false);
+    fetchActiveScheduleByPersonnel({
+      driverId: Number(user.id),
+      targetDate: selectedDate || undefined,
+    });
+  }, [user?.id, selectedDate, fetchActiveScheduleByPersonnel]);
 
-    const currentStatus = status?.status || initialStatus;
-
-    return (
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-gray-800">
-              Kontrol Perjalanan
-            </h3>
-            <p className="text-xs text-gray-500">
-              Status:{" "}
-              <span className="font-semibold text-slate-800">
-                {currentStatus}
-              </span>
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={!canControl || !status}
-            onClick={toggleJourneyStatus}
-            className={`px-3 py-2 text-xs font-semibold rounded-lg transition ${
-              canControl && status
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "bg-gray-200 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {status?.status === AssignmentStatus.ONGOING
-              ? "Set Selesai"
-              : "Mulai Perjalanan"}
-          </button>
-        </div>
-
-        <SeatGridControl
-          seats={status?.seats || []}
-          canControl={canControl}
-          onToggleSeat={toggleSeat}
-          hasConductor={status?.hasConductor || false}
-          isUserConductor={false}
-        />
-
-        {seatsLoading && (
-          <div className="text-xs text-gray-400 mt-2">
-            Memuat status kursi...
-          </div>
-        )}
-
-        {seatsError && (
-          <div className="text-xs text-rose-600 mt-2">{seatsError}</div>
-        )}
-
-        {status?.status === AssignmentStatus.ONGOING && (
-          <div className="mt-4">
-            <h4 className="text-sm font-semibold text-slate-900 mb-2">
-              Live Map Tracking
-            </h4>
-            <div className="h-72 rounded-3xl overflow-hidden border border-gray-200">
-              <DriverMap />
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Prefer mock displaySchedule when backend returns empty
-  const displaySchedule: TripHistoryItem[] =
-    activeSchedule && activeSchedule.length > 0
-      ? activeSchedule
-      : MOCK_ACTIVE_ASSIGNMENTS;
+  const displaySchedule = useMemo<TripHistoryItem[]>(() => {
+    return activeSchedule || [];
+  }, [activeSchedule]);
 
   const groupedSchedule = useMemo(() => {
-    const groups: { [key: string]: any[] } = {};
+    const groups: Record<string, TripHistoryItem[]> = {};
 
-    displaySchedule.forEach((item: any) => {
+    displaySchedule.forEach((item) => {
       const dateKey =
         typeof item.date === "string"
           ? item.date.split("T")[0]
@@ -177,242 +63,318 @@ export default function DriverActivePage() {
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
+
       groups[dateKey].push(item);
     });
 
-    // Urutkan tanggal dari yang terbaru / terdekat
-    return Object.keys(groups)
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-      .map((dateKey) => ({
+    return Object.entries(groups)
+      .sort(
+        ([firstDate], [secondDate]) =>
+          new Date(firstDate).getTime() - new Date(secondDate).getTime(),
+      )
+      .map(([dateKey, items]) => ({
         dateKey,
-        formattedDate: new Date(dateKey).toLocaleDateString("id-ID", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
-        items: groups[dateKey],
+        formattedDate: new Date(`${dateKey}T00:00:00`).toLocaleDateString(
+          "id-ID",
+          {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          },
+        ),
+        items,
       }));
   }, [displaySchedule]);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
-      <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 text-slate-800 antialiased">
+      <div className="mx-auto w-full max-w-6xl space-y-4 p-3 sm:space-y-6 sm:p-6 lg:p-8">
         <DetailHeader
           user={user}
+          onLogout={logout}
           title="Jadwal Penugasan Driver"
-          description="Kelola dan pantau daftar rute penugasan kendaraan aktif Anda."
+          description="Kelola dan pantau daftar rute penugasan kendaraan Anda."
         />
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-6">
-          {/* Header & Filter Tanggal */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-100">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <FaMapMarkedAlt className="text-blue-600 shrink-0" />
-              <span className="truncate">Jadwal Aktif Driver</span>
+        <section className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm sm:p-6">
+          <div className="mb-5 flex flex-col justify-between gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center">
+            <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 sm:text-lg">
+              <FaMapMarkedAlt className="shrink-0 text-blue-600" />
+              <span>Jadwal Aktif Driver</span>
             </h2>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <div className="flex items-center justify-between sm:justify-start gap-2">
-                <label
-                  htmlFor="schedule-date"
-                  className="text-xs font-semibold text-gray-500 flex items-center gap-1 shrink-0"
-                >
-                  <FaCalendarAlt className="text-gray-400" />
-                  Tanggal:
-                </label>
-                <input
-                  id="schedule-date"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                />
-              </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label
+                htmlFor="schedule-date"
+                className="flex items-center gap-1 text-xs font-semibold text-gray-500"
+              >
+                <FaCalendarAlt className="text-gray-400" />
+                Tanggal:
+              </label>
+
+              <input
+                id="schedule-date"
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+                className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-medium text-slate-700 outline-none transition-colors focus:bg-white focus:ring-2 focus:ring-blue-500 sm:text-sm"
+              />
 
               <button
                 type="button"
                 onClick={() => setSelectedDate("")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center justify-center gap-1 ${
+                className={`flex items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
                   selectedDate === ""
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                <FaTimesCircle
-                  className={
-                    selectedDate === "" ? "text-white" : "text-gray-400"
-                  }
-                />
+                <FaTimesCircle />
                 Semua Tanggal
               </button>
             </div>
           </div>
 
           {activeLoading && (
-            <div className="text-center py-8 text-xs sm:text-sm text-gray-500">
-              Memuat jadwal aktif...
+            <div className="py-8 text-center text-xs text-gray-500 sm:text-sm">
+              Memuat jadwal driver...
             </div>
           )}
 
           {activeError && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-xs sm:text-sm">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-600 sm:text-sm">
               {activeError}
             </div>
           )}
 
           {!activeLoading && !activeError && displaySchedule.length === 0 && (
-            <div className="text-center py-10 px-4 text-xs sm:text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-xs text-gray-400 sm:text-sm">
               {selectedDate
-                ? `Tidak ada jadwal penugasan aktif untuk tanggal ${selectedDate}.`
-                : "Tidak ada jadwal penugasan aktif secara keseluruhan."}
+                ? `Tidak ada jadwal driver untuk tanggal ${selectedDate}.`
+                : "Tidak ada jadwal driver."}
             </div>
           )}
 
           {!activeLoading && !activeError && displaySchedule.length > 0 && (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-5">
               {groupedSchedule.map((group) => (
                 <div
                   key={group.dateKey}
-                  className="bg-slate-50/60 rounded-xl border border-gray-200/80 p-3 sm:p-5 space-y-3 sm:space-y-4"
+                  className="space-y-4 rounded-xl border border-gray-200 bg-slate-50/60 p-3 sm:p-5"
                 >
-                  {/* Header Container per Tanggal */}
-                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-gray-200 text-slate-800 font-bold text-xs sm:text-base">
-                    <div className="flex items-center gap-2 truncate">
-                      <FaCalendarAlt className="text-blue-600 shrink-0" />
+                  <div className="flex items-center justify-between gap-2 border-b border-gray-200 pb-3">
+                    <div className="flex min-w-0 items-center gap-2 text-xs font-bold text-slate-800 sm:text-base">
+                      <FaCalendarAlt className="shrink-0 text-blue-600" />
                       <span className="truncate">{group.formattedDate}</span>
                     </div>
-                    <span className="text-[11px] sm:text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full shrink-0">
+
+                    <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 sm:text-xs">
                       {group.items.length} Jadwal
                     </span>
                   </div>
 
-                  {/* Grid Card dalam Container Tanggal Tersebut */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                    {group.items.map((item: TripHistoryItem) => {
-                      const statusBadge =
-                        item.status === AssignmentStatus.ONGOING
-                          ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                          : "bg-blue-100 text-blue-800 border-blue-200";
-
-                      const vehicleTypeBadge =
-                        item.vehicle?.type === "PREMIUM"
-                          ? "bg-purple-100 text-purple-700 border-purple-200"
-                          : "bg-slate-100 text-slate-700 border-slate-200";
-
-                      return (
-                        <div
-                          key={item.assignmentId}
-                          className="group bg-white rounded-xl border border-gray-200 p-3.5 sm:p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between gap-3 relative"
-                        >
-                          <div className="space-y-2.5 sm:space-y-3">
-                            {/* Baris Status & Tipe Kendaraan */}
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span
-                                  className={`px-2 py-0.5 text-[10px] sm:text-[11px] font-bold rounded-full border uppercase tracking-wider ${statusBadge}`}
-                                >
-                                  {item.status}
-                                </span>
-                                {item.vehicle?.type && (
-                                  <span
-                                    className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold rounded-md border uppercase ${vehicleTypeBadge}`}
-                                  >
-                                    {item.vehicle.type}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Rute & Arah */}
-                            <div>
-                              <div className="text-[11px] sm:text-xs text-gray-400 font-medium">
-                                Rute Perjalanan
-                              </div>
-                              <div className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5 mt-0.5">
-                                <FaRoute className="text-blue-500 shrink-0 text-xs sm:text-sm" />
-                                <span className="truncate">
-                                  {item.routeCode} - {item.routeName}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <span className="text-[11px] sm:text-xs text-gray-500">
-                                  Arah:
-                                </span>
-                                <span
-                                  className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wide border ${
-                                    item.direction === "FORWARD"
-                                      ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                                      : "bg-amber-50 text-amber-700 border-amber-200"
-                                  }`}
-                                >
-                                  {item.direction}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Waktu & Kendaraan */}
-                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100 text-xs sm:text-sm text-gray-600">
-                              <div className="flex items-start gap-1.5">
-                                <FaClock className="text-gray-400 shrink-0 mt-0.5 text-xs" />
-                                <div className="min-w-0">
-                                  <div className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-semibold">
-                                    Waktu
-                                  </div>
-                                  <span className="font-semibold text-slate-700 text-xs sm:text-sm block truncate">
-                                    {item.startTime} - {item.endTime}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-start gap-1.5">
-                                <FaBus className="text-gray-400 shrink-0 mt-0.5 text-xs" />
-                                <div className="min-w-0">
-                                  <div className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-semibold">
-                                    Kendaraan
-                                  </div>
-                                  <span className="font-semibold text-slate-700 text-xs sm:text-sm block truncate">
-                                    {item.vehicle?.plateNumber || "-"} (
-                                    {item.vehicle?.vehicleCode || "-"})
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Seat control rendered directly in assignment card */}
-                          <div className="mt-2">
-                            <AssignmentSeatWidget
-                              assignmentId={item.assignmentId}
-                              initialStatus={item.status}
-                            />
-                          </div>
-
-                          {/* Footer / Kondektur & Action Prompt */}
-                          <div className="pt-2.5 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] sm:text-xs">
-                            <div className="text-gray-500 truncate pr-2">
-                              Kondektur:{" "}
-                              <span className="font-medium text-slate-700">
-                                {item.conductor?.name || "Tidak ada"}
-                              </span>
-                            </div>
-                            <Link
-                              href={`/driver/dashboard/now/${item.assignmentId}`}
-                              className="text-blue-600 font-semibold flex items-center gap-1 shrink-0"
-                            >
-                              Detail
-                              <FaArrowRight className="text-[9px] sm:text-[10px]" />
-                            </Link>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-1 gap-4">
+                    {group.items.map((item) => (
+                      <DriverAssignmentCard
+                        key={item.assignmentId}
+                        assignment={item}
+                      />
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function DriverAssignmentCard({ assignment }: { assignment: TripHistoryItem }) {
+  const {
+    status,
+    loading,
+    error,
+    canControl,
+    toggleSeat,
+    toggleJourneyStatus,
+  } = useSeatManagement(String(assignment.assignmentId), false);
+
+  const isOngoing = status?.status === AssignmentStatus.ONGOING;
+
+  const statusClass =
+    assignment.status === AssignmentStatus.ONGOING
+      ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+      : "border-blue-200 bg-blue-100 text-blue-800";
+
+  const vehicleClass =
+    assignment.vehicle?.type === "PREMIUM"
+      ? "border-purple-200 bg-purple-100 text-purple-700"
+      : "border-slate-200 bg-slate-100 text-slate-700";
+
+  return (
+    <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:border-blue-300 hover:shadow-md sm:p-5">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusClass}`}
+            >
+              {assignment.status}
+            </span>
+
+            {assignment.vehicle?.type && (
+              <span
+                className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase ${vehicleClass}`}
+              >
+                {assignment.vehicle.type}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Arah:</span>
+            <span
+              className={`rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase ${
+                assignment.direction === "FORWARD"
+                  ? "border-cyan-200 bg-cyan-50 text-cyan-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
+              }`}
+            >
+              {assignment.direction}
+            </span>
+          </div>
         </div>
+
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Nama Rute
+          </p>
+          <h3 className="mt-1 text-lg font-bold text-slate-900">
+            {assignment.routeName || "-"}
+          </h3>
+          <p className="text-xs font-semibold text-blue-600">
+            Kode Rute: {assignment.routeCode || "-"}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 border-y border-gray-100 py-4 sm:grid-cols-2 lg:grid-cols-4">
+          <InfoItem
+            icon={<FaClock />}
+            label="Waktu"
+            value={`${assignment.startTime || "-"} - ${assignment.endTime || "-"}`}
+          />
+
+          <InfoItem
+            icon={<FaBus />}
+            label="Kendaraan"
+            value={assignment.vehicle?.plateNumber || "-"}
+          />
+
+          <InfoItem
+            icon={<FaRoute />}
+            label="Armada"
+            value={assignment.vehicle?.vehicleCode || "-"}
+          />
+
+          <InfoItem
+            icon={<FaUserAlt />}
+            label="Driver"
+            value={assignment.driver?.name || "-"}
+          />
+
+          <InfoItem
+            icon={<FaUserAlt />}
+            label="Kondektur"
+            value={assignment.conductor?.name || "Tidak ada kondektur"}
+          />
+
+          <InfoItem
+            icon={<FaBus />}
+            label="Kapasitas"
+            value={`${assignment.vehicle?.capacity || 0} kursi`}
+          />
+        </div>
+
+        <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+          <div className="mb-3 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h4 className="text-sm font-bold text-slate-800">
+                Kontrol Perjalanan
+              </h4>
+              <p className="text-xs text-gray-500">
+                Status operasional:{" "}
+                <span className="font-semibold text-slate-700">
+                  {status?.status || "Memuat..."}
+                </span>
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={loading || !status || !canControl}
+              onClick={toggleJourneyStatus}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                loading || !status || !canControl
+                  ? "cursor-not-allowed bg-gray-200 text-gray-500"
+                  : isOngoing
+                    ? "bg-rose-600 text-white hover:bg-rose-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
+            >
+              {isOngoing ? "Selesaikan Perjalanan" : "Mulai Perjalanan"}
+            </button>
+          </div>
+
+          <SeatGridControl
+            seats={status?.seats || []}
+            canControl={canControl}
+            onToggleSeat={toggleSeat}
+            hasConductor={status?.hasConductor || false}
+            isUserConductor={false}
+          />
+
+          {error && (
+            <p className="mt-3 rounded-lg bg-rose-50 p-2 text-xs text-rose-600">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end border-t border-gray-100 pt-3">
+          <Link
+            href={`/driver/dashboard/now/${assignment.assignmentId}`}
+            className="flex items-center gap-1 text-xs font-semibold text-blue-600 transition hover:text-blue-800"
+          >
+            Detail Perjalanan
+            <FaArrowRight className="text-[10px]" />
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function InfoItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-2">
+      <span className="mt-0.5 shrink-0 text-xs text-gray-400">{icon}</span>
+
+      <div className="min-w-0">
+        <p className="text-[9px] font-semibold uppercase text-gray-400">
+          {label}
+        </p>
+        <p className="truncate text-xs font-semibold text-slate-700">{value}</p>
       </div>
     </div>
   );
