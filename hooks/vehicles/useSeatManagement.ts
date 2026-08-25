@@ -17,6 +17,7 @@ export function useSeatManagement(
   const [error, setError] = useState<string | null>(null);
 
   const MOCK_IDS = ["999999", "888888"];
+
   const makeMockStatus = (id: string): OperationalStatus => {
     const seats = Array.from({ length: 8 }, (_, i) => ({
       seatNumber: i + 1,
@@ -33,20 +34,25 @@ export function useSeatManagement(
     };
   };
 
-  const getCumulativeSeats = (count: number) =>
+  const getCumulativeSeats = (count: number): SeatState[] =>
     Array.from({ length: 8 }, (_, i) => ({
       seatNumber: i + 1,
       isOccupied: i + 1 <= count,
-    })) as SeatState[];
+    }));
 
   const fetchSeats = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const data =
         await seatManagementService.getOperationalStatus(assignmentId);
       setStatus(data);
-    } catch (err: any) {
-      setError(err.message || "Gagal memuat data operasional");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Gagal memuat data operasional");
+      } else {
+        setError("Gagal memuat data operasional");
+      }
     } finally {
       setLoading(false);
     }
@@ -55,7 +61,6 @@ export function useSeatManagement(
   useEffect(() => {
     if (!assignmentId) return;
 
-    // If this is a known mock assignment id, immediately set mock status
     if (MOCK_IDS.includes(assignmentId)) {
       setStatus(makeMockStatus(assignmentId));
       setLoading(false);
@@ -66,9 +71,6 @@ export function useSeatManagement(
     fetchSeats();
   }, [assignmentId, fetchSeats]);
 
-  // Hak akses kontrol:
-  // - Jika ada kondektur: hanya kondektur yang bisa klik.
-  // - Jika tidak ada kondektur: driver bisa klik.
   const canControl = status
     ? (!status.hasConductor && !isUserConductor) ||
       (status.hasConductor && isUserConductor)
@@ -82,6 +84,7 @@ export function useSeatManagement(
       currentCount === seatNumber ? seatNumber - 1 : seatNumber;
 
     const updatedSeats = getCumulativeSeats(targetCount);
+    const previousStatus = { ...status };
 
     setStatus({
       ...status,
@@ -96,7 +99,7 @@ export function useSeatManagement(
         targetCount,
       );
     } catch {
-      fetchSeats(); // Revert to server state if the update fails
+      setStatus(previousStatus);
     }
   };
 
@@ -108,6 +111,8 @@ export function useSeatManagement(
         ? AssignmentStatus.COMPLETED
         : AssignmentStatus.ONGOING;
 
+    const previousStatus = { ...status };
+
     setStatus({
       ...status,
       status: nextStatus,
@@ -116,7 +121,7 @@ export function useSeatManagement(
     try {
       await seatManagementService.updateJourneyStatus(assignmentId, nextStatus);
     } catch {
-      fetchSeats();
+      setStatus(previousStatus);
     }
   };
 

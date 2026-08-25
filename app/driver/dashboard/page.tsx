@@ -3,20 +3,27 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  FaMapMarkedAlt,
   FaBus,
   FaCalendarAlt,
   FaClock,
+  FaHistory,
+  FaUserCircle,
+  FaSignOutAlt,
+  FaChevronDown,
+  FaCheckCircle,
   FaRoute,
-  FaTimesCircle,
-  FaArrowRight,
+  FaIdCard,
+  FaUserCheck,
+  FaInfoCircle,
+  FaThLarge,
+  FaPlay,
+  FaCheck,
+  FaMapMarkedAlt,
 } from "react-icons/fa";
 
 import { useAuth } from "@/context/AuthContext";
 import { usePersonnelSchedule } from "@/hooks/vehicles/usePersonalSchedules";
-import { useSeatManagement } from "@/hooks/vehicles/useSeatManagement";
 import { SeatGridControl } from "@/components/now/SeatGridControl";
-import { DetailHeader } from "@/components/common/DetailHeader";
 import {
   AssignmentStatus,
   DirectionType,
@@ -26,375 +33,546 @@ import {
 import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
 import DriverMap from "@/app/driver/dashboard/DriverMap";
 
-function AssignmentSeatWidget({
-  assignmentId,
-  initialStatus,
-}: {
-  assignmentId: number | string;
-  initialStatus: AssignmentStatus;
-}) {
-  const {
-    status,
-    loading: seatsLoading,
-    error: seatsError,
-    canControl,
-    toggleSeat,
-    toggleJourneyStatus,
-  } = useSeatManagement(String(assignmentId), false);
-
-  const currentStatus = status?.status || initialStatus;
+// 1. Header Profil Driver
+function DriverHeaderProfile() {
+  const { logout } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const driverName = "Siti Aminah";
 
   return (
-    <div className="mt-3 pt-3 border-t border-gray-100">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-gray-800">
-            Kontrol Perjalanan
-          </h3>
-          <p className="text-xs text-gray-500">
-            Status:{" "}
-            <span className="font-semibold text-slate-800">
-              {currentStatus}
+    <header className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="bg-emerald-600 text-white w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm">
+          AG
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-bold text-slate-900">
+              AngkotGo Driver
+            </h1>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Online
             </span>
+          </div>
+          <p className="text-xs text-slate-500 font-medium">
+            Portal Operasional Pengemudi Non-Kondektur
           </p>
         </div>
-        <button
-          type="button"
-          disabled={!canControl || !status}
-          onClick={toggleJourneyStatus}
-          className={`px-3 py-2 text-xs font-semibold rounded-lg transition ${
-            canControl && status
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "bg-gray-200 text-gray-500 cursor-not-allowed"
-          }`}
-        >
-          {status?.status === AssignmentStatus.ONGOING
-            ? "Set Selesai"
-            : "Mulai Perjalanan"}
-        </button>
       </div>
 
-      <SeatGridControl
-        seats={status?.seats || []}
-        canControl={canControl}
-        onToggleSeat={toggleSeat}
-        hasConductor={status?.hasConductor || false}
-        isUserConductor={false}
-      />
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 transition text-slate-700 text-xs font-semibold cursor-pointer"
+        >
+          <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
+            S
+          </div>
+          <span className="hidden sm:inline">{driverName}</span>
+          <FaChevronDown className="text-slate-400 text-xs" />
+        </button>
 
-      {seatsLoading && (
-        <div className="text-xs text-gray-400 mt-2">Memuat status kursi...</div>
-      )}
+        {isMenuOpen && (
+          <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50">
+            <div className="px-3.5 py-2 border-b border-slate-100">
+              <p className="text-xs font-bold text-slate-900">{driverName}</p>
+              <p className="text-xs text-slate-500 font-medium">
+                Pengemudi Aktif
+              </p>
+            </div>
+            <Link
+              href="/driver/dashboard/profile"
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <FaUserCircle className="text-slate-400 text-sm" /> Profil Saya
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setIsMenuOpen(false);
+                logout();
+              }}
+              className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 text-left cursor-pointer"
+            >
+              <FaSignOutAlt className="text-sm" /> Keluar Akun
+            </button>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
 
-      {seatsError && (
-        <div className="text-xs text-rose-600 mt-2">{seatsError}</div>
-      )}
+// 2. Widget Kontrol Perjalanan + Live Map Kondisional
+function InteractiveDriverWidget({
+  assignmentItem,
+  capacity = 8,
+  onTripCompleted,
+}: {
+  assignmentItem: TripHistoryItem;
+  capacity?: number;
+  onTripCompleted: (assignmentId: number | string) => void;
+}) {
+  const [tripStatus, setTripStatus] = useState<AssignmentStatus>(
+    assignmentItem.status || AssignmentStatus.SCHEDULED,
+  );
+  const [occupiedCount, setOccupiedCount] = useState<number>(0);
 
-      {status?.status === AssignmentStatus.ONGOING && (
-        <div className="mt-4">
-          <h4 className="text-sm font-semibold text-slate-900 mb-2">
-            Live Map Tracking
-          </h4>
-          <div className="h-72 rounded-3xl overflow-hidden border border-gray-200">
-            <DriverMap />
+  const seats = useMemo(() => {
+    return Array.from({ length: capacity }, (_, i) => ({
+      seatNumber: i + 1,
+      isOccupied: i < occupiedCount,
+    }));
+  }, [capacity, occupiedCount]);
+
+  const handleStartTrip = () => {
+    setTripStatus(AssignmentStatus.ONGOING);
+  };
+
+  const handleFinishTrip = () => {
+    setTripStatus(AssignmentStatus.COMPLETED);
+    setOccupiedCount(0);
+    onTripCompleted(assignmentItem.assignmentId);
+  };
+
+  const handleSelectSeatCapacity = (seatNumber: number) => {
+    setOccupiedCount(
+      occupiedCount === seatNumber ? seatNumber - 1 : seatNumber,
+    );
+  };
+
+  return (
+    <div className="space-y-4 pt-2">
+      {/* STATE 1: PENUGASAN SUDAH SELESAI */}
+      {tripStatus === AssignmentStatus.COMPLETED ? (
+        <div className="bg-emerald-50 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 text-emerald-900">
+          <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+            <FaCheck className="text-sm" />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+              Penugasan Hari Ini Selesai
+            </p>
+            <p className="text-xs font-medium text-emerald-700 mt-0.5">
+              Terima kasih atas pelayanan Anda! Data perjalanan telah berhasil
+              dicatat.
+            </p>
           </div>
         </div>
+      ) : (
+        /* STATE 2: BELUM MULAI (SCHEDULED) ATAU SEDANG BERJALAN (ONGOING) */
+        <>
+          {/* MAP HANYA MUNCUL JIKA TRIP BERJALAN (ONGOING) */}
+          {tripStatus === AssignmentStatus.ONGOING && (
+            <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <FaMapMarkedAlt className="text-emerald-600 text-sm" /> Live
+                  Map Tracking Perjalanan
+                </h2>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  GPS Aktif
+                </span>
+              </div>
+              <div className="h-72 rounded-2xl overflow-hidden border border-slate-100 relative">
+                <DriverMap />
+              </div>
+            </div>
+          )}
+
+          {/* BAR KONTROL UTAMA */}
+          <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <FaUserCheck className="text-emerald-600 text-sm" /> Kendali
+                Perjalanan Driver
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-500">
+                  Status Perjalanan:
+                </span>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    tripStatus === AssignmentStatus.ONGOING
+                      ? "bg-emerald-600 text-white"
+                      : "bg-amber-100 text-amber-800"
+                  }`}
+                >
+                  {tripStatus === AssignmentStatus.ONGOING
+                    ? "Berjalan (ON)"
+                    : "Belum Dimulai"}
+                </span>
+              </div>
+            </div>
+
+            {/* Tombol Mulai / Selesai */}
+            {tripStatus === AssignmentStatus.SCHEDULED ? (
+              <button
+                type="button"
+                onClick={handleStartTrip}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm cursor-pointer"
+              >
+                <FaPlay className="text-xs" />
+                Mulai Perjalanan
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleFinishTrip}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white shadow-sm cursor-pointer"
+              >
+                <FaCheckCircle className="text-xs" />
+                Selesaikan Perjalanan
+              </button>
+            )}
+          </div>
+
+          {/* CONTROL SEAT (Hanya muncul jika tripStatus === ONGOING) */}
+          {tripStatus === AssignmentStatus.ONGOING && (
+            <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <FaThLarge className="text-emerald-600 text-sm" />{" "}
+                  Ketersediaan Kursi
+                </span>
+                <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
+                  {occupiedCount} / {capacity} Terisi
+                </span>
+              </div>
+
+              <div className="pt-1">
+                <SeatGridControl
+                  seats={seats}
+                  canControl={true}
+                  onToggleSeat={(seatNumber: number) =>
+                    handleSelectSeatCapacity(seatNumber)
+                  }
+                  hasConductor={false}
+                  isUserConductor={false}
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-export default function DriverActivePage() {
-  const { user } = useAuth();
+export default function DriverNonConductorDashboardPage() {
   const { activeSchedule, activeLoading, activeError } = usePersonnelSchedule();
 
-  const getTodayDateString = () => new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] =
-    useState<string>(getTodayDateString());
+  const getFormattedDate = (offsetDays = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().split("T")[0];
+  };
 
-  const MOCK_ACTIVE_ASSIGNMENTS: TripHistoryItem[] = [
+  const todayStr = getFormattedDate(0);
+  const tomorrowStr = getFormattedDate(1);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+
+  const MOCK_SCHEDULES: TripHistoryItem[] = [
     {
-      assignmentId: 999999,
-      date: getTodayDateString(),
-      status: AssignmentStatus.ONGOING,
+      assignmentId: 201,
+      date: todayStr,
+      status: AssignmentStatus.SCHEDULED,
       routeCode: "MK-01",
-      routeName: "Rute Mock - Kota",
+      routeName: "Rute Utama - Kota (Hari Ini)",
       direction: DirectionType.FORWARD,
       startTime: "07:00",
       endTime: "09:00",
       vehicle: {
-        id: 0,
-        plateNumber: "B 1234 XX",
-        vehicleCode: "V-MOCK",
+        id: 1,
+        plateNumber: "N 1234 AB",
+        vehicleCode: "AG-01",
         capacity: 8,
-        currentOdometer: 0,
+        currentOdometer: 12000,
         status: VehicleStatus.ACTIVE,
         type: VehicleType.REGULER,
-        createdAt: getTodayDateString(),
-        updatedAt: getTodayDateString(),
+        createdAt: todayStr,
+        updatedAt: todayStr,
       },
-      conductor: {
-        id: 0,
-        name: "Budi Mock",
-        nik: "0000000000",
-        email: "budi.mock@example.com",
-        phone: "081234567890",
-        password: "mockpass",
-        address: "Jl. Contoh No. 1",
-        photoUrl: null,
-        isVerified: true,
-        status: "ACTIVE",
-        totalTrips: 0,
-        createdAt: getTodayDateString(),
-        updatedAt: getTodayDateString(),
+    },
+    {
+      assignmentId: 202,
+      date: tomorrowStr,
+      status: AssignmentStatus.SCHEDULED,
+      routeCode: "MK-02",
+      routeName: "Rute Lingkar - Besok (H+1)",
+      direction: "BACKWARD" as DirectionType,
+      startTime: "08:00",
+      endTime: "10:00",
+      vehicle: {
+        id: 1,
+        plateNumber: "N 1234 AB",
+        vehicleCode: "AG-01",
+        capacity: 8,
+        currentOdometer: 12000,
+        status: VehicleStatus.ACTIVE,
+        type: VehicleType.REGULER,
+        createdAt: todayStr,
+        updatedAt: todayStr,
       },
     },
   ];
 
-  const displaySchedule: TripHistoryItem[] =
+  const [completedAssignments, setCompletedAssignments] = useState<
+    TripHistoryItem[]
+  >([]);
+
+  const initialData =
     activeSchedule && activeSchedule.length > 0
       ? activeSchedule
-      : MOCK_ACTIVE_ASSIGNMENTS;
+      : MOCK_SCHEDULES;
 
-  const groupedSchedule = useMemo(() => {
-    const groups: { [key: string]: TripHistoryItem[] } = {};
+  const handleTripCompleted = (assignmentId: number | string) => {
+    const completedItem = initialData.find(
+      (item) => item.assignmentId === assignmentId,
+    );
+    if (
+      completedItem &&
+      !completedAssignments.some((item) => item.assignmentId === assignmentId)
+    ) {
+      setCompletedAssignments((prev) => [
+        ...prev,
+        { ...completedItem, status: AssignmentStatus.COMPLETED },
+      ]);
+    }
+  };
 
-    displaySchedule.forEach((item) => {
-      const dateKey =
+  const activeSchedules = useMemo(() => {
+    return initialData.filter((item) => {
+      const itemDate =
         typeof item.date === "string"
           ? item.date.split("T")[0]
           : new Date(item.date).toISOString().split("T")[0];
 
-      if (selectedDate && dateKey !== selectedDate) return;
-
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(item);
+      if (selectedDate) return itemDate === selectedDate;
+      return itemDate === todayStr || itemDate === tomorrowStr;
     });
-
-    return Object.keys(groups)
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-      .map((dateKey) => ({
-        dateKey,
-        formattedDate: new Date(dateKey).toLocaleDateString("id-ID", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
-        items: groups[dateKey],
-      }));
-  }, [displaySchedule, selectedDate]);
+  }, [initialData, selectedDate, todayStr, tomorrowStr]);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
-      <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8">
-        <DetailHeader
-          user={user}
-          title="Jadwal Penugasan Driver"
-          description="Kelola dan pantau daftar rute penugasan kendaraan aktif Anda."
-        />
+    <div className="min-h-screen bg-white text-slate-800 p-4 sm:p-6 lg:p-8 font-sans">
+      <div className="mx-auto max-w-4xl space-y-5">
+        {/* Header Profil */}
+        <DriverHeaderProfile />
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-100">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <FaMapMarkedAlt className="text-blue-600 shrink-0" />
-              <span className="truncate">Jadwal Aktif Driver</span>
+        {/* Info Banner */}
+        <div className="p-4 bg-blue-50/70 rounded-2xl text-xs text-blue-900 font-medium flex items-center gap-3">
+          <FaInfoCircle className="text-blue-600 text-base shrink-0" />
+          <span>
+            <strong>Operasional Mandiri:</strong> Armada berjalan tanpa
+            kondektur. Anda memiliki akses kontrol penuh perjalanan, pemantauan
+            lokasi, & kursi penumpang.
+          </span>
+        </div>
+
+        {/* Filter Tanggal Operasional */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <FaCalendarAlt className="text-emerald-600 text-sm" /> Tanggal
+              Operasional
             </h2>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Hari ini ({todayStr}) & H+1 ({tomorrowStr})
+            </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <div className="flex items-center justify-between sm:justify-start gap-2">
-                <label
-                  htmlFor="schedule-date"
-                  className="text-xs font-semibold text-gray-500 flex items-center gap-1 shrink-0"
-                >
-                  <FaCalendarAlt className="text-gray-400" />
-                  Tanggal:
-                </label>
-                <input
-                  id="schedule-date"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-300 rounded-lg text-xs sm:text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                />
-              </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border-0 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={() => setSelectedDate("")}
+              className="px-3.5 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition cursor-pointer"
+            >
+              Semua
+            </button>
+          </div>
+        </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedDate("")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center justify-center gap-1 ${
-                  selectedDate === ""
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
-                }`}
-              >
-                <FaTimesCircle
-                  className={
-                    selectedDate === "" ? "text-white" : "text-gray-400"
-                  }
-                />
-                Semua Tanggal
-              </button>
-            </div>
+        {/* SECTION 1: PENUGASAN DRIVER AKTIF */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <FaBus className="text-emerald-600 text-sm" /> Penugasan Driver
+              Aktif
+            </h3>
+            <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
+              {activeSchedules.length} Penugasan
+            </span>
           </div>
 
           {activeLoading && (
-            <div className="text-center py-8 text-xs sm:text-sm text-gray-500">
-              Memuat jadwal aktif...
+            <div className="text-center py-8 bg-white rounded-2xl text-xs font-medium text-slate-400 border border-slate-100 shadow-sm">
+              Memuat data penugasan...
             </div>
           )}
 
           {activeError && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-xs sm:text-sm">
+            <div className="p-4 bg-rose-50 text-rose-700 rounded-2xl text-xs font-medium">
               {activeError}
             </div>
           )}
 
-          {!activeLoading && !activeError && groupedSchedule.length === 0 && (
-            <div className="text-center py-10 px-4 text-xs sm:text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-              {selectedDate
-                ? `Tidak ada jadwal penugasan aktif untuk tanggal ${selectedDate}.`
-                : "Tidak ada jadwal penugasan aktif secara keseluruhan."}
+          {!activeLoading && activeSchedules.length === 0 && (
+            <div className="text-center py-10 bg-white rounded-2xl text-xs font-medium text-slate-400 border border-slate-100 shadow-sm">
+              Tidak ada penugasan aktif untuk tanggal ini.
             </div>
           )}
 
-          {!activeLoading && !activeError && groupedSchedule.length > 0 && (
-            <div className="space-y-4 sm:space-y-6">
-              {groupedSchedule.map((group) => (
-                <div
-                  key={group.dateKey}
-                  className="bg-slate-50/60 rounded-xl border border-gray-200/80 p-3 sm:p-5 space-y-3 sm:space-y-4"
-                >
-                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-gray-200 text-slate-800 font-bold text-xs sm:text-base">
-                    <div className="flex items-center gap-2 truncate">
-                      <FaCalendarAlt className="text-blue-600 shrink-0" />
-                      <span className="truncate">{group.formattedDate}</span>
-                    </div>
-                    <span className="text-[11px] sm:text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full shrink-0">
-                      {group.items.length} Jadwal
+          <div className="space-y-4">
+            {activeSchedules.map((item) => (
+              <div
+                key={item.assignmentId}
+                className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-100 space-y-5"
+              >
+                {/* Header Card Rute & Jam */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-2.5 py-1 text-xs font-bold bg-emerald-50 text-emerald-700 rounded-lg">
+                      {item.routeCode}
                     </span>
+                    <h4 className="text-sm font-bold text-slate-900">
+                      {item.routeName}
+                    </h4>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                    {group.items.map((item: TripHistoryItem) => {
-                      const statusBadge =
-                        item.status === AssignmentStatus.ONGOING
-                          ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                          : "bg-blue-100 text-blue-800 border-blue-200";
-
-                      const vehicleTypeBadge =
-                        item.vehicle?.type === "PREMIUM"
-                          ? "bg-purple-100 text-purple-700 border-purple-200"
-                          : "bg-slate-100 text-slate-700 border-slate-200";
-
-                      return (
-                        <div
-                          key={item.assignmentId}
-                          className="group bg-white rounded-xl border border-gray-200 p-3.5 sm:p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between gap-3 relative"
-                        >
-                          <div className="space-y-2.5 sm:space-y-3">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span
-                                  className={`px-2 py-0.5 text-[10px] sm:text-[11px] font-bold rounded-full border uppercase tracking-wider ${statusBadge}`}
-                                >
-                                  {item.status}
-                                </span>
-                                {item.vehicle?.type && (
-                                  <span
-                                    className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold rounded-md border uppercase ${vehicleTypeBadge}`}
-                                  >
-                                    {item.vehicle.type}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <div className="text-[11px] sm:text-xs text-gray-400 font-medium">
-                                Rute Perjalanan
-                              </div>
-                              <div className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5 mt-0.5">
-                                <FaRoute className="text-blue-500 shrink-0 text-xs sm:text-sm" />
-                                <span className="truncate">
-                                  {item.routeCode} - {item.routeName}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <span className="text-[11px] sm:text-xs text-gray-500">
-                                  Arah:
-                                </span>
-                                <span
-                                  className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wide border ${
-                                    item.direction === "FORWARD"
-                                      ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                                      : "bg-amber-50 text-amber-700 border-amber-200"
-                                  }`}
-                                >
-                                  {item.direction}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100 text-xs sm:text-sm text-gray-600">
-                              <div className="flex items-start gap-1.5">
-                                <FaClock className="text-gray-400 shrink-0 mt-0.5 text-xs" />
-                                <div className="min-w-0">
-                                  <div className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-semibold">
-                                    Waktu
-                                  </div>
-                                  <span className="font-semibold text-slate-700 text-xs sm:text-sm block truncate">
-                                    {item.startTime} - {item.endTime}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-start gap-1.5">
-                                <FaBus className="text-gray-400 shrink-0 mt-0.5 text-xs" />
-                                <div className="min-w-0">
-                                  <div className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-semibold">
-                                    Kendaraan
-                                  </div>
-                                  <span className="font-semibold text-slate-700 text-xs sm:text-sm block truncate">
-                                    {item.vehicle?.plateNumber || "-"} (
-                                    {item.vehicle?.vehicleCode || "-"})
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <AssignmentSeatWidget
-                            assignmentId={item.assignmentId}
-                            initialStatus={item.status}
-                          />
-
-                          <div className="pt-2.5 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] sm:text-xs">
-                            <div className="text-gray-500 truncate pr-2">
-                              Kondektur:{" "}
-                              <span className="font-medium text-slate-700">
-                                {item.conductor?.name || "Tidak ada"}
-                              </span>
-                            </div>
-                            <Link
-                              href={`/driver/dashboard/now/${item.assignmentId}`}
-                              className="text-blue-600 font-semibold flex items-center gap-1 shrink-0"
-                            >
-                              Detail
-                              <FaArrowRight className="text-[9px] sm:text-[10px]" />
-                            </Link>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="text-xs font-semibold bg-slate-50 text-slate-700 px-3 py-1 rounded-lg flex items-center gap-1.5">
+                    <FaClock className="text-emerald-600 text-xs" />{" "}
+                    {item.startTime} - {item.endTime}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+
+                {/* Detail Kendaraan & Pengemudi */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl">
+                  <div>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                      Kendaraan
+                    </span>
+                    <span className="text-xs font-semibold text-slate-900 mt-1 block">
+                      {item.vehicle?.plateNumber}{" "}
+                      <span className="text-slate-500 font-normal">
+                        ({item.vehicle?.vehicleCode})
+                      </span>
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                      Pengemudi
+                    </span>
+                    <span className="text-xs font-semibold text-slate-900 mt-1 flex items-center gap-1.5">
+                      <FaIdCard className="text-slate-400 text-xs" /> Siti
+                      Aminah
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                      Kondektur
+                    </span>
+                    <span className="text-xs font-normal text-slate-400 mt-1 block">
+                      -
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                      Arah Rute
+                    </span>
+                    <span className="text-xs font-semibold text-slate-900 mt-1 flex items-center gap-1.5">
+                      <FaRoute className="text-slate-400 text-xs" />{" "}
+                      {item.direction}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Interactive Driver Control (Sudah termasuk Live Map kondisional di dalamnya) */}
+                <InteractiveDriverWidget
+                  assignmentItem={item}
+                  capacity={item.vehicle?.capacity}
+                  onTripCompleted={handleTripCompleted}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* SECTION 2: RIWAYAT PENUGASAN SELESAI */}
+        <section className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <FaHistory className="text-emerald-600 text-sm" /> Riwayat
+              Penugasan Selesai
+            </h3>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+              <FaCheckCircle className="text-emerald-600 text-xs" />{" "}
+              {completedAssignments.length} Selesai
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-xs tracking-wider">
+                <tr>
+                  <th className="p-3 rounded-l-xl">Tanggal</th>
+                  <th className="p-3">Kode / Rute</th>
+                  <th className="p-3">Kendaraan</th>
+                  <th className="p-3">Waktu</th>
+                  <th className="p-3 rounded-r-xl">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                {completedAssignments.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-slate-400">
+                      Belum ada riwayat penugasan selesai pada sesi ini. Klik
+                      &quot;Mulai Perjalanan&quot; lalu &quot;Selesaikan
+                      Perjalanan&quot; untuk mensimulasikan.
+                    </td>
+                  </tr>
+                ) : (
+                  completedAssignments.map((hist) => (
+                    <tr
+                      key={hist.assignmentId}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="p-3 font-semibold text-slate-900">
+                        {String(hist.date).split("T")[0]}
+                      </td>
+                      <td className="p-3">
+                        <span className="font-semibold text-slate-900">
+                          {hist.routeCode}
+                        </span>{" "}
+                        -{" "}
+                        <span className="text-slate-500">{hist.routeName}</span>
+                      </td>
+                      <td className="p-3 font-semibold text-slate-800">
+                        {hist.vehicle?.plateNumber}
+                      </td>
+                      <td className="p-3 text-slate-500">
+                        {hist.startTime} - {hist.endTime}
+                      </td>
+                      <td className="p-3">
+                        <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700">
+                          {hist.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </div>
   );
