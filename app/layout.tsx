@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/context/AuthContext"; // 👈 Impor AuthProvider
+
+import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/context/ToastContext";
+import QueryProvider from "@/components/providers/QueryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,14 +29,13 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="bg-white font-sans">
-        {/* Bungkus dengan AuthProvider agar semua halaman bisa akses data login */}
-        <AuthProvider>
-          <ToastProvider>
-            {/* <Navbar /> */}
-            <main>{children}</main>
-          </ToastProvider>
-          {/* <Footer /> */}
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <main>{children}</main>
+            </ToastProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
