@@ -8,6 +8,7 @@ import {
 } from "@/types/driver.type";
 import { useDrivers } from "@/hooks/useDrivers";
 import { EditDriverModal } from "@/components/driver/EditDriverModal";
+import { useToast } from "@/context/ToastContext";
 import {
   FiRefreshCw,
   FiPhone,
@@ -52,6 +53,8 @@ export default function DriverDashboardPage() {
   const [selectedDriverForEdit, setSelectedDriverForEdit] =
     useState<Driver | null>(null);
 
+  const { success, error: showError } = useToast();
+
   const filteredDrivers = driverList.filter(
     (driver) => driver.isVerified === activeTab,
   );
@@ -66,8 +69,9 @@ export default function DriverDashboardPage() {
       await updateDriver(selectedDriverForEdit.id, updatedData);
       setSelectedDriverForEdit(null);
       refetch();
+      success("Driver berhasil diperbarui.");
     } catch (err) {
-      console.error("Gagal mengupdate driver:", err);
+      showError(`Gagal mengupdate driver, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
     }
   };
 

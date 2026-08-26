@@ -10,10 +10,10 @@ import {
 import { useRoutes } from "@/hooks/routes/useRoutes";
 import { CreateRouteModal } from "@/components/route/Route/CreateRouteModal";
 import { EditRouteModal } from "@/components/route/Route/EditRouteModal";
+import { useToast } from "@/context/ToastContext";
 import {
   FiRefreshCw,
   FiAlertCircle,
-  FiEye,
   FiEdit3,
   FiTrash2,
   FiMapPin,
@@ -64,12 +64,17 @@ export default function RoutesDashboardPage() {
   const [selectedRouteForEdit, setSelectedRouteForEdit] =
     useState<Route | null>(null);
 
+  const toast = useToast();
+
   const handleCreate = async (data: CreateRouteInput) => {
     try {
       await createRoute(data);
       fetchRoutes();
+      toast.success("Trayek berhasil dibuat!");
     } catch (err) {
-      console.error("Gagal membuat trayek:", err);
+      toast.error(
+        "Gagal membuat trayek." + (err instanceof Error ? err.message : ""),
+      );
     }
   };
 
@@ -83,8 +88,11 @@ export default function RoutesDashboardPage() {
       await updateRoute(selectedRouteForEdit.id, updatedData);
       setSelectedRouteForEdit(null);
       fetchRoutes();
+      toast.success("Trayek berhasil diperbarui.");
     } catch (err) {
-      console.error("Gagal mengupdate trayek:", err);
+      toast.error(
+        "Gagal memperbarui trayek." + (err instanceof Error ? err.message : ""),
+      );
     }
   };
 
@@ -93,8 +101,11 @@ export default function RoutesDashboardPage() {
       try {
         await deleteRoute(id);
         fetchRoutes();
+        toast.success("Trayek berhasil dihapus.");
       } catch (err) {
-        console.error("Gagal menghapus trayek:", err);
+        toast.error(
+          "Gagal menghapus trayek." + (err instanceof Error ? err.message : ""),
+        );
       }
     }
   };

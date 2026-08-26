@@ -15,6 +15,7 @@ import {
   FiMapPin,
   FiCalendar,
 } from "react-icons/fi";
+import { useToast } from "@/context/ToastContext";
 
 function extractConductorList(response: unknown): Conductor[] {
   let rawList: any[] = [];
@@ -57,6 +58,8 @@ export default function ConductorsDashboardPage() {
     (conductor) => conductor.isVerified === activeTab,
   );
 
+  const { success, error: showError } = useToast();
+
   const handleEdit = (conductor: Conductor) => {
     setSelectedConductorForEdit(conductor);
   };
@@ -66,9 +69,10 @@ export default function ConductorsDashboardPage() {
     try {
       await updateConductor(selectedConductorForEdit.id, updatedData);
       setSelectedConductorForEdit(null);
+      success("Kondektur berhasil diperbarui.");
       refetch();
     } catch (err) {
-      console.error("Gagal mengupdate kondektur:", err);
+        showError(`Gagal mengupdate kondektur, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
     }
   };
 
@@ -77,8 +81,9 @@ export default function ConductorsDashboardPage() {
       try {
         await deleteConductor(id);
         refetch();
+        success("Kondektur berhasil dihapus.");
       } catch (err) {
-        console.error("Gagal menghapus kondektur:", err);
+        showError(`Gagal menghapus kondektur, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
       }
     }
   };

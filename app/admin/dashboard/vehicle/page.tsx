@@ -25,6 +25,7 @@ import {
   FiStar,
   FiPlus,
 } from "react-icons/fi";
+import { useToast } from "@/context/ToastContext";
 
 function extractVehicleList(response: unknown): Vehicle[] {
   let rawList: any[] = [];
@@ -76,6 +77,8 @@ export default function VehiclesDashboardPage() {
   const [selectedVehicleForEdit, setSelectedVehicleForEdit] =
     useState<Vehicle | null>(null);
 
+  const { success, error: showError } = useToast();
+
   const filteredVehicles = vehicleList.filter(
     (vehicle) => vehicle.status === activeTab,
   );
@@ -84,8 +87,9 @@ export default function VehiclesDashboardPage() {
     try {
       await createVehicle(data);
       fetchVehicles();
+      success("Kendaraan berhasil dibuat.");
     } catch (err) {
-      console.error("Gagal membuat kendaraan:", err);
+      showError(`Gagal membuat kendaraan, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
     }
   };
 
@@ -99,8 +103,9 @@ export default function VehiclesDashboardPage() {
       await updateVehicle(selectedVehicleForEdit.id, updatedData);
       setSelectedVehicleForEdit(null);
       fetchVehicles();
+      success("Kendaraan berhasil diperbarui.");
     } catch (err) {
-      console.error("Gagal mengupdate kendaraan:", err);
+      showError(`Gagal mengupdate kendaraan, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
     }
   };
 
@@ -109,8 +114,9 @@ export default function VehiclesDashboardPage() {
       try {
         await deleteVehicle(id);
         fetchVehicles();
+        success("Kendaraan berhasil dihapus.");
       } catch (err) {
-        console.error("Gagal menghapus kendaraan:", err);
+        showError(`Gagal menghapus kendaraan, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
       }
     }
   };
