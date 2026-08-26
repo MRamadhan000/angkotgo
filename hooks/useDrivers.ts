@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { driverService } from "@/services/driver.service";
 import {
   Driver,
@@ -8,116 +12,237 @@ import {
   UpdateDriverInput,
 } from "@/types/driver.type";
 
+export const driverKeys = {
+  all: ["drivers"] as const,
+
+  detail: (id: number | string) =>
+    ["drivers", id] as const,
+};
+
 export function useDrivers() {
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  return useQuery<Driver[], Error>({
+    queryKey: driverKeys.all,
 
-  const fetchDrivers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = (await driverService.getAllDrivers()) as any;
-      const driversArray = Array.isArray(response)
-        ? response
-        : response?.data || response?.drivers || [];
+    queryFn: async () => {
+      const response = await driverService.getAllDrivers();
 
-      setDrivers(driversArray);
-    } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan saat memuat data drivers");
-      setDrivers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      if (Array.isArray(response)) {
+        return response;
+      }
 
-  useEffect(() => {
-    fetchDrivers();
-  }, [fetchDrivers]);
+      if (
+        response &&
+        typeof response === "object"
+      ) {
+        const result = response as {
+          data?: unknown;
+          drivers?: unknown;
+        };
 
-  const registerDriver = async (
-    data: CreateDriverInput,
-  ): Promise<Driver | null> => {
-    try {
-      const newDriver = await driverService.registerDriver(data);
-      setDrivers((prev) => [newDriver, ...prev]);
-      return newDriver;
-    } catch (err: any) {
-      throw new Error(err.message);
-    }
-  };
+        if (Array.isArray(result.data)) {
+          return result.data as Driver[];
+        }
 
-  const updateDriver = async (
-    id: number | string,
-    data: UpdateDriverInput,
-  ): Promise<Driver | null> => {
-    try {
-      const updated = await driverService.updateDriver(id, data);
+        if (Array.isArray(result.drivers)) {
+          return result.drivers as Driver[];
+        }
+      }
 
-      const updatedItem =
-        updated && typeof updated === "object" && "data" in updated
-          ? (updated as any).data
-          : updated;
+      return [];
+    },
 
-      setDrivers((prev) => {
-        if (!Array.isArray(prev)) return prev;
-        return prev.map((d) =>
-          String(d.id) === String(id) ? { ...d, ...updatedItem } : d,
-        );
-      });
-
-      return updatedItem;
-    } catch (err: any) {
-      throw new Error(err.message);
-    }
-  };
-
-  const deactiveDriver = async (id: number | string) => {
-    try {
-      await driverService.deactiveDriver(id);
-      setDrivers((prev) => {
-        if (!Array.isArray(prev)) return prev;
-        return prev.filter((d) => String(d.id) !== String(id));
-      });
-    } catch (err: any) {
-      throw new Error(err.message);
-    }
-  };
-
-  return {
-    drivers,
-    loading,
-    error,
-    refetch: fetchDrivers,
-    registerDriver,
-    updateDriver,
-    deactiveDriver,
-  };
+    retry: 1,
+  });
 }
 
-export function useDriverDetail(id: number | string | null) {
-  const [driver, setDriver] = useState<Driver | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+export function useDriverDetail(
+  id: number | string | null,
+) {
+  return useQuery<Driver, Error>({
+    queryKey:
+      id !== null
+        ? driverKeys.detail(id)
+        : ["drivers", "detail", "empty"],
 
-  useEffect(() => {
-    if (!id) return;
-
-    const fetchDetail = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await driverService.getDriverById(id);
-        setDriver(data);
-      } catch (err: any) {
-        setError(err.message || "Gagal memuat detail driver");
-      } finally {
-        setLoading(false);
+    queryFn: () => {
+      if (
+        id === null ||
+        id === undefined ||
+        id === ""
+      ) {
+        throw new Error(
+          "ID driver tidak tersedia.",
+        );
       }
-    };
 
-    fetchDetail();
-  }, [id]);
+      return driverService.getDriverById(id);
+    },
 
-  return { driver, loading, error };
+    enabled:
+      id !== null &&
+      id !== undefined &&
+      id !== "",
+
+    retry: 1,
+  });
+}
+
+export function useRegisterDriver() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Driver,
+    Error,
+    CreateDriverInput
+  >({
+    mutationFn: async (
+      data: CreateDriverInput,
+    ) => {
+      const response =
+        await driverService.registerDriver(data);
+
+      /**
+       * Support:
+       *
+       * {
+       *   data: {...}
+       * }
+       *
+       * atau langsung:
+       *
+       * {...}
+       */
+
+      if (
+        response &&
+        typeof response === "object" &&
+        "data" in response
+      ) {
+        return (response as any).data as Driver;
+      }
+
+      return response as Driver;
+    },
+
+    onSuccess: () => {
+      /**
+       * Refresh daftar driver.
+       */
+      queryClient.invalidateQueries({
+        queryKey: driverKeys.all,
+      });
+    },
+  });
+}
+
+/* ============================================================
+ * UPDATE DRIVER
+ * ============================================================ */
+
+export function useUpdateDriver() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Driver,
+    Error,
+    {
+      id: number | string;
+      data: UpdateDriverInput;
+    }
+  >({
+    mutationFn: async ({
+      id,
+      data,
+    }) => {
+      const response =
+        await driverService.updateDriver(
+          id,
+          data,
+        );
+
+      /**
+       * Support response:
+       *
+       * {
+       *   data: {...}
+       * }
+       *
+       * atau langsung {...}
+       */
+
+      if (
+        response &&
+        typeof response === "object" &&
+        "data" in response
+      ) {
+        return (response as any).data as Driver;
+      }
+
+      return response as Driver;
+    },
+
+    onSuccess: (updatedDriver, variables) => {
+      /**
+       * Refresh list.
+       */
+      queryClient.invalidateQueries({
+        queryKey: driverKeys.all,
+      });
+
+      /**
+       * Refresh detail driver.
+       */
+      queryClient.invalidateQueries({
+        queryKey: driverKeys.detail(
+          variables.id,
+        ),
+      });
+
+      /**
+       * Optional:
+       * langsung update cache detail supaya UI
+       * terasa lebih cepat.
+       */
+      queryClient.setQueryData(
+        driverKeys.detail(variables.id),
+        updatedDriver,
+      );
+    },
+  });
+}
+
+/* ============================================================
+ * DEACTIVATE DRIVER
+ * ============================================================ */
+
+export function useDeactiveDriver() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    unknown,
+    Error,
+    number | string
+  >({
+    mutationFn: async (
+      id: number | string,
+    ) => {
+      return driverService.deactiveDriver(id);
+    },
+
+    onSuccess: (_, id) => {
+      /**
+       * Refresh daftar driver.
+       */
+      queryClient.invalidateQueries({
+        queryKey: driverKeys.all,
+      });
+
+      /**
+       * Hapus cache detail driver.
+       */
+      queryClient.removeQueries({
+        queryKey: driverKeys.detail(id),
+      });
+    },
+  });
 }
