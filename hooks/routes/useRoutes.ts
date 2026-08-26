@@ -1,65 +1,78 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Route, CreateRouteInput, UpdateRouteInput } from "@/types/routes/route.type";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { RouteService } from "@/services/routes/route.service";
 
+import { CreateRouteInput, UpdateRouteInput } from "@/types/routes/route.type";
+
+export const routeKeys = {
+  all: ["routes"] as const,
+  detail: (id: number) => ["routes", id] as const,
+};
+
 export function useRoutes() {
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  return useQuery({
+    queryKey: routeKeys.all,
+    queryFn: RouteService.getAll,
+  });
+}
 
-  const fetchRoutes = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await RouteService.getAll();
-      setRoutes(data);
-    } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan saat memuat data.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export function useRoute(id: number) {
+  return useQuery({
+    queryKey: routeKeys.detail(id),
+    queryFn: () => RouteService.getById(id),
+    enabled: !!id,
+  });
+}
 
-  useEffect(() => {
-    fetchRoutes();
-  }, [fetchRoutes]);
+export function useCreateRoute() {
+  const queryClient = useQueryClient();
 
-  const createRoute = async (data: CreateRouteInput) => {
-    try {
-      await RouteService.create(data);
-      await fetchRoutes();
-    } catch (err: any) {
-      throw err;
-    }
-  };
+  return useMutation({
+    mutationFn: (data: CreateRouteInput) => RouteService.create(data),
 
-  const updateRoute = async (id: number, data: UpdateRouteInput) => {
-    try {
-      await RouteService.update(id, data);
-      await fetchRoutes();
-    } catch (err: any) {
-      throw err;
-    }
-  };
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: routeKeys.all,
+      });
+    },
+  });
+}
 
-  const deleteRoute = async (id: number) => {
-    try {
-      await RouteService.delete(id);
-      await fetchRoutes();
-    } catch (err: any) {
-      throw err;
-    }
-  };
+export function useUpdateRoute() {
+  const queryClient = useQueryClient();
 
-  return {
-    routes,
-    loading,
-    error,
-    fetchRoutes,
-    createRoute,
-    updateRoute,
-    deleteRoute,
-  };
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateRouteInput }) =>
+      RouteService.update(id, data),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: routeKeys.all,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: routeKeys.detail(variables.id),
+      });
+    },
+  });
+}
+
+export function useDeleteRoute() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => RouteService.delete(id),
+
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({
+        queryKey: routeKeys.all,
+      });
+
+      queryClient.removeQueries({
+        queryKey: routeKeys.detail(id),
+      });
+    },
+  });
 }
