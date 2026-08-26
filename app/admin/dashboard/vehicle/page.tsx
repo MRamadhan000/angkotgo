@@ -8,7 +8,12 @@ import {
   CreateVehicleInput,
   VehicleType,
 } from "@/types/vehicles/vehicle.type";
-import { useVehicles } from "@/hooks/vehicles/useVehicles";
+import {
+  useVehicles,
+  useCreateVehicle,
+  useUpdateVehicle,
+  useDeleteVehicle,
+} from "@/hooks/vehicles/useVehicles";
 import { EditVehicleModal } from "@/components/vehicle/EditVehicleModal";
 import { CreateVehicleModal } from "@/components/vehicle/CreateVehicleModal";
 import {
@@ -27,26 +32,6 @@ import {
 } from "react-icons/fi";
 import { useToast } from "@/context/ToastContext";
 
-function extractVehicleList(response: unknown): Vehicle[] {
-  let rawList: any[] = [];
-
-  if (Array.isArray(response)) {
-    rawList = response;
-  } else if (response && typeof response === "object" && "data" in response) {
-    const maybeData = (response as { data: unknown }).data;
-    if (Array.isArray(maybeData)) {
-      rawList = maybeData as Vehicle[];
-    }
-  }
-
-  return rawList.map((item) => ({
-    ...item,
-    capacity: Number(item.capacity ?? 0),
-    currentOdometer: Number(item.currentOdometer ?? 0),
-    type: item.type ?? VehicleType.REGULER,
-  }));
-}
-
 const TABLE_HEADERS = [
   "Kendaraan & Kode",
   "Nomor Plat",
@@ -58,26 +43,57 @@ const TABLE_HEADERS = [
   "Aksi",
 ];
 
+function extractVehicleList(response: unknown): Vehicle[] {
+  let rawList: any[] = [];
+
+  if (Array.isArray(response)) {
+    rawList = response;
+  } else if (response && typeof response === "object" && "data" in response) {
+    const maybeData = (response as { data: unknown }).data;
+
+    if (Array.isArray(maybeData)) {
+      rawList = maybeData;
+    }
+  }
+
+  return rawList.map((item) => ({
+    ...item,
+    capacity: Number(item.capacity ?? 0),
+    currentOdometer: Number(item.currentOdometer ?? 0),
+    type: item.type ?? VehicleType.REGULER,
+  }));
+}
+
 export default function VehiclesDashboardPage() {
   const {
-    vehicles,
-    createVehicle,
-    updateVehicle,
-    deleteVehicle,
-    loading,
-    error,
-    fetchVehicles,
+    data: vehicles,
+    isLoading: loading,
+    isFetching,
+    error: queryError,
+    refetch,
   } = useVehicles();
 
-  const vehicleList: Vehicle[] = extractVehicleList(vehicles);
+  const createMutation = useCreateVehicle();
+  const updateMutation = useUpdateVehicle();
+  const deleteMutation = useDeleteVehicle();
+  const { success, error: showError } = useToast();
 
-  // Tab filter berdasarkan status kendaraan (ACTIVE, INACTIVE, MAINTENANCE)
+  // Tab filter berdasarkan status kendaraan
   const [activeTab, setActiveTab] = useState<string>("ACTIVE");
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+
   const [selectedVehicleForEdit, setSelectedVehicleForEdit] =
     useState<Vehicle | null>(null);
 
-  const { success, error: showError } = useToast();
+  const error =
+    queryError instanceof Error
+      ? queryError.message
+      : queryError
+        ? "Gagal memuat data kendaraan."
+        : null;
+
+  const vehicleList: Vehicle[] = extractVehicleList(vehicles);
 
   const filteredVehicles = vehicleList.filter(
     (vehicle) => vehicle.status === activeTab,
@@ -85,11 +101,17 @@ export default function VehiclesDashboardPage() {
 
   const handleCreate = async (data: CreateVehicleInput) => {
     try {
-      await createVehicle(data);
-      fetchVehicles();
+      await createMutation.mutateAsync(data);
+
+      setIsCreateModalOpen(false);
+
       success("Kendaraan berhasil dibuat.");
     } catch (err) {
-      showError(`Gagal membuat kendaraan, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
+      showError(
+        `Gagal membuat kendaraan, ${
+          err instanceof Error ? err.message : "terjadi kesalahan."
+        }`,
+      );
     }
   };
 
@@ -99,27 +121,55 @@ export default function VehiclesDashboardPage() {
 
   const handleSaveEdit = async (updatedData: UpdateVehicleInput) => {
     if (!selectedVehicleForEdit) return;
+
     try {
-      await updateVehicle(selectedVehicleForEdit.id, updatedData);
+      await updateMutation.mutateAsync({
+        id: selectedVehicleForEdit.id,
+        data: updatedData,
+      });
+
       setSelectedVehicleForEdit(null);
-      fetchVehicles();
+
       success("Kendaraan berhasil diperbarui.");
     } catch (err) {
-      showError(`Gagal mengupdate kendaraan, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
+      showError(
+        `Gagal mengupdate kendaraan, ${
+          err instanceof Error ? err.message : "terjadi kesalahan."
+        }`,
+      );
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm("Apakah Anda yakin ingin menghapus kendaraan ini?")) {
-      try {
-        await deleteVehicle(id);
-        fetchVehicles();
-        success("Kendaraan berhasil dihapus.");
-      } catch (err) {
-        showError(`Gagal menghapus kendaraan, ${err instanceof Error ? err.message : "terjadi kesalahan."}`);
-      }
+    if (!confirm("Apakah Anda yakin ingin menghapus kendaraan ini?")) {
+      return;
+    }
+
+    try {
+      await deleteMutation.mutateAsync(id);
+
+      success("Kendaraan berhasil dihapus.");
+    } catch (err) {
+      showError(
+        `Gagal menghapus kendaraan, ${
+          err instanceof Error ? err.message : "terjadi kesalahan."
+        }`,
+      );
     }
   };
+
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+    } catch (err) {
+      console.error("Gagal refresh kendaraan:", err);
+    }
+  };
+
+  const mutationLoading =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending;
 
   return (
     <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
@@ -129,23 +179,30 @@ export default function VehiclesDashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">
             Manajemen Kendaraan
           </h1>
+
           <p className="text-sm text-gray-500 mt-1">
             Kelola dan pantau seluruh informasi operasional armada AngkotGo.
           </p>
         </div>
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
+            disabled={mutationLoading}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
           >
             <FiPlus className="w-4 h-4" />
             Tambah Kendaraan
           </button>
+
           <button
-            onClick={fetchVehicles}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
+            onClick={handleRefresh}
+            disabled={loading || isFetching}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
           >
-            <FiRefreshCw className="w-4 h-4" />
+            <FiRefreshCw
+              className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
         </div>
@@ -155,6 +212,7 @@ export default function VehiclesDashboardPage() {
       {error && (
         <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
           <FiAlertCircle className="w-5 h-5 shrink-0" />
+
           <span>Gagal memuat data: {error}</span>
         </div>
       )}
@@ -182,6 +240,7 @@ export default function VehiclesDashboardPage() {
           },
         ].map((tab) => {
           const Icon = tab.icon;
+
           return (
             <button
               key={tab.value}
@@ -212,12 +271,14 @@ export default function VehiclesDashboardPage() {
                 ))}
               </tr>
             </thead>
+
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
               {loading ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-gray-400">
                     <div className="flex justify-center items-center gap-2">
                       <FiRefreshCw className="w-5 h-5 animate-spin" />
+
                       <span>Memuat data kendaraan...</span>
                     </div>
                   </td>
@@ -240,10 +301,12 @@ export default function VehiclesDashboardPage() {
                         <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
                           <FiTruck className="w-4 h-4" />
                         </div>
+
                         <div>
                           <div className="font-semibold text-gray-900 font-mono">
                             {vehicle.vehicleCode}
                           </div>
+
                           <div className="text-xs text-gray-400">
                             ID: #{vehicle.id}
                           </div>
@@ -256,7 +319,7 @@ export default function VehiclesDashboardPage() {
                       {vehicle.plateNumber || "-"}
                     </td>
 
-                    {/* Tipe Kendaraan (PREMIUM / REGULER) */}
+                    {/* Tipe */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold ${
@@ -268,6 +331,7 @@ export default function VehiclesDashboardPage() {
                         {vehicle.type === "PREMIUM" && (
                           <FiStar className="w-3 h-3" />
                         )}
+
                         {vehicle.type || "REGULER"}
                       </span>
                     </td>
@@ -277,6 +341,7 @@ export default function VehiclesDashboardPage() {
                       <div className="font-semibold text-gray-800">
                         {vehicle.capacity ?? 0} Penumpang
                       </div>
+
                       <div className="text-[11px] text-gray-400 mt-0.5 font-mono">
                         {(vehicle.currentOdometer ?? 0).toLocaleString("id-ID")}{" "}
                         KM
@@ -288,12 +353,13 @@ export default function VehiclesDashboardPage() {
                       <div className="font-semibold text-gray-800">
                         {vehicle.assignments?.length ?? 0} Penugasan
                       </div>
+
                       <div className="text-[11px] text-gray-400 mt-0.5">
                         {vehicle.services?.length ?? 0} Riwayat Servis
                       </div>
                     </td>
 
-                    {/* Status Kendaraan */}
+                    {/* Status */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span
                         className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-bold ${
@@ -312,6 +378,7 @@ export default function VehiclesDashboardPage() {
                     <td className="py-4 px-6 text-[11px] text-gray-500 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <FiCalendar className="w-3 h-3 text-gray-400" />
+
                         <span>
                           Dibuat:{" "}
                           {new Date(vehicle.createdAt).toLocaleDateString(
@@ -319,6 +386,7 @@ export default function VehiclesDashboardPage() {
                           )}
                         </span>
                       </div>
+
                       <div className="text-gray-400 mt-0.5">
                         Diubah:{" "}
                         {new Date(vehicle.updatedAt).toLocaleDateString(
@@ -327,7 +395,7 @@ export default function VehiclesDashboardPage() {
                       </div>
                     </td>
 
-                    {/* Aksi (Detail Link, Edit Modal, Delete) */}
+                    {/* Aksi */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Link
@@ -337,17 +405,21 @@ export default function VehiclesDashboardPage() {
                         >
                           <FiEye className="w-4 h-4" />
                         </Link>
+
                         <button
                           onClick={() => handleEdit(vehicle)}
+                          disabled={mutationLoading}
                           title="Edit Kendaraan"
-                          className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                          className="p-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 rounded-lg transition-colors"
                         >
                           <FiEdit3 className="w-4 h-4" />
                         </button>
+
                         <button
                           onClick={() => handleDelete(vehicle.id)}
+                          disabled={mutationLoading}
                           title="Hapus Kendaraan"
-                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                          className="p-2 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-600 rounded-lg transition-colors"
                         >
                           <FiTrash2 className="w-4 h-4" />
                         </button>
