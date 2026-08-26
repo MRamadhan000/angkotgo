@@ -1,156 +1,141 @@
-import { useState, useCallback } from "react";
+"use client";
+
 import {
-  RouteStopType,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import {
   CreateRouteStopInput,
   UpdateRouteStopInput,
 } from "@/types/routes/route-stop.type";
+
 import { DirectionType } from "@/types/vehicles/vehicle.type";
+import { routeStopService } from "@/services/routes/route-stops.service";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const routeStopKeys = {
+  all: ["route-stops"] as const,
 
-export const useRouteStops = () => {
-  const [routeStops, setRouteStops] = useState<RouteStopType[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  byRouteAndDirection: (
+    routeId: number,
+    direction: DirectionType,
+  ) =>
+    [
+      "route-stops",
+      "route",
+      routeId,
+      direction,
+    ] as const,
 
-  const fetchRouteStops = useCallback(
-    async (routeId: number, direction: DirectionType) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const url = `${API_BASE_URL}/route-stops?routeId=${routeId}&direction=${direction}`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error("Gagal mengambil data halte jalur.");
-        }
-        const data = await response.json();
-        // Pastikan aman menjadi array
-        setRouteStops(Array.isArray(data) ? data : data.data || []);
-      } catch (err: any) {
-        setError(err.message || "Terjadi kesalahan saat memuat data.");
-        setRouteStops([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const createRouteStop = async (
-    input: CreateRouteStopInput,
-    routeId?: number,
-    direction?: DirectionType,
-  ) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE_URL}/route-stops`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input),
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal menambahkan halte jalur.");
-      }
-
-      const newStop = await response.json();
-
-      // Jika routeId dan direction disediakan, fetch ulang agar urutan & filter konsisten
-      if (routeId && direction) {
-        await fetchRouteStops(routeId, direction);
-      } else {
-        setRouteStops((prev) => [...prev, newStop]);
-      }
-
-      return newStop;
-    } catch (err: any) {
-      setError(err.message || "Gagal membuat data.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateRouteStop = async (
-    id: number,
-    input: UpdateRouteStopInput,
-    routeId?: number,
-    direction?: DirectionType,
-  ) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE_URL}/route-stops/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input),
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal memperbarui halte jalur.");
-      }
-
-      const updatedStop = await response.json();
-
-      if (routeId && direction) {
-        await fetchRouteStops(routeId, direction);
-      } else {
-        setRouteStops((prev) =>
-          prev.map((stop) => (stop.id === id ? updatedStop : stop)),
-        );
-      }
-
-      return updatedStop;
-    } catch (err: any) {
-      setError(err.message || "Gagal memperbarui data.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteRouteStop = async (
-    id: number,
-    routeId?: number,
-    direction?: DirectionType,
-  ) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE_URL}/route-stops/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal menghapus halte jalur.");
-      }
-
-      if (routeId && direction) {
-        await fetchRouteStops(routeId, direction);
-      } else {
-        setRouteStops((prev) => prev.filter((stop) => stop.id !== id));
-      }
-    } catch (err: any) {
-      setError(err.message || "Gagal menghapus data.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return {
-    routeStops,
-    loading,
-    error,
-    fetchRouteStops,
-    createRouteStop,
-    updateRouteStop,
-    deleteRouteStop,
-  };
+  detail: (id: number) =>
+    ["route-stops", id] as const,
 };
+
+export function useRouteStops(
+  routeId: number,
+  direction: DirectionType,
+) {
+  return useQuery({
+    queryKey: routeStopKeys.byRouteAndDirection(
+      routeId,
+      direction,
+    ),
+
+    queryFn: () =>
+      routeStopService.getRouteStopByRouteIdandDirection(
+        routeId,
+        direction,
+      ),
+
+    enabled:
+      !isNaN(routeId) &&
+      !!direction,
+  });
+}
+
+export function useRouteStop(id: number) {
+  return useQuery({
+    queryKey: routeStopKeys.detail(id),
+
+    queryFn: () =>
+      routeStopService.getById(id),
+
+    enabled: !!id,
+  });
+}
+
+export function useCreateRouteStop() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      data: CreateRouteStopInput,
+    ) =>
+      routeStopService.create(data),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: routeStopKeys.all,
+      });
+    },
+  });
+}
+
+export function useUpdateRouteStop() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: UpdateRouteStopInput;
+    }) =>
+      routeStopService.update(id, data),
+
+    onSuccess: (_, variables) => {
+      /*
+       * Refresh semua query route-stops
+       */
+      queryClient.invalidateQueries({
+        queryKey: routeStopKeys.all,
+      });
+
+      /*
+       * Refresh detail stop
+       */
+      queryClient.invalidateQueries({
+        queryKey: routeStopKeys.detail(
+          variables.id,
+        ),
+      });
+    },
+  });
+}
+
+export function useDeleteRouteStop() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) =>
+      routeStopService.delete(id),
+
+    onSuccess: (_, id) => {
+      /*
+       * Refresh list route stops
+       */
+      queryClient.invalidateQueries({
+        queryKey: routeStopKeys.all,
+      });
+
+      /*
+       * Hapus cache detail
+       */
+      queryClient.removeQueries({
+        queryKey: routeStopKeys.detail(id),
+      });
+    },
+  });
+}

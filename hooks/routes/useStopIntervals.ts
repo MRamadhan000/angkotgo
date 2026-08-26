@@ -1,98 +1,82 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { 
-  StopInterval, 
-  CreateStopIntervalInput, 
-  UpdateStopIntervalInput 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  CreateStopIntervalInput,
+  UpdateStopIntervalInput,
 } from "@/types/routes/stop-interval.type";
 import { DirectionType } from "@/types/vehicles/vehicle.type";
 import { stopIntervalService } from "@/services/routes/interval-stop.service";
 
-interface UseStopIntervalsProps {
-  routeId?: number;
-  initialDirection?: DirectionType;
+export const stopIntervalKeys = {
+  all: ["stop-intervals"] as const,
+  list: (routeId?: number, direction?: DirectionType) =>
+    ["stop-intervals", "list", routeId, direction] as const,
+  detail: (id: number) => ["stop-intervals", id] as const,
+};
+
+export function useStopIntervals(routeId?: number, direction?: DirectionType) {
+  return useQuery({
+    queryKey: stopIntervalKeys.list(routeId, direction),
+    queryFn: () => stopIntervalService.getAll(routeId, direction),
+    enabled: routeId === undefined || !isNaN(routeId),
+  });
 }
 
-export function useStopIntervals({ routeId, initialDirection = DirectionType.FORWARD }: UseStopIntervalsProps = {}) {
-  const [intervals, setIntervals] = useState<StopInterval[]>([]);
-  const [direction, setDirection] = useState<DirectionType>(initialDirection);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export function useStopInterval(id: number) {
+  return useQuery({
+    queryKey: stopIntervalKeys.detail(id),
+    queryFn: () => stopIntervalService.getById(id),
+    enabled: !!id,
+  });
+}
 
-  // Fungsi Fetch / Get Data dengan filter routeId dan direction
-  const fetchIntervals = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await stopIntervalService.getAll(routeId, direction);
-      setIntervals(data);
-    } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan saat memuat data interval.");
-    } finally {
-      setLoading(false);
-    }
-  }, [routeId, direction]);
+export function useCreateStopInterval() {
+  const queryClient = useQueryClient();
 
-  // Otomatis fetch saat routeId atau direction berubah
-  useEffect(() => {
-    fetchIntervals();
-  }, [fetchIntervals]);
+  return useMutation({
+    mutationFn: (data: CreateStopIntervalInput) =>
+      stopIntervalService.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: stopIntervalKeys.all,
+      });
+    },
+  });
+}
 
-  // Create Data
-  const createInterval = async (inputData: CreateStopIntervalInput) => {
-    try {
-      setError(null);
-      const newItem = await stopIntervalService.create(inputData);
-      // Refresh state lokal atau tambahkan langsung
-      setIntervals((prev) => [...prev, newItem]);
-      return { success: true, data: newItem };
-    } catch (err: any) {
-      const message = err.message || "Gagal membuat interval baru.";
-      setError(message);
-      return { success: false, message };
-    }
-  };
+export function useUpdateStopInterval() {
+  const queryClient = useQueryClient();
 
-  // Update Data
-  const updateInterval = async (id: number, inputData: UpdateStopIntervalInput) => {
-    try {
-      setError(null);
-      const updatedItem = await stopIntervalService.update(id, inputData);
-      setIntervals((prev) =>
-        prev.map((item) => (item.id === id ? updatedItem : item))
-      );
-      return { success: true, data: updatedItem };
-    } catch (err: any) {
-      const message = err.message || `Gagal memperbarui interval ID ${id}.`;
-      setError(message);
-      return { success: false, message };
-    }
-  };
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateStopIntervalInput }) =>
+      stopIntervalService.update(id, data),
 
-  // Delete Data
-  const deleteInterval = async (id: number) => {
-    try {
-      setError(null);
-      await stopIntervalService.delete(id);
-      setIntervals((prev) => prev.filter((item) => item.id !== id));
-      return { success: true };
-    } catch (err: any) {
-      const message = err.message || `Gagal menghapus interval ID ${id}.`;
-      setError(message);
-      return { success: false, message };
-    }
-  };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: stopIntervalKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: stopIntervalKeys.detail(variables.id),
+      });
+    },
+  });
+}
 
-  return {
-    intervals,
-    direction,
-    setDirection,
-    loading,
-    error,
-    refetch: fetchIntervals,
-    createInterval,
-    updateInterval,
-    deleteInterval,
-  };
+export function useDeleteStopInterval() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => stopIntervalService.delete(id),
+
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({
+        queryKey: stopIntervalKeys.all,
+      });
+
+      queryClient.removeQueries({
+        queryKey: stopIntervalKeys.detail(id),
+      });
+    },
+  });
 }

@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, use } from "react";
 import Link from "next/link";
 import { CreateRouteStopInput } from "@/types/routes/route-stop.type";
 import { DirectionType } from "@/types/vehicles/vehicle.type";
-import { useRouteStops } from "@/hooks/routes/useRouteStops";
+import {
+  useRouteStops,
+  useCreateRouteStop,
+  useUpdateRouteStop,
+  useDeleteRouteStop,
+} from "@/hooks/routes/useRouteStops";
+import {
+  useStopIntervals,
+  useCreateStopInterval,
+  useUpdateStopInterval,
+  useDeleteStopInterval,
+} from "@/hooks/routes/useStopIntervals";
 import {
   FiRefreshCw,
   FiAlertCircle,
@@ -21,7 +32,6 @@ import {
 import RouteStopModal from "@/components/route/RouteStop/RouteStopModal";
 import RouteMap from "@/components/route/RoutePath/RouteMap";
 import Breadcrumb from "@/components/common/Breadcrumb";
-import { useStopIntervals } from "@/hooks/routes/useStopIntervals";
 import RouteIntervalModal from "@/components/route/StopInterval/RouteIntervalModal";
 
 const TABLE_HEADERS = [
@@ -54,7 +64,7 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
   const routeIdNum = rawSlug ? Number(rawSlug) : NaN;
 
   const [activeTab, setActiveTab] = useState<DirectionType>(
-    DirectionType.FORWARD
+    DirectionType.FORWARD,
   );
 
   // State Modal Route Stop
@@ -64,59 +74,81 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
 
   // State Modal Stop Interval
   const [isIntervalModalOpen, setIsIntervalModalOpen] = useState(false);
-  const [intervalModalMode, setIntervalModalMode] = useState<"CREATE" | "EDIT">("CREATE");
+  const [intervalModalMode, setIntervalModalMode] = useState<"CREATE" | "EDIT">(
+    "CREATE",
+  );
   const [selectedIntervalData, setSelectedIntervalData] = useState<any>(null);
 
-  // Hook Route Stops
-  const forwardHook = useRouteStops();
-  const returnHook = useRouteStops();
+  // Hook Route Stops — signature baru: useRouteStops(routeId, direction)
+  const forwardStopsQuery = useRouteStops(routeIdNum, DirectionType.FORWARD);
+  const returnStopsQuery = useRouteStops(routeIdNum, DirectionType.RETURN);
 
-  // Hook Stop Intervals
-  const forwardIntervalHook = useStopIntervals({
-    routeId: isNaN(routeIdNum) ? undefined : routeIdNum,
-    initialDirection: DirectionType.FORWARD,
-  });
-  const returnIntervalHook = useStopIntervals({
-    routeId: isNaN(routeIdNum) ? undefined : routeIdNum,
-    initialDirection: DirectionType.RETURN,
-  });
+  // Hook Stop Intervals — signature baru: useStopIntervals(routeId?, direction?)
+  const forwardIntervalQuery = useStopIntervals(
+    isNaN(routeIdNum) ? undefined : routeIdNum,
+    DirectionType.FORWARD,
+  );
+  const returnIntervalQuery = useStopIntervals(
+    isNaN(routeIdNum) ? undefined : routeIdNum,
+    DirectionType.RETURN,
+  );
+
+  // Mutation hooks
+  const createStopMutation = useCreateRouteStop();
+  const updateStopMutation = useUpdateRouteStop();
+  const deleteStopMutation = useDeleteRouteStop();
+
+  const createIntervalMutation = useCreateStopInterval();
+  const updateIntervalMutation = useUpdateStopInterval();
+  const deleteIntervalMutation = useDeleteStopInterval();
 
   const loadData = () => {
-    if (!isNaN(routeIdNum)) {
-      forwardHook.fetchRouteStops(routeIdNum, DirectionType.FORWARD);
-      returnHook.fetchRouteStops(routeIdNum, DirectionType.RETURN);
-      forwardIntervalHook.refetch();
-      returnIntervalHook.refetch();
-    }
+    forwardStopsQuery.refetch();
+    returnStopsQuery.refetch();
+    forwardIntervalQuery.refetch();
+    returnIntervalQuery.refetch();
   };
 
-  useEffect(() => {
-    loadData();
-  }, [routeIdNum]);
+  // Data aktif berdasarkan tab
+  const currentStopsQuery =
+    activeTab === DirectionType.FORWARD ? forwardStopsQuery : returnStopsQuery;
+  const routeStops: any[] = Array.isArray(currentStopsQuery.data)
+    ? currentStopsQuery.data
+    : Array.isArray((currentStopsQuery.data as any)?.data)
+      ? (currentStopsQuery.data as any).data
+      : [];
+  const loading = currentStopsQuery.isLoading;
+  const error = currentStopsQuery.error
+    ? String(
+        (currentStopsQuery.error as any)?.message ?? currentStopsQuery.error,
+      )
+    : null;
 
-  // Hook Aktif Berdasarkan Tab
-  const currentHook =
-    activeTab === DirectionType.FORWARD ? forwardHook : returnHook;
-  const {
-    routeStops,
-    loading,
-    error,
-    createRouteStop,
-    updateRouteStop,
-    deleteRouteStop,
-  } = currentHook;
+  const currentIntervalQuery =
+    activeTab === DirectionType.FORWARD
+      ? forwardIntervalQuery
+      : returnIntervalQuery;
+  const intervalLoading = currentIntervalQuery.isLoading;
+  const intervalError = currentIntervalQuery.error
+    ? String(
+        (currentIntervalQuery.error as any)?.message ??
+          currentIntervalQuery.error,
+      )
+    : null;
 
-  // Hook Interval Aktif Berdasarkan Tab
-  const currentIntervalHook =
-    activeTab === DirectionType.FORWARD ? forwardIntervalHook : returnIntervalHook;
-  const {
-    intervals,
-    loading: intervalLoading,
-    error: intervalError,
-    createInterval,
-    updateInterval,
-    deleteInterval,
-  } = currentIntervalHook;
+  // Semua stops untuk helper nama halte
+  const allStops: any[] = [
+    ...((Array.isArray(forwardStopsQuery.data)
+      ? forwardStopsQuery.data
+      : Array.isArray((forwardStopsQuery.data as any)?.data)
+        ? (forwardStopsQuery.data as any).data
+        : []) as any[]),
+    ...((Array.isArray(returnStopsQuery.data)
+      ? returnStopsQuery.data
+      : Array.isArray((returnStopsQuery.data as any)?.data)
+        ? (returnStopsQuery.data as any).data
+        : []) as any[]),
+  ];
 
   // Handler Modal Route Stop
   const handleOpenCreateModal = () => {
@@ -151,25 +183,19 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
         routeId: routeIdNum,
         ...data,
       };
-      await createRouteStop(input);
+      await createStopMutation.mutateAsync(input);
     } else if (modalMode === "EDIT" && selectedStopData) {
-      if (updateRouteStop) {
-        await updateRouteStop(selectedStopData.id, {
-          routeId: routeIdNum,
-          ...data,
-        });
-      } else {
-        alert("Fungsi updateRouteStop belum tersedia pada hook.");
-      }
+      await updateStopMutation.mutateAsync({
+        id: selectedStopData.id,
+        data: { routeId: routeIdNum, ...data },
+      });
     }
-    loadData();
   };
 
   const handleDelete = async (id: number) => {
     if (confirm("Apakah Anda yakin ingin menghapus data halte ini?")) {
       try {
-        await deleteRouteStop(id);
-        loadData();
+        await deleteStopMutation.mutateAsync(id);
       } catch (err) {
         console.error("Gagal menghapus route stop:", err);
       }
@@ -179,7 +205,9 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
   // Handler Stop Interval Modal
   const handleOpenCreateIntervalModal = () => {
     if (routeStops.length < 2) {
-      alert("Minimal harus ada 2 halte terdaftar untuk membuat interval jarak & durasi!");
+      alert(
+        "Minimal harus ada 2 halte terdaftar untuk membuat interval jarak & durasi!",
+      );
       return;
     }
     setIntervalModalMode("CREATE");
@@ -200,38 +228,29 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
     durationInSeconds: number;
     direction: DirectionType;
   }) => {
-    let res: any;
-    if (intervalModalMode === "CREATE") {
-      res = await createInterval({
-        routeId: routeIdNum,
-        ...data,
-      });
-    } else if (intervalModalMode === "EDIT" && selectedIntervalData) {
-      if (updateInterval) {
-        res = await updateInterval(selectedIntervalData.id, {
+    try {
+      if (intervalModalMode === "CREATE") {
+        await createIntervalMutation.mutateAsync({
           routeId: routeIdNum,
           ...data,
         });
-      } else {
-        alert("Fungsi updateInterval belum tersedia pada hook.");
-        return;
+      } else if (intervalModalMode === "EDIT" && selectedIntervalData) {
+        await updateIntervalMutation.mutateAsync({
+          id: selectedIntervalData.id,
+          data: { routeId: routeIdNum, ...data },
+        });
       }
-    }
-
-    if (res?.success !== false) {
-      currentIntervalHook.refetch();
-    } else {
-      alert(res?.message || "Gagal menyimpan interval.");
+    } catch (err: any) {
+      alert(err?.message || "Gagal menyimpan interval.");
     }
   };
 
   const handleDeleteInterval = async (id: number) => {
     if (confirm("Apakah Anda yakin ingin menghapus data interval ini?")) {
-      const res: any = await deleteInterval(id);
-      if (res?.success) {
-        currentIntervalHook.refetch();
-      } else {
-        alert(res?.message || "Gagal menghapus interval.");
+      try {
+        await deleteIntervalMutation.mutateAsync(id);
+      } catch (err: any) {
+        alert(err?.message || "Gagal menghapus interval.");
       }
     }
   };
@@ -241,8 +260,10 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
     if (stopRelationObj && stopRelationObj.stopName) {
       return `${stopRelationObj.stopName} (Urutan #${stopRelationObj.stopOrder || "?"})`;
     }
-    const found = [...forwardHook.routeStops, ...returnHook.routeStops].find((s) => s.id === stopId);
-    return found ? `${found.stopName} (Urutan #${found.stopOrder})` : `Halte ID: ${stopId}`;
+    const found = allStops.find((s) => s.id === stopId);
+    return found
+      ? `${found.stopName} (Urutan #${found.stopOrder})`
+      : `Halte ID: ${stopId}`;
   };
 
   if (isNaN(routeIdNum)) {
@@ -259,12 +280,12 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
     );
   }
 
-  const rawIntervalsData = intervals as any;
+  const rawIntervalsData = currentIntervalQuery.data as any;
   const safeIntervals = Array.isArray(rawIntervalsData)
     ? rawIntervalsData
     : Array.isArray(rawIntervalsData?.data)
-    ? rawIntervalsData.data
-    : [];
+      ? rawIntervalsData.data
+      : [];
 
   return (
     <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
@@ -283,7 +304,8 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
             Manajemen Halte Trayek & Interval
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Kelola titik pemberhentian dan durasi interval perjalanan untuk Route ID{" "}
+            Kelola titik pemberhentian dan durasi interval perjalanan untuk
+            Route ID{" "}
             <span className="font-semibold text-gray-800">{routeIdNum}</span>{" "}
             (Slug: {rawSlug}).
           </p>
@@ -314,13 +336,21 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
             label: "Forward (Pergi)",
             value: DirectionType.FORWARD,
             icon: FiArrowRightCircle,
-            count: forwardHook.routeStops.length,
+            count: Array.isArray(forwardStopsQuery.data)
+              ? (forwardStopsQuery.data as any[]).length
+              : Array.isArray((forwardStopsQuery.data as any)?.data)
+                ? (forwardStopsQuery.data as any).data.length
+                : 0,
           },
           {
             label: "Return (Pulang)",
             value: DirectionType.RETURN,
             icon: FiArrowLeftCircle,
-            count: returnHook.routeStops.length,
+            count: Array.isArray(returnStopsQuery.data)
+              ? (returnStopsQuery.data as any[]).length
+              : Array.isArray((returnStopsQuery.data as any)?.data)
+                ? (returnStopsQuery.data as any).data.length
+                : 0,
           },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -425,7 +455,7 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
                               {stop.stopName}
                             </div>
                             <div className="text-[10px] text-gray-400 font-mono mt-0.5">
-                              Urutan: #{stop.stopOrder} • ID: {stop.id}
+                              Urutan Ke-{stop.stopOrder}
                             </div>
                           </div>
                         </div>
@@ -438,13 +468,6 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          <Link
-                            href={`/route-stops/detail/${stop.id}`}
-                            title="Detail Halte"
-                            className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors inline-flex items-center justify-center"
-                          >
-                            <FiEye className="w-4 h-4" />
-                          </Link>
                           <button
                             onClick={() => handleOpenEditModal(stop)}
                             title="Edit Halte"
@@ -478,7 +501,8 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
                 Interval Waktu & Jarak Antar Halte ({activeTab})
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                Mengatur estimasi durasi dan jarak fisik antar halte secara berurutan.
+                Mengatur estimasi durasi dan jarak fisik antar halte secara
+                berurutan.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -539,7 +563,8 @@ export default function RouteStopsBySlugPage({ params }: PageProps) {
                         {item.distanceInMeters} meter
                       </td>
                       <td className="py-3 px-4 text-xs font-mono text-gray-600">
-                        {item.durationInSeconds} detik ({Math.round(item.durationInSeconds / 60)} menit)
+                        {item.durationInSeconds} detik (
+                        {Math.round(item.durationInSeconds / 60)} menit)
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
