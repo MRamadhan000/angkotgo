@@ -1,94 +1,100 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  RoutePath,
   CreateRoutePathInput,
   UpdateRoutePathInput,
 } from "@/types/routes/route-path.type";
 import { DirectionType } from "@/types/vehicles/vehicle.type";
 import { routePathService } from "@/services/routes/route-path.service";
 
-export function useRoutePaths() {
-  const [routePaths, setRoutePaths] = useState<RoutePath[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+export const routePathKeys = {
+  all: ["route-paths"] as const,
 
-  const fetchRoutePaths = useCallback(
-    async (routeId: number, direction: DirectionType) => {
-      if (!routeId || !direction) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await routePathService.getRoutePathByRouteIdandDirection(
-          routeId,
-          direction,
-        );
-        setRoutePaths(data);
-      } catch (err: any) {
-        setError(
-          err.message || "Terjadi kesalahan saat memuat data jalur trayek.",
-        );
-      } finally {
-        setLoading(false);
-      }
+  byRouteAndDirection: (
+    routeId: number,
+    direction: DirectionType,
+  ) => ["route-paths", "route", routeId, direction] as const,
+
+  detail: (id: number) => ["route-paths", id] as const,
+};
+
+export function useRoutePaths(
+  routeId: number,
+  direction: DirectionType,
+) {
+  return useQuery({
+    queryKey: routePathKeys.byRouteAndDirection(routeId, direction),
+    queryFn: () =>
+      routePathService.getRoutePathByRouteIdandDirection(
+        routeId,
+        direction,
+      ),
+    enabled: !!routeId && !!direction,
+  });
+}
+
+export function useRoutePath(id: number) {
+  return useQuery({
+    queryKey: routePathKeys.detail(id),
+    queryFn: () => routePathService.getById(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateRoutePath() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateRoutePathInput) =>
+      routePathService.create(data),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: routePathKeys.all,
+      });
     },
-    [],
-  );
+  });
+}
 
-  const createRoutePath = async (data: CreateRoutePathInput) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newPath = await routePathService.create(data);
-      setRoutePaths((prev) => [...prev, newPath]);
-      return newPath;
-    } catch (err: any) {
-      setError(err.message || "Gagal membuat jalur trayek.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+export function useUpdateRoutePath() {
+  const queryClient = useQueryClient();
 
-  const updateRoutePath = async (id: number, data: UpdateRoutePathInput) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await routePathService.update(id, data);
-      setRoutePaths((prev) =>
-        prev.map((item) => (item.id === id ? updated : item)),
-      );
-      return updated;
-    } catch (err: any) {
-      setError(err.message || "Gagal mengupdate jalur trayek.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: UpdateRoutePathInput;
+    }) => routePathService.update(id, data),
 
-  const deleteRoutePath = async (id: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await routePathService.delete(id);
-      setRoutePaths((prev) => prev.filter((item) => item.id !== id));
-    } catch (err: any) {
-      setError(err.message || "Gagal menghapus jalur trayek.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: routePathKeys.all,
+      });
 
-  return {
-    routePaths,
-    loading,
-    error,
-    fetchRoutePaths,
-    createRoutePath,
-    updateRoutePath,
-    deleteRoutePath,
-  };
+      queryClient.invalidateQueries({
+        queryKey: routePathKeys.detail(variables.id),
+      });
+    },
+  });
+}
+
+export function useDeleteRoutePath() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => routePathService.delete(id),
+
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({
+        queryKey: routePathKeys.all,
+      });
+
+      queryClient.removeQueries({
+        queryKey: routePathKeys.detail(id),
+      });
+    },
+  });
 }

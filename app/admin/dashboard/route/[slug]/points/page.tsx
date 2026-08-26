@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import Link from "next/link";
+import { useState, use } from "react";
 import { CreateRoutePathInput } from "@/types/routes/route-path.type";
 import { DirectionType } from "@/types/vehicles/vehicle.type";
-import { useRoutePaths } from "@/hooks/routes/useRoutePath";
+
+import {
+  useRoutePaths,
+  useCreateRoutePath,
+  useUpdateRoutePath,
+  useDeleteRoutePath,
+} from "@/hooks/routes/useRoutePath";
+
 import {
   FiRefreshCw,
   FiAlertCircle,
-  FiEye,
   FiEdit3,
   FiTrash2,
   FiPlus,
@@ -17,6 +22,7 @@ import {
   FiArrowRightCircle,
   FiArrowLeftCircle,
 } from "react-icons/fi";
+
 import RoutePathModal from "@/components/route/RoutePath/RoutePathModal";
 import RouteMap from "@/components/route/RoutePath/RouteMap";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -51,40 +57,41 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
   const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE");
   const [selectedPathData, setSelectedPathData] = useState<any>(null);
 
-  const forwardHook = useRoutePaths();
-  const returnHook = useRoutePaths();
+  const forwardQuery = useRoutePaths(routeIdNum, DirectionType.FORWARD);
+  const returnQuery = useRoutePaths(routeIdNum, DirectionType.RETURN);
 
-  const loadData = () => {
-    if (!isNaN(routeIdNum)) {
-      forwardHook.fetchRoutePaths(routeIdNum, DirectionType.FORWARD);
-      returnHook.fetchRoutePaths(routeIdNum, DirectionType.RETURN);
-    }
+  const createRoutePathMutation = useCreateRoutePath();
+  const updateRoutePathMutation = useUpdateRoutePath();
+  const deleteRoutePathMutation = useDeleteRoutePath();
+
+  const currentQuery =
+    activeTab === DirectionType.FORWARD ? forwardQuery : returnQuery;
+
+  const routePaths = currentQuery.data ?? [];
+
+  const loading = forwardQuery.isLoading || returnQuery.isLoading;
+
+  const isFetching = forwardQuery.isFetching || returnQuery.isFetching;
+
+  const error =
+    forwardQuery.error?.message || returnQuery.error?.message || null;
+
+  const loadData = async () => {
+    if (isNaN(routeIdNum)) return;
+
+    await Promise.all([forwardQuery.refetch(), returnQuery.refetch()]);
   };
 
-  useEffect(() => {
-    loadData();
-  }, [routeIdNum]);
-
-  const currentHook =
-    activeTab === DirectionType.FORWARD ? forwardHook : returnHook;
-  const {
-    routePaths,
-    loading,
-    error,
-    createRoutePath,
-    updateRoutePath,
-    deleteRoutePath,
-  } = currentHook;
-
-  // DIUBAH: Dibuat kosong / default dinamis tanpa koordinat hardcoded
   const handleOpenCreateModal = () => {
     setModalMode("CREATE");
+
     setSelectedPathData({
-      latitude: "" as unknown as number, // Dibuat kosong agar diisi user melalui input form
-      longitude: "" as unknown as number, // Dibuat kosong agar diisi user melalui input form
+      latitude: "" as unknown as number,
+      longitude: "" as unknown as number,
       sequenceOrder: routePaths.length + 1,
       direction: activeTab,
     });
+
     setIsModalOpen(true);
   };
 
@@ -102,30 +109,34 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
   }) => {
     if (isNaN(routeIdNum)) return;
 
-    if (modalMode === "CREATE") {
-      const input: CreateRoutePathInput = {
-        routeId: routeIdNum,
-        ...data,
-      };
-      await createRoutePath(input);
-    } else if (modalMode === "EDIT" && selectedPathData) {
-      if (updateRoutePath) {
-        await updateRoutePath(selectedPathData.id, {
+    try {
+      if (modalMode === "CREATE") {
+        const input: CreateRoutePathInput = {
           routeId: routeIdNum,
           ...data,
+        };
+
+        await createRoutePathMutation.mutateAsync(input);
+      } else if (modalMode === "EDIT" && selectedPathData) {
+        await updateRoutePathMutation.mutateAsync({
+          id: selectedPathData.id,
+          data: {
+            routeId: routeIdNum,
+            ...data,
+          },
         });
-      } else {
-        alert("Fungsi updateRoutePath belum tersedia pada hook.");
       }
+
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Gagal menyimpan route path:", err);
     }
-    loadData();
   };
 
   const handleDelete = async (id: number) => {
     if (confirm("Apakah Anda yakin ingin menghapus titik jalur ini?")) {
       try {
-        await deleteRoutePath(id);
-        loadData();
+        await deleteRoutePathMutation.mutateAsync(id);
       } catch (err) {
         console.error("Gagal menghapus route path:", err);
       }
@@ -137,9 +148,10 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
       <div className="p-6 max-w-[1700px] mx-auto space-y-6">
         <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
           <FiAlertCircle className="w-5 h-5 shrink-0" />
+
           <span>
-            Slug / Route ID pada URL tidak valid ({String(rawSlug)}). Pastikan
-            folder dinamis dinamai <code>[slug]</code>.
+            Slug / Route ID pada URL tidak valid ({String(rawSlug)}
+            ). Pastikan folder dinamis dinamai <code>[slug]</code>.
           </span>
         </div>
       </div>
@@ -148,11 +160,20 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
 
   return (
     <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
+      {/* BREADCRUMB */}
       <Breadcrumb
         items={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Daftar Trayek (Routes)", href: "/admin/dashboard/route" },
-          { label: `Route Path #${routeIdNum}` },
+          {
+            label: "Dashboard",
+            href: "/admin/dashboard",
+          },
+          {
+            label: "Daftar Trayek (Routes)",
+            href: "/admin/dashboard/route",
+          },
+          {
+            label: `Route Path #${routeIdNum}`,
+          },
         ]}
       />
 
@@ -162,25 +183,32 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
           <h1 className="text-2xl font-bold text-gray-900">
             Manajemen Jalur Trayek (Route Paths)
           </h1>
+
           <p className="text-sm text-gray-500 mt-1">
             Kelola titik koordinat jalur untuk Route ID{" "}
             <span className="font-semibold text-gray-800">{routeIdNum}</span>{" "}
             (Slug: {rawSlug}).
           </p>
         </div>
+
         <div className="flex items-center gap-3">
           <button
             onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
+            disabled={createRoutePathMutation.isPending}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
           >
             <FiPlus className="w-4 h-4" />
             Tambah Titik Jalur ({activeTab})
           </button>
+
           <button
             onClick={loadData}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
+            disabled={isFetching}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95"
           >
-            <FiRefreshCw className="w-4 h-4" />
+            <FiRefreshCw
+              className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
         </div>
@@ -190,6 +218,7 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
       {error && (
         <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-sm">
           <FiAlertCircle className="w-5 h-5 shrink-0" />
+
           <span>Gagal memuat data: {error}</span>
         </div>
       )}
@@ -201,16 +230,17 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
             label: "Forward (Pergi)",
             value: DirectionType.FORWARD,
             icon: FiArrowRightCircle,
-            count: forwardHook.routePaths.length,
+            count: forwardQuery.data?.length ?? 0,
           },
           {
             label: "Return (Pulang)",
             value: DirectionType.RETURN,
             icon: FiArrowLeftCircle,
-            count: returnHook.routePaths.length,
+            count: returnQuery.data?.length ?? 0,
           },
         ].map((tab) => {
           const Icon = tab.icon;
+
           return (
             <button
               key={tab.value}
@@ -235,6 +265,7 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
             <FiMapPin className="w-4 h-4 text-blue-600" />
             Visualisasi Peta Jalur ({activeTab})
           </h2>
+
           <span className="text-xs text-gray-400 font-mono">
             Total Titik: {routePaths.length}
           </span>
@@ -256,12 +287,14 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
                 ))}
               </tr>
             </thead>
+
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
               {loading ? (
                 <tr>
                   <td colSpan={4} className="py-12 text-center text-gray-400">
                     <div className="flex justify-center items-center gap-2">
                       <FiRefreshCw className="w-5 h-5 animate-spin" />
+
                       <span>Memuat data jalur trayek {activeTab}...</span>
                     </div>
                   </td>
@@ -286,12 +319,10 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
                         <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
                           <FiMapPin className="w-4 h-4" />
                         </div>
+
                         <div>
                           <div className="font-semibold text-gray-900 font-mono">
-                            Urutan: #{path.sequenceOrder}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            ID: #{path.id}
+                            Urutan Ke-{path.sequenceOrder}
                           </div>
                         </div>
                       </div>
@@ -307,6 +338,7 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
                         }`}
                       >
                         <FiCompass className="w-3 h-3" />
+
                         {path.direction}
                       </span>
                     </td>
@@ -314,6 +346,7 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
                     {/* Latitude & Longitude */}
                     <td className="py-4 px-6 text-xs font-mono text-gray-600">
                       <div>Lat: {path.latitude}</div>
+
                       <div className="text-gray-400 mt-0.5">
                         Lng: {path.longitude}
                       </div>
@@ -322,24 +355,31 @@ export default function RoutePathsBySlugPage({ params }: PageProps) {
                     {/* Aksi */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <Link
+                        {/* DETAIL */}
+                        {/* <Link
                           href={`/route-paths/detail/${path.id}`}
                           title="Detail Titik Jalur"
                           className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors inline-flex items-center justify-center"
                         >
                           <FiEye className="w-4 h-4" />
-                        </Link>
+                        </Link> */}
+
+                        {/* EDIT */}
                         <button
                           onClick={() => handleOpenEditModal(path)}
+                          disabled={updateRoutePathMutation.isPending}
                           title="Edit Titik Jalur"
-                          className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                          className="p-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 rounded-lg transition-colors"
                         >
                           <FiEdit3 className="w-4 h-4" />
                         </button>
+
+                        {/* DELETE */}
                         <button
                           onClick={() => handleDelete(path.id)}
+                          disabled={deleteRoutePathMutation.isPending}
                           title="Hapus Titik Jalur"
-                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                          className="p-2 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-600 rounded-lg transition-colors"
                         >
                           <FiTrash2 className="w-4 h-4" />
                         </button>
