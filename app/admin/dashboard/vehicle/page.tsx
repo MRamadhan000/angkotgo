@@ -306,10 +306,6 @@ export default function VehiclesDashboardPage() {
                           <div className="font-semibold text-gray-900 font-mono">
                             {vehicle.vehicleCode}
                           </div>
-
-                          <div className="text-xs text-gray-400">
-                            ID: #{vehicle.id}
-                          </div>
                         </div>
                       </div>
                     </td>
