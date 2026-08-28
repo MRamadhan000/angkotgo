@@ -249,7 +249,7 @@ export default function DriverDashboardPage() {
                       </div>
 
                       <div className="text-[11px] text-gray-400 mt-0.5">
-                        {driver.totalTrips ?? 0} total trip
+                        {driver.assignmentCount ?? 0} total trip
                       </div>
                     </td>
 

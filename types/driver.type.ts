@@ -24,7 +24,7 @@ export interface Driver {
   isVerified: boolean;
   status: DriverStatus;
   averageRating: number;
-  totalTrips: number;
+  assignmentCount: number;
   bankAccountInfo?: BankAccountInfo | null;
   assignments?: VehicleAssignment[];
   createdAt: string | Date;
@@ -36,7 +36,7 @@ export type UpdateDriverInput = Partial<
     Driver,
     | "id"
     | "averageRating"
-    | "totalTrips"
+    | "assignmentCount"
     | "assignments"
     | "createdAt"
     | "updatedAt"
