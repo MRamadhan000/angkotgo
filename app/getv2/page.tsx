@@ -5,8 +5,6 @@ import {
   FiArrowLeft,
   FiMapPin,
   FiNavigation,
-  FiSearch,
-  FiX,
 } from "react-icons/fi";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -22,9 +20,10 @@ import {
   PointType,
 } from "@/types/mapbox.type";
 import QuickDestination from "@/components/search-routev2/skenario1/QuickDestination";
-import MapboxSuggestions from "@/components/search-routev2/skenario1/MapboxSuggestions";
 import { quickDestinations } from "@/components/search-routev2/skenario1/data";
 import { validateRouteSearch } from "@/components/search-routev2/skenario1/outeValidation";
+import LocationInput from "@/components/search-routev2/skenario1/LocationInput";
+import LocationConnector from "@/components/search-routev2/skenario1/LocationConnector";
 type ActiveInputState = PointType | null;
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -465,7 +464,6 @@ export default function CariRuteAngkot() {
       </div>
 
       {/* CENTER PIN */}
-
       <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
         <div
           className={`flex h-10 w-10 items-center justify-center rounded-full border-4 border-white shadow-xl ${
@@ -481,7 +479,6 @@ export default function CariRuteAngkot() {
       {/* MAIN CONTAINER */}
       <div className="pointer-events-none relative z-20 mx-auto flex h-full w-full max-w-md flex-col justify-between px-4 pb-4 pt-4 sm:px-5 sm:pt-6">
         {/* TOP SECTION */}
-
         <div className="pointer-events-auto flex flex-col gap-3">
           {/* HEADER */}
           <div className="flex items-center justify-between">
@@ -496,106 +493,46 @@ export default function CariRuteAngkot() {
             <h1 className="text-base font-bold tracking-tight text-[#003d9b] sm:text-lg">
               Cari Rute Angkot
             </h1>
-
             <div className="w-9 sm:w-10" />
           </div>
 
           {/* SEARCH CARD */}
           <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-[24px] sm:p-4">
-            {/* ORIGIN */}
-            <div className="relative">
-              <div className="relative flex items-center">
-                <div className="absolute left-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[#0052cc]/10 text-[#003d9b] sm:h-8 sm:w-8">
-                  <FiMapPin />
-                </div>
+            <LocationInput
+              type="origin"
+              value={origin}
+              suggestions={originSuggestions}
+              isActive={activeInput === "origin"}
+              isLoading={
+                searchLoading === "origin" ||
+                searchLoading === "retrieve-origin"
+              }
+              onChange={handleOriginChange}
+              onFocus={() => setActiveInput("origin")}
+              onClear={handleClearOrigin}
+              onSelectSuggestion={(item) =>
+                handleSelectSuggestion(item, "origin")
+              }
+            />
 
-                <input
-                  className="h-11 w-full truncate rounded-xl border border-[#c3c6d6] bg-[#faf8ff] pl-11 pr-10 text-xs outline-none focus:border-[#003d9b] focus:ring-2 focus:ring-[#003d9b]/20 sm:h-12 sm:pl-12 sm:text-sm"
-                  placeholder="Lokasi Penjemputan"
-                  value={origin}
-                  onFocus={() => setActiveInput("origin")}
-                  onChange={(e) => handleOriginChange(e.target.value)}
-                />
+            <LocationConnector />
 
-                {/* Loading */}
-                {(searchLoading === "origin" ||
-                  searchLoading === "retrieve-origin") && (
-                  <span className="absolute right-9 text-[10px] text-black/40">
-                    ...
-                  </span>
-                )}
-
-                {/* Clear */}
-                {origin && (
-                  <Button
-                    variant="inputClear"
-                    size="sm"
-                    icon={<FiX />}
-                    onClick={handleClearOrigin}
-                    aria-label="Hapus lokasi penjemputan"
-                  />
-                )}
-              </div>
-
-              {/* ORIGIN SUGGESTIONS */}
-              {activeInput === "origin" && (
-                <MapboxSuggestions
-                  suggestions={originSuggestions}
-                  onSelect={(item) => handleSelectSuggestion(item, "origin")}
-                />
-              )}
-            </div>
-
-            {/* CONNECTOR */}
-            <div className="flex h-1.5 w-full pl-[22px] sm:pl-[28px]">
-              <div className="h-full w-[2px] border-l-2 border-dashed border-[#c3c6d6]" />
-            </div>
-
-            {/* DESTINATION */}
-            <div className="relative">
-              <div className="relative flex items-center">
-                <div className="absolute left-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[#e7e7f2] text-[#434654] sm:h-8 sm:w-8">
-                  <FiSearch />
-                </div>
-
-                <input
-                  className="h-11 w-full truncate rounded-xl border border-[#c3c6d6] bg-[#faf8ff] pl-11 pr-10 text-xs outline-none focus:border-[#003d9b] focus:ring-2 focus:ring-[#003d9b]/20 sm:h-12 sm:pl-12 sm:text-sm"
-                  placeholder="Lokasi Tujuan"
-                  value={destination}
-                  onFocus={() => setActiveInput("destination")}
-                  onChange={(e) => handleDestinationChange(e.target.value)}
-                />
-
-                {/* Loading */}
-                {(searchLoading === "destination" ||
-                  searchLoading === "retrieve-destination") && (
-                  <span className="absolute right-9 text-[10px] text-black/40">
-                    ...
-                  </span>
-                )}
-
-                {/* Clear */}
-                {destination && (
-                  <Button
-                    variant="inputClear"
-                    size="sm"
-                    icon={<FiX />}
-                    onClick={handleClearDestination}
-                    aria-label="Hapus lokasi tujuan"
-                  />
-                )}
-              </div>
-
-              {/* DESTINATION SUGGESTIONS */}
-              {activeInput === "destination" && (
-                <MapboxSuggestions
-                  suggestions={destinationSuggestions}
-                  onSelect={(item) =>
-                    handleSelectSuggestion(item, "destination")
-                  }
-                />
-              )}
-            </div>
+            <LocationInput
+              type="destination"
+              value={destination}
+              suggestions={destinationSuggestions}
+              isActive={activeInput === "destination"}
+              isLoading={
+                searchLoading === "destination" ||
+                searchLoading === "retrieve-destination"
+              }
+              onChange={handleDestinationChange}
+              onFocus={() => setActiveInput("destination")}
+              onClear={handleClearDestination}
+              onSelectSuggestion={(item) =>
+                handleSelectSuggestion(item, "destination")
+              }
+            />
 
             {/* QUICK DESTINATION */}
             <QuickDestination
