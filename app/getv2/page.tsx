@@ -12,76 +12,47 @@ import {
 } from "react-icons/fi";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-
 import Button from "@/components/ui/Button";
 import GpsPermissionModal from "@/components/ui/GpsPermissionModal";
 import { getCurrentLocation } from "@/components/ui/geolocation";
+import { useMapbox } from "@/hooks/useMapbox";
+import { useRouteSearch } from "@/hooks/routes/useRouteSearch";
+import {
+  Coordinates,
+  MapboxSearchLoadingState,
+  MapboxSuggestion,
+  PointType,
+} from "@/types/mapbox.type";
+type ActiveInputState = PointType | null;
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
-
-type Coordinates = {
-  lat: number;
-  lng: number;
-};
-
-interface Suggestion {
-  mapbox_id: string;
-  name: string;
-  name_preferred?: string;
-  place_formatted?: string;
-  full_address?: string;
-}
-
-type PointType = "origin" | "destination";
-
-type ActiveInputState = "origin" | "destination" | null;
-
-type SearchLoadingState =
-  | "origin"
-  | "destination"
-  | "retrieve-origin"
-  | "retrieve-destination"
-  | null;
-
-const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-
-const SUGGEST = "https://api.mapbox.com/search/searchbox/v1/suggest";
-const RETRIEVE = "https://api.mapbox.com/search/searchbox/v1/retrieve";
-
-// Reverse geocode standar (dipakai untuk konfirmasi pin di tengah peta / GPS)
-const REVERSE_GEOCODE = "https://api.mapbox.com/geocoding/v5/mapbox.places";
-
-// Area Malang Raya
-const BBOX = "112.45,-8.35,112.85,-7.75";
-const PROXIMITY = "112.6214,-7.9839";
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+mapboxgl.accessToken = MAPBOX_TOKEN || "";
 
 export default function CariRuteAngkot() {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
 
   const [originCoords, setOriginCoords] = useState<Coordinates | null>(null);
+
   const [destinationCoords, setDestinationCoords] =
     useState<Coordinates | null>(null);
 
-  const [originSuggestions, setOriginSuggestions] = useState<Suggestion[]>([]);
+  const [originSuggestions, setOriginSuggestions] = useState<
+    MapboxSuggestion[]
+  >([]);
 
   const [destinationSuggestions, setDestinationSuggestions] = useState<
-    Suggestion[]
+    MapboxSuggestion[]
   >([]);
 
   const [activeInput, setActiveInput] = useState<ActiveInputState>(null);
-
   const [showGpsModal, setShowGpsModal] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
-  const [isSearchingRoute, setIsSearchingRoute] = useState(false);
+  const [searchLoading, setSearchLoading] =
+    useState<MapboxSearchLoadingState>(null);
+  const [pickingMode, setPickingMode] = useState<PointType>("origin");
 
-  // Loading khusus proses suggest/retrieve Search Box API
-  const [searchLoading, setSearchLoading] = useState<SearchLoadingState>(null);
-
-  const [pickingMode, setPickingMode] = useState<"origin" | "destination">(
-    "origin",
-  );
-
+  //  MAP REFS
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
@@ -89,35 +60,97 @@ export default function CariRuteAngkot() {
     null,
   );
 
-  // Session token per titik (wajib untuk Search Box API: suggest & retrieve
-  // dalam satu sesi pencarian harus pakai token yang sama)
+  /* =======================================================
+   * SEARCH BOX SESSION
+   *
+   * Satu session untuk origin.
+   * Satu session untuk destination.
+   * ===================================================== */
+
   const originSession = useRef(crypto.randomUUID());
+
   const destinationSession = useRef(crypto.randomUUID());
 
-  // Flag untuk mencegah suggestion muncul lagi tepat setelah user memilih
-  // sebuah hasil (karena setOrigin/setDestination akan memicu onChange lagi)
+  /* =======================================================
+   * SELECTING FLAG
+   *
+   * Mencegah onChange memicu suggest lagi
+   * ketika hasil retrieve sedang dimasukkan ke input.
+   * ===================================================== */
+
   const selectingOrigin = useRef(false);
+
   const selectingDestination = useRef(false);
 
+  /* =======================================================
+   * MAPBOX HOOK
+   * ===================================================== */
+
+  const { suggest, retrieve, reverse } = useMapbox();
+
+  /* =======================================================
+   * ROUTE SEARCH
+   * ===================================================== */
+
+  const routeSearchParams =
+    originCoords && destinationCoords
+      ? {
+          userLat: originCoords.lat,
+          userLng: originCoords.lng,
+          destLat: destinationCoords.lat,
+          destLng: destinationCoords.lng,
+        }
+      : null;
+
+  const {
+    data: routeResults,
+    isFetching: isSearchingRoute,
+    isError: isRouteSearchError,
+    error: routeSearchError,
+    refetch: searchRoute,
+  } = useRouteSearch(routeSearchParams);
+
+  /* =======================================================
+   * MAP INITIALIZATION
+   * ===================================================== */
+
   useEffect(() => {
-    if (!mapContainerRef.current || !mapboxgl.accessToken) {
-      console.error("Mapbox container atau token tidak tersedia.");
+    if (!mapContainerRef.current) {
       return;
     }
 
-    if (mapRef.current) return;
+    if (!MAPBOX_TOKEN) {
+      console.error("NEXT_PUBLIC_MAPBOX_TOKEN belum dikonfigurasi.");
+      return;
+    }
+
+    if (mapRef.current) {
+      return;
+    }
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
+
+      // Center Malang
       center: [112.6214, -7.9839],
+
       zoom: 14,
+
       attributionControl: true,
     });
 
     mapRef.current = map;
 
+    /* =====================================================
+     * NAVIGATION CONTROL
+     * =================================================== */
+
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
+    /* =====================================================
+     * CENTER MARKER
+     * =================================================== */
 
     const marker = new mapboxgl.Marker({
       color: "#2563eb",
@@ -127,51 +160,67 @@ export default function CariRuteAngkot() {
 
     markerRef.current = marker;
 
-    map.on("move", () => {
+    /* =====================================================
+     * MARKER SELALU MENGIKUTI CENTER MAP
+     * =================================================== */
+
+    const handleMapMove = () => {
       const center = map.getCenter();
+
       marker.setLngLat([center.lng, center.lat]);
-    });
+    };
+
+    map.on("move", handleMapMove);
+
+    /* =====================================================
+     * MAP LOAD
+     * =================================================== */
 
     map.on("load", () => {
       map.resize();
     });
 
+    /* =====================================================
+     * CLEANUP
+     * =================================================== */
+
     return () => {
+      map.off("move", handleMapMove);
+
       marker.remove();
+
       map.remove();
+
       mapRef.current = null;
       markerRef.current = null;
     };
   }, []);
 
-  // ===================================================
-  // REVERSE GEOCODE (untuk pin di tengah peta / GPS)
-  // Ini TIDAK diganti, tetap pakai Geocoding API standar
-  // karena tujuannya beda: koordinat -> nama, bukan nama -> koordinat.
-  // ===================================================
+  /* =======================================================
+   * GET PLACE NAME
+   *
+   * reverse:
+   * koordinat -> nama lokasi
+   * ===================================================== */
 
-  const reverseGeocode = async (lat: number, lng: number) => {
+  const getPlaceName = async (lat: number, lng: number) => {
     try {
-      const response = await fetch(
-        `${REVERSE_GEOCODE}/${lng},${lat}.json?access_token=${mapboxgl.accessToken}&country=id&language=id&limit=1`,
-      );
+      const result = await reverse.mutateAsync({
+        lat,
+        lng,
+      });
 
-      if (!response.ok) {
-        throw new Error(`Geocoding error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      return (
-        data.features?.[0]?.place_name ||
-        `Lokasi (${lat.toFixed(5)}, ${lng.toFixed(5)})`
-      );
+      return result;
     } catch (error) {
       console.error("Reverse geocoding gagal:", error);
 
       return `Lokasi (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
     }
   };
+
+  /* =======================================================
+   * MOVE MAP
+   * ===================================================== */
 
   const moveMapToLocation = (lat: number, lng: number) => {
     mapRef.current?.flyTo({
@@ -181,26 +230,35 @@ export default function CariRuteAngkot() {
     });
   };
 
+  /* =======================================================
+   * ENABLE GPS
+   *
+   * GPS -> koordinat
+   * koordinat -> reverse geocode
+   * hasil -> origin
+   * ===================================================== */
+
   const handleEnableGps = async () => {
     setIsLocating(true);
 
     try {
       const { latitude, longitude } = await getCurrentLocation();
 
-      const coords = {
+      const coords: Coordinates = {
         lat: latitude,
         lng: longitude,
       };
 
+      const placeName = await getPlaceName(latitude, longitude);
       setOriginCoords(coords);
-      setOrigin(await reverseGeocode(latitude, longitude));
+      setOrigin(placeName);
       setPickingMode("destination");
       moveMapToLocation(latitude, longitude);
       setShowGpsModal(false);
     } catch (error) {
       console.error("Gagal mendapatkan lokasi:", error);
-
       setOrigin("Stasiun Malang Kota Baru");
+      setOriginCoords(null);
       setShowGpsModal(false);
     } finally {
       setIsLocating(false);
@@ -219,13 +277,13 @@ export default function CariRuteAngkot() {
 
     try {
       const { latitude, longitude } = await getCurrentLocation();
-
-      setOriginCoords({
+      const coords: Coordinates = {
         lat: latitude,
         lng: longitude,
-      });
-
-      setOrigin(await reverseGeocode(latitude, longitude));
+      };
+      const placeName = await getPlaceName(latitude, longitude);
+      setOriginCoords(coords);
+      setOrigin(placeName);
       setPickingMode("destination");
       moveMapToLocation(latitude, longitude);
     } catch (error) {
@@ -235,6 +293,14 @@ export default function CariRuteAngkot() {
     }
   };
 
+  /* =======================================================
+   * CONFIRM CENTER MAP LOCATION
+   *
+   * User menggeser map.
+   * Marker berada di tengah.
+   * Klik tombol -> center menjadi origin/destination.
+   * ===================================================== */
+
   const handleConfirmMapLocation = async () => {
     if (!mapRef.current) {
       alert("Peta belum siap.");
@@ -242,82 +308,93 @@ export default function CariRuteAngkot() {
     }
 
     const center = mapRef.current.getCenter();
+
     const lat = center.lat;
+
     const lng = center.lng;
-    const placeName = await reverseGeocode(lat, lng);
 
-    if (pickingMode === "origin") {
-      setOrigin(placeName);
-      setOriginCoords({ lat, lng });
-      setPickingMode("destination");
+    try {
+      setSearchLoading(
+        pickingMode === "origin" ? "retrieve-origin" : "retrieve-destination",
+      );
 
-      markerRef.current
-        ?.getElement()
-        .style.setProperty("filter", "hue-rotate(120deg)");
-    } else {
-      setDestination(placeName);
-      setDestinationCoords({ lat, lng });
+      const placeName = await getPlaceName(lat, lng);
+      const coords: Coordinates = {
+        lat,
+        lng,
+      };
+      if (pickingMode === "origin") {
+        setOrigin(placeName);
+        setOriginCoords(coords);
+        setPickingMode("destination");
+        /*
+         * Ubah warna marker.
+         *
+         * Karena marker center tetap satu,
+         * warna hanya sebagai indikator visual.
+         */
+
+        markerRef.current
+          ?.getElement()
+          .style.setProperty("filter", "hue-rotate(120deg)");
+      } else {
+        setDestination(placeName);
+        setDestinationCoords(coords);
+        setActiveInput(null);
+      }
+    } catch (error) {
+      console.error("Gagal menetapkan lokasi:", error);
+    } finally {
+      setSearchLoading(null);
     }
   };
 
-  // ===================================================
-  // SEARCH BOX: SUGGEST
-  // Menggantikan pencarian lama (Geocoding forward search)
-  // dengan Mapbox Search Box API /suggest — hasilnya BELUM
-  // punya koordinat, harus di-retrieve dulu saat dipilih.
-  // ===================================================
+  /* =======================================================
+   * SEARCH PLACES
+   *
+   * Input text
+   *     ↓
+   * Search Box Suggest
+   *     ↓
+   * suggestion
+   *
+   * Belum mendapatkan koordinat.
+   * ===================================================== */
 
   const searchPlaces = (query: string, type: PointType) => {
     if (suggestionTimeoutRef.current) {
       clearTimeout(suggestionTimeoutRef.current);
     }
 
-    if (!query.trim() || query.length < 2) {
+    if (!query.trim() || query.trim().length < 2) {
       if (type === "origin") {
         setOriginSuggestions([]);
       } else {
         setDestinationSuggestions([]);
       }
-      return;
-    }
 
-    if (!TOKEN) {
-      console.error("NEXT_PUBLIC_MAPBOX_TOKEN belum dikonfigurasi.");
       return;
     }
 
     suggestionTimeoutRef.current = setTimeout(async () => {
       try {
         setSearchLoading(type);
-
         const session =
           type === "origin"
             ? originSession.current
             : destinationSession.current;
 
         const center = mapRef.current?.getCenter();
-        const proximity = center ? `${center.lng},${center.lat}` : PROXIMITY;
 
-        const params = new URLSearchParams({
-          q: query,
-          access_token: TOKEN,
-          session_token: session,
-          language: "id",
-          country: "ID",
-          limit: "8",
+        const proximity = center ? `${center.lng},${center.lat}` : undefined;
+
+        const result = await suggest.mutateAsync({
+          query: query.trim(),
+          sessionToken: session,
           proximity,
-          bbox: BBOX,
-          types: "poi,address,street,place",
         });
 
-        const response = await fetch(`${SUGGEST}?${params.toString()}`);
-
-        if (!response.ok) {
-          throw new Error(`Suggest error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const suggestions: Suggestion[] = data.suggestions ?? [];
+        const suggestions = result.suggestions ?? [];
 
         if (type === "origin") {
           setOriginSuggestions(suggestions);
@@ -326,21 +403,20 @@ export default function CariRuteAngkot() {
         }
       } catch (error) {
         console.error("Gagal mencari lokasi:", error);
+
+        if (type === "origin") {
+          setOriginSuggestions([]);
+        } else {
+          setDestinationSuggestions([]);
+        }
       } finally {
         setSearchLoading(null);
       }
     }, 300);
   };
 
-  // ===================================================
-  // SEARCH BOX: RETRIEVE
-  // Dipanggil saat user memilih salah satu suggestion.
-  // Baru di sini koordinat asli didapat.
-  // ===================================================
-
-  const retrieveLocation = async (item: Suggestion, type: PointType) => {
-    if (!TOKEN) return;
-
+  //  RETRIEVE LOCATION
+  const retrieveLocation = async (item: MapboxSuggestion, type: PointType) => {
     const selecting =
       type === "origin" ? selectingOrigin : selectingDestination;
 
@@ -353,51 +429,12 @@ export default function CariRuteAngkot() {
       const session =
         type === "origin" ? originSession.current : destinationSession.current;
 
-      const params = new URLSearchParams({
-        access_token: TOKEN,
-        session_token: session,
-        language: "id",
+      const result = await retrieve.mutateAsync({
+        mapboxId: item.mapbox_id,
+        sessionToken: session,
       });
 
-      const response = await fetch(
-        `${RETRIEVE}/${encodeURIComponent(item.mapbox_id)}?${params.toString()}`,
-      );
-
-      if (!response.ok) {
-        throw new Error(`Retrieve error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const feature = data.features?.[0];
-
-      if (!feature) {
-        throw new Error("Lokasi tidak ditemukan.");
-      }
-
-      const coordinates = feature.geometry?.coordinates;
-
-      if (!Array.isArray(coordinates) || coordinates.length < 2) {
-        throw new Error("Koordinat tidak ditemukan.");
-      }
-
-      // GeoJSON: [longitude, latitude]
-      const [lng, lat] = coordinates;
-      const properties = feature.properties ?? {};
-
-      const placeName: string =
-        properties.name_preferred ??
-        properties.name ??
-        item.name_preferred ??
-        item.name;
-
-      const address: string =
-        properties.full_address ??
-        item.full_address ??
-        item.place_formatted ??
-        "";
-
-      const coords: Coordinates = { lat: Number(lat), lng: Number(lng) };
-      const displayName = address ? `${placeName}, ${address}` : placeName;
+      const { coords, placeName } = result;
 
       if (type === "origin") {
         setOrigin(placeName);
@@ -409,30 +446,22 @@ export default function CariRuteAngkot() {
         setDestinationCoords(coords);
         setDestinationSuggestions([]);
       }
-
       setActiveInput(null);
       moveMapToLocation(coords.lat, coords.lng);
-
-      // pakai displayName kalau nanti mau ditampilkan full address di tempat lain
-      void displayName;
     } catch (error) {
       console.error("Gagal mengambil detail lokasi:", error);
     } finally {
       setSearchLoading(null);
-
       setTimeout(() => {
         selecting.current = false;
       }, 100);
     }
   };
 
-  // ===================================================
-  // HANDLERS INPUT
-  // ===================================================
-
   const handleOriginChange = (value: string) => {
-    if (selectingOrigin.current) return;
-
+    if (selectingOrigin.current) {
+      return;
+    }
     setOrigin(value);
     setOriginCoords(null);
     setActiveInput("origin");
@@ -440,45 +469,42 @@ export default function CariRuteAngkot() {
   };
 
   const handleDestinationChange = (value: string) => {
-    if (selectingDestination.current) return;
-
+    if (selectingDestination.current) {
+      return;
+    }
     setDestination(value);
     setDestinationCoords(null);
     setActiveInput("destination");
     searchPlaces(value, "destination");
   };
 
-  const handleSelectSuggestion = (item: Suggestion, type: PointType) => {
+  const handleSelectSuggestion = (item: MapboxSuggestion, type: PointType) => {
     retrieveLocation(item, type);
   };
 
   const handleClearOrigin = () => {
     selectingOrigin.current = false;
-
     setOrigin("");
     setOriginCoords(null);
     setOriginSuggestions([]);
+    setActiveInput(null);
     setPickingMode("origin");
-
     originSession.current = crypto.randomUUID();
   };
 
   const handleClearDestination = () => {
     selectingDestination.current = false;
-
     setDestination("");
     setDestinationCoords(null);
     setDestinationSuggestions([]);
+    setActiveInput(null);
     setPickingMode("destination");
-
     destinationSession.current = crypto.randomUUID();
   };
 
-  // Chip cepat ("Alun-Alun", "Kampus UB", dll) sekarang cuma mengisi teks
-  // tujuan + memicu suggest baru — user tetap harus pilih dari suggestion
-  // supaya dapat koordinat lewat retrieve (konsisten dengan alur baru).
   const handleQuickDestination = (label: string) => {
     handleDestinationChange(label);
+    setActiveInput("destination");
   };
 
   const handleSearch = async () => {
@@ -494,46 +520,24 @@ export default function CariRuteAngkot() {
 
     if (!originCoords) {
       alert("Pilih lokasi penjemputan dari suggestion atau peta.");
+
       return;
     }
 
     if (!destinationCoords) {
       alert("Pilih lokasi tujuan dari suggestion atau peta.");
+
       return;
     }
 
-    setIsSearchingRoute(true);
-
     try {
-      const params = new URLSearchParams({
-        userLat: String(originCoords.lat),
-        userLng: String(originCoords.lng),
-        destLat: String(destinationCoords.lat),
-        destLng: String(destinationCoords.lng),
-      });
+      const result = await searchRoute();
 
-      const response = await fetch(
-        `http://localhost:3001/routes/search?${params.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      console.log("Hasil pencarian rute:", data);
+      console.log("Hasil pencarian rute:", result.data);
     } catch (error) {
       console.error("Gagal mencari rute:", error);
+
       alert("Gagal terhubung ke server.");
-    } finally {
-      setIsSearchingRoute(false);
     }
   };
 
@@ -550,6 +554,10 @@ export default function CariRuteAngkot() {
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
       </div>
 
+      {/* ===================================================
+       * CENTER PIN
+       * ================================================= */}
+
       <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
         <div
           className={`flex h-10 w-10 items-center justify-center rounded-full border-4 border-white shadow-xl ${
@@ -558,11 +566,24 @@ export default function CariRuteAngkot() {
         >
           <FiMapPin className="text-xl text-white" />
         </div>
+
         <div className="mx-auto mt-[-2px] h-2 w-2 rounded-full bg-black/30 blur-[2px]" />
       </div>
 
+      {/* ===================================================
+       * MAIN CONTAINER
+       * ================================================= */}
+
       <div className="pointer-events-none relative z-20 mx-auto flex h-full w-full max-w-md flex-col justify-between px-4 pb-4 pt-4 sm:px-5 sm:pt-6">
+        {/* =================================================
+         * TOP SECTION
+         * =============================================== */}
+
         <div className="pointer-events-auto flex flex-col gap-3">
+          {/* ===============================================
+           * HEADER
+           * ============================================= */}
+
           <div className="flex items-center justify-between">
             <Button
               variant="icon"
@@ -579,7 +600,15 @@ export default function CariRuteAngkot() {
             <div className="w-9 sm:w-10" />
           </div>
 
+          {/* ===============================================
+           * SEARCH CARD
+           * ============================================= */}
+
           <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-[24px] sm:p-4">
+            {/* =============================================
+             * ORIGIN
+             * =========================================== */}
+
             <div className="relative">
               <div className="relative flex items-center">
                 <div className="absolute left-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[#0052cc]/10 text-[#003d9b] sm:h-8 sm:w-8">
@@ -594,6 +623,8 @@ export default function CariRuteAngkot() {
                   onChange={(e) => handleOriginChange(e.target.value)}
                 />
 
+                {/* Loading */}
+
                 {(searchLoading === "origin" ||
                   searchLoading === "retrieve-origin") && (
                   <span className="absolute right-9 text-[10px] text-black/40">
@@ -601,16 +632,23 @@ export default function CariRuteAngkot() {
                   </span>
                 )}
 
+                {/* Clear */}
+
                 {origin && (
                   <button
                     type="button"
                     onClick={handleClearOrigin}
                     className="absolute right-2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
+                    aria-label="Hapus lokasi penjemputan"
                   >
                     <FiX />
                   </button>
                 )}
               </div>
+
+              {/* ===========================================
+               * ORIGIN SUGGESTIONS
+               * ========================================= */}
 
               {activeInput === "origin" && originSuggestions.length > 0 && (
                 <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl">
@@ -620,15 +658,18 @@ export default function CariRuteAngkot() {
                       type="button"
                       onMouseDown={(e) => {
                         e.preventDefault();
+
                         handleSelectSuggestion(item, "origin");
                       }}
                       className="flex w-full items-start gap-3 border-b border-gray-100 px-3 py-3 text-left hover:bg-blue-50"
                     >
                       <FiMapPin className="mt-0.5 shrink-0 text-[#003d9b]" />
+
                       <div className="min-w-0">
                         <p className="truncate text-xs font-medium text-gray-800">
                           {item.name_preferred ?? item.name}
                         </p>
+
                         {item.place_formatted && (
                           <p className="truncate text-[11px] text-gray-500">
                             {item.place_formatted}
@@ -641,9 +682,17 @@ export default function CariRuteAngkot() {
               )}
             </div>
 
+            {/* =============================================
+             * CONNECTOR
+             * =========================================== */}
+
             <div className="flex h-1.5 w-full pl-[22px] sm:pl-[28px]">
               <div className="h-full w-[2px] border-l-2 border-dashed border-[#c3c6d6]" />
             </div>
+
+            {/* =============================================
+             * DESTINATION
+             * =========================================== */}
 
             <div className="relative">
               <div className="relative flex items-center">
@@ -659,6 +708,8 @@ export default function CariRuteAngkot() {
                   onChange={(e) => handleDestinationChange(e.target.value)}
                 />
 
+                {/* Loading */}
+
                 {(searchLoading === "destination" ||
                   searchLoading === "retrieve-destination") && (
                   <span className="absolute right-9 text-[10px] text-black/40">
@@ -666,16 +717,23 @@ export default function CariRuteAngkot() {
                   </span>
                 )}
 
+                {/* Clear */}
+
                 {destination && (
                   <button
                     type="button"
                     onClick={handleClearDestination}
                     className="absolute right-2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
+                    aria-label="Hapus lokasi tujuan"
                   >
                     <FiX />
                   </button>
                 )}
               </div>
+
+              {/* ===========================================
+               * DESTINATION SUGGESTIONS
+               * ========================================= */}
 
               {activeInput === "destination" &&
                 destinationSuggestions.length > 0 && (
@@ -686,15 +744,18 @@ export default function CariRuteAngkot() {
                         type="button"
                         onMouseDown={(e) => {
                           e.preventDefault();
+
                           handleSelectSuggestion(item, "destination");
                         }}
                         className="flex w-full items-start gap-3 border-b border-gray-100 px-3 py-3 text-left hover:bg-blue-50"
                       >
                         <FiMapPin className="mt-0.5 shrink-0 text-[#003d9b]" />
+
                         <div className="min-w-0">
                           <p className="truncate text-xs font-medium text-gray-800">
                             {item.name_preferred ?? item.name}
                           </p>
+
                           {item.place_formatted && (
                             <p className="truncate text-[11px] text-gray-500">
                               {item.place_formatted}
@@ -706,6 +767,10 @@ export default function CariRuteAngkot() {
                   </div>
                 )}
             </div>
+
+            {/* =============================================
+             * QUICK DESTINATION
+             * =========================================== */}
 
             <div className="flex gap-1.5 overflow-x-auto pt-1 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <button
@@ -736,6 +801,10 @@ export default function CariRuteAngkot() {
               </button>
             </div>
 
+            {/* =============================================
+             * CURRENT LOCATION
+             * =========================================== */}
+
             <button
               type="button"
               onClick={handleResetToGPS}
@@ -743,6 +812,7 @@ export default function CariRuteAngkot() {
               className="mt-1 flex items-center justify-center gap-2 rounded-lg py-2 text-[11px] font-semibold text-[#003d9b] hover:bg-blue-50 disabled:opacity-50"
             >
               <FiNavigation className={isLocating ? "animate-pulse" : ""} />
+
               {isLocating
                 ? "Mendeteksi lokasi..."
                 : "Gunakan lokasi saya saat ini"}
@@ -750,16 +820,28 @@ export default function CariRuteAngkot() {
           </div>
         </div>
 
+        {/* =================================================
+         * BOTTOM ACTION
+         * =============================================== */}
+
         <div className="pointer-events-auto space-y-2 pb-1">
           <button
             type="button"
             onClick={handleConfirmMapLocation}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/80 bg-white/95 px-5 py-3 text-sm font-bold text-[#003d9b] shadow-xl backdrop-blur-md hover:bg-white active:scale-[0.98]"
+            disabled={
+              searchLoading === "retrieve-origin" ||
+              searchLoading === "retrieve-destination"
+            }
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/80 bg-white/95 px-5 py-3 text-sm font-bold text-[#003d9b] shadow-xl backdrop-blur-md hover:bg-white active:scale-[0.98] disabled:opacity-50"
           >
             <FiMapPin />
-            {pickingMode === "origin"
-              ? "Tetapkan Titik Penjemputan"
-              : "Tetapkan Titik Tujuan"}
+
+            {searchLoading === "retrieve-origin" ||
+            searchLoading === "retrieve-destination"
+              ? "Mengambil lokasi..."
+              : pickingMode === "origin"
+                ? "Tetapkan Titik Penjemputan"
+                : "Tetapkan Titik Tujuan"}
           </button>
 
           <Button
