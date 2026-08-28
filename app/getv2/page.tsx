@@ -3,26 +3,28 @@
 import { useEffect, useRef, useState } from "react";
 import {
   FiArrowLeft,
-  FiClock,
   FiMapPin,
   FiNavigation,
   FiSearch,
-  FiStar,
   FiX,
 } from "react-icons/fi";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import Button from "@/components/ui/Button";
-import GpsPermissionModal from "@/components/ui/GpsPermissionModal";
-import { getCurrentLocation } from "@/components/ui/geolocation";
-import { useMapbox } from "@/hooks/useMapbox";
 import { useRouteSearch } from "@/hooks/routes/useRouteSearch";
+import Button from "@/components/ui/Button";
+import GpsPermissionModal from "@/components/search-routev2/skenario1/GpsPermissionModal";
+import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
+import { useMapbox } from "@/hooks/useMapbox";
 import {
   Coordinates,
   MapboxSearchLoadingState,
   MapboxSuggestion,
   PointType,
 } from "@/types/mapbox.type";
+import QuickDestination from "@/components/search-routev2/skenario1/QuickDestination";
+import MapboxSuggestions from "@/components/search-routev2/skenario1/MapboxSuggestions";
+import { quickDestinations } from "@/components/search-routev2/skenario1/data";
+import { validateRouteSearch } from "@/components/search-routev2/skenario1/outeValidation";
 type ActiveInputState = PointType | null;
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -31,7 +33,6 @@ mapboxgl.accessToken = MAPBOX_TOKEN || "";
 export default function CariRuteAngkot() {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
-
   const [originCoords, setOriginCoords] = useState<Coordinates | null>(null);
 
   const [destinationCoords, setDestinationCoords] =
@@ -40,7 +41,6 @@ export default function CariRuteAngkot() {
   const [originSuggestions, setOriginSuggestions] = useState<
     MapboxSuggestion[]
   >([]);
-
   const [destinationSuggestions, setDestinationSuggestions] = useState<
     MapboxSuggestion[]
   >([]);
@@ -52,7 +52,6 @@ export default function CariRuteAngkot() {
     useState<MapboxSearchLoadingState>(null);
   const [pickingMode, setPickingMode] = useState<PointType>("origin");
 
-  //  MAP REFS
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
@@ -60,38 +59,10 @@ export default function CariRuteAngkot() {
     null,
   );
 
-  /* =======================================================
-   * SEARCH BOX SESSION
-   *
-   * Satu session untuk origin.
-   * Satu session untuk destination.
-   * ===================================================== */
-
-  const originSession = useRef(crypto.randomUUID());
-
-  const destinationSession = useRef(crypto.randomUUID());
-
-  /* =======================================================
-   * SELECTING FLAG
-   *
-   * Mencegah onChange memicu suggest lagi
-   * ketika hasil retrieve sedang dimasukkan ke input.
-   * ===================================================== */
-
   const selectingOrigin = useRef(false);
-
   const selectingDestination = useRef(false);
 
-  /* =======================================================
-   * MAPBOX HOOK
-   * ===================================================== */
-
-  const { suggest, retrieve, reverse } = useMapbox();
-
-  /* =======================================================
-   * ROUTE SEARCH
-   * ===================================================== */
-
+  const { suggest, retrieve, reverse, resetSession } = useMapbox();
   const routeSearchParams =
     originCoords && destinationCoords
       ? {
@@ -110,10 +81,6 @@ export default function CariRuteAngkot() {
     refetch: searchRoute,
   } = useRouteSearch(routeSearchParams);
 
-  /* =======================================================
-   * MAP INITIALIZATION
-   * ===================================================== */
-
   useEffect(() => {
     if (!mapContainerRef.current) {
       return;
@@ -131,27 +98,14 @@ export default function CariRuteAngkot() {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
-
       // Center Malang
       center: [112.6214, -7.9839],
-
       zoom: 14,
-
       attributionControl: true,
     });
 
     mapRef.current = map;
-
-    /* =====================================================
-     * NAVIGATION CONTROL
-     * =================================================== */
-
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
-
-    /* =====================================================
-     * CENTER MARKER
-     * =================================================== */
-
     const marker = new mapboxgl.Marker({
       color: "#2563eb",
     })
@@ -159,10 +113,6 @@ export default function CariRuteAngkot() {
       .addTo(map);
 
     markerRef.current = marker;
-
-    /* =====================================================
-     * MARKER SELALU MENGIKUTI CENTER MAP
-     * =================================================== */
 
     const handleMapMove = () => {
       const center = map.getCenter();
@@ -172,17 +122,9 @@ export default function CariRuteAngkot() {
 
     map.on("move", handleMapMove);
 
-    /* =====================================================
-     * MAP LOAD
-     * =================================================== */
-
     map.on("load", () => {
       map.resize();
     });
-
-    /* =====================================================
-     * CLEANUP
-     * =================================================== */
 
     return () => {
       map.off("move", handleMapMove);
@@ -217,10 +159,6 @@ export default function CariRuteAngkot() {
       return `Lokasi (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
     }
   };
-
-  /* =======================================================
-   * MOVE MAP
-   * ===================================================== */
 
   const moveMapToLocation = (lat: number, lng: number) => {
     mapRef.current?.flyTo({
@@ -293,14 +231,6 @@ export default function CariRuteAngkot() {
     }
   };
 
-  /* =======================================================
-   * CONFIRM CENTER MAP LOCATION
-   *
-   * User menggeser map.
-   * Marker berada di tengah.
-   * Klik tombol -> center menjadi origin/destination.
-   * ===================================================== */
-
   const handleConfirmMapLocation = async () => {
     if (!mapRef.current) {
       alert("Peta belum siap.");
@@ -308,9 +238,7 @@ export default function CariRuteAngkot() {
     }
 
     const center = mapRef.current.getCenter();
-
     const lat = center.lat;
-
     const lng = center.lng;
 
     try {
@@ -379,18 +307,12 @@ export default function CariRuteAngkot() {
     suggestionTimeoutRef.current = setTimeout(async () => {
       try {
         setSearchLoading(type);
-        const session =
-          type === "origin"
-            ? originSession.current
-            : destinationSession.current;
 
         const center = mapRef.current?.getCenter();
-
         const proximity = center ? `${center.lng},${center.lat}` : undefined;
-
         const result = await suggest.mutateAsync({
           query: query.trim(),
-          sessionToken: session,
+          type,
           proximity,
         });
 
@@ -415,23 +337,20 @@ export default function CariRuteAngkot() {
     }, 300);
   };
 
-  //  RETRIEVE LOCATION
   const retrieveLocation = async (item: MapboxSuggestion, type: PointType) => {
     const selecting =
       type === "origin" ? selectingOrigin : selectingDestination;
 
     try {
       selecting.current = true;
+
       setSearchLoading(
         type === "origin" ? "retrieve-origin" : "retrieve-destination",
       );
 
-      const session =
-        type === "origin" ? originSession.current : destinationSession.current;
-
       const result = await retrieve.mutateAsync({
         mapboxId: item.mapbox_id,
-        sessionToken: session,
+        type,
       });
 
       const { coords, placeName } = result;
@@ -446,12 +365,15 @@ export default function CariRuteAngkot() {
         setDestinationCoords(coords);
         setDestinationSuggestions([]);
       }
+
       setActiveInput(null);
+
       moveMapToLocation(coords.lat, coords.lng);
     } catch (error) {
       console.error("Gagal mengambil detail lokasi:", error);
     } finally {
       setSearchLoading(null);
+
       setTimeout(() => {
         selecting.current = false;
       }, 100);
@@ -489,7 +411,7 @@ export default function CariRuteAngkot() {
     setOriginSuggestions([]);
     setActiveInput(null);
     setPickingMode("origin");
-    originSession.current = crypto.randomUUID();
+    resetSession("origin");
   };
 
   const handleClearDestination = () => {
@@ -499,7 +421,7 @@ export default function CariRuteAngkot() {
     setDestinationSuggestions([]);
     setActiveInput(null);
     setPickingMode("destination");
-    destinationSession.current = crypto.randomUUID();
+    resetSession("destination");
   };
 
   const handleQuickDestination = (label: string) => {
@@ -508,35 +430,23 @@ export default function CariRuteAngkot() {
   };
 
   const handleSearch = async () => {
-    if (!origin.trim()) {
-      alert("Lokasi penjemputan belum diisi.");
-      return;
-    }
+    const validation = validateRouteSearch({
+      origin,
+      destination,
+      originCoords,
+      destinationCoords,
+    });
 
-    if (!destination.trim()) {
-      alert("Lokasi tujuan belum diisi.");
-      return;
-    }
-
-    if (!originCoords) {
-      alert("Pilih lokasi penjemputan dari suggestion atau peta.");
-
-      return;
-    }
-
-    if (!destinationCoords) {
-      alert("Pilih lokasi tujuan dari suggestion atau peta.");
-
+    if (!validation.isValid) {
+      alert(validation.message);
       return;
     }
 
     try {
       const result = await searchRoute();
-
       console.log("Hasil pencarian rute:", result.data);
     } catch (error) {
       console.error("Gagal mencari rute:", error);
-
       alert("Gagal terhubung ke server.");
     }
   };
@@ -554,9 +464,7 @@ export default function CariRuteAngkot() {
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
       </div>
 
-      {/* ===================================================
-       * CENTER PIN
-       * ================================================= */}
+      {/* CENTER PIN */}
 
       <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
         <div
@@ -570,20 +478,12 @@ export default function CariRuteAngkot() {
         <div className="mx-auto mt-[-2px] h-2 w-2 rounded-full bg-black/30 blur-[2px]" />
       </div>
 
-      {/* ===================================================
-       * MAIN CONTAINER
-       * ================================================= */}
-
+      {/* MAIN CONTAINER */}
       <div className="pointer-events-none relative z-20 mx-auto flex h-full w-full max-w-md flex-col justify-between px-4 pb-4 pt-4 sm:px-5 sm:pt-6">
-        {/* =================================================
-         * TOP SECTION
-         * =============================================== */}
+        {/* TOP SECTION */}
 
         <div className="pointer-events-auto flex flex-col gap-3">
-          {/* ===============================================
-           * HEADER
-           * ============================================= */}
-
+          {/* HEADER */}
           <div className="flex items-center justify-between">
             <Button
               variant="icon"
@@ -600,15 +500,9 @@ export default function CariRuteAngkot() {
             <div className="w-9 sm:w-10" />
           </div>
 
-          {/* ===============================================
-           * SEARCH CARD
-           * ============================================= */}
-
+          {/* SEARCH CARD */}
           <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-[24px] sm:p-4">
-            {/* =============================================
-             * ORIGIN
-             * =========================================== */}
-
+            {/* ORIGIN */}
             <div className="relative">
               <div className="relative flex items-center">
                 <div className="absolute left-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[#0052cc]/10 text-[#003d9b] sm:h-8 sm:w-8">
@@ -624,7 +518,6 @@ export default function CariRuteAngkot() {
                 />
 
                 {/* Loading */}
-
                 {(searchLoading === "origin" ||
                   searchLoading === "retrieve-origin") && (
                   <span className="absolute right-9 text-[10px] text-black/40">
@@ -633,67 +526,32 @@ export default function CariRuteAngkot() {
                 )}
 
                 {/* Clear */}
-
                 {origin && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="inputClear"
+                    size="sm"
+                    icon={<FiX />}
                     onClick={handleClearOrigin}
-                    className="absolute right-2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
                     aria-label="Hapus lokasi penjemputan"
-                  >
-                    <FiX />
-                  </button>
+                  />
                 )}
               </div>
 
-              {/* ===========================================
-               * ORIGIN SUGGESTIONS
-               * ========================================= */}
-
-              {activeInput === "origin" && originSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl">
-                  {originSuggestions.map((item) => (
-                    <button
-                      key={item.mapbox_id}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-
-                        handleSelectSuggestion(item, "origin");
-                      }}
-                      className="flex w-full items-start gap-3 border-b border-gray-100 px-3 py-3 text-left hover:bg-blue-50"
-                    >
-                      <FiMapPin className="mt-0.5 shrink-0 text-[#003d9b]" />
-
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-medium text-gray-800">
-                          {item.name_preferred ?? item.name}
-                        </p>
-
-                        {item.place_formatted && (
-                          <p className="truncate text-[11px] text-gray-500">
-                            {item.place_formatted}
-                          </p>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+              {/* ORIGIN SUGGESTIONS */}
+              {activeInput === "origin" && (
+                <MapboxSuggestions
+                  suggestions={originSuggestions}
+                  onSelect={(item) => handleSelectSuggestion(item, "origin")}
+                />
               )}
             </div>
 
-            {/* =============================================
-             * CONNECTOR
-             * =========================================== */}
-
+            {/* CONNECTOR */}
             <div className="flex h-1.5 w-full pl-[22px] sm:pl-[28px]">
               <div className="h-full w-[2px] border-l-2 border-dashed border-[#c3c6d6]" />
             </div>
 
-            {/* =============================================
-             * DESTINATION
-             * =========================================== */}
-
+            {/* DESTINATION */}
             <div className="relative">
               <div className="relative flex items-center">
                 <div className="absolute left-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[#e7e7f2] text-[#434654] sm:h-8 sm:w-8">
@@ -709,7 +567,6 @@ export default function CariRuteAngkot() {
                 />
 
                 {/* Loading */}
-
                 {(searchLoading === "destination" ||
                   searchLoading === "retrieve-destination") && (
                   <span className="absolute right-9 text-[10px] text-black/40">
@@ -718,131 +575,71 @@ export default function CariRuteAngkot() {
                 )}
 
                 {/* Clear */}
-
                 {destination && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="inputClear"
+                    size="sm"
+                    icon={<FiX />}
                     onClick={handleClearDestination}
-                    className="absolute right-2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
                     aria-label="Hapus lokasi tujuan"
-                  >
-                    <FiX />
-                  </button>
+                  />
                 )}
               </div>
 
-              {/* ===========================================
-               * DESTINATION SUGGESTIONS
-               * ========================================= */}
-
-              {activeInput === "destination" &&
-                destinationSuggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl">
-                    {destinationSuggestions.map((item) => (
-                      <button
-                        key={item.mapbox_id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-
-                          handleSelectSuggestion(item, "destination");
-                        }}
-                        className="flex w-full items-start gap-3 border-b border-gray-100 px-3 py-3 text-left hover:bg-blue-50"
-                      >
-                        <FiMapPin className="mt-0.5 shrink-0 text-[#003d9b]" />
-
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-medium text-gray-800">
-                            {item.name_preferred ?? item.name}
-                          </p>
-
-                          {item.place_formatted && (
-                            <p className="truncate text-[11px] text-gray-500">
-                              {item.place_formatted}
-                            </p>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+              {/* DESTINATION SUGGESTIONS */}
+              {activeInput === "destination" && (
+                <MapboxSuggestions
+                  suggestions={destinationSuggestions}
+                  onSelect={(item) =>
+                    handleSelectSuggestion(item, "destination")
+                  }
+                />
+              )}
             </div>
 
-            {/* =============================================
-             * QUICK DESTINATION
-             * =========================================== */}
+            {/* QUICK DESTINATION */}
+            <QuickDestination
+              items={quickDestinations}
+              onSelect={handleQuickDestination}
+            />
 
-            <div className="flex gap-1.5 overflow-x-auto pt-1 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <button
-                type="button"
-                onClick={() => handleQuickDestination("Alun-Alun Malang")}
-                className="flex shrink-0 items-center gap-1 rounded-lg bg-[#ededf8] px-2.5 py-1 text-[11px] font-medium text-[#434654]"
-              >
-                <FiClock className="text-[#003d9b]" />
-                Alun-Alun
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDestination("Universitas Brawijaya")}
-                className="flex shrink-0 items-center gap-1 rounded-lg bg-[#ededf8] px-2.5 py-1 text-[11px] font-medium text-[#434654]"
-              >
-                <FiStar className="text-amber-500" />
-                Kampus UB
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDestination("Malang Town Square")}
-                className="flex shrink-0 items-center gap-1 rounded-lg bg-[#ededf8] px-2.5 py-1 text-[11px] font-medium text-[#434654]"
-              >
-                <FiStar className="text-amber-500" />
-                Matos
-              </button>
-            </div>
-
-            {/* =============================================
-             * CURRENT LOCATION
-             * =========================================== */}
-
-            <button
-              type="button"
+            {/* CURRENT LOCATION */}
+            <Button
+              variant="textAction"
+              size="sm"
               onClick={handleResetToGPS}
-              disabled={isLocating}
-              className="mt-1 flex items-center justify-center gap-2 rounded-lg py-2 text-[11px] font-semibold text-[#003d9b] hover:bg-blue-50 disabled:opacity-50"
+              isLoading={isLocating}
+              loadingText="Mendeteksi lokasi..."
+              icon={
+                <FiNavigation className={isLocating ? "animate-pulse" : ""} />
+              }
             >
-              <FiNavigation className={isLocating ? "animate-pulse" : ""} />
-
-              {isLocating
-                ? "Mendeteksi lokasi..."
-                : "Gunakan lokasi saya saat ini"}
-            </button>
+              Gunakan lokasi saya saat ini
+            </Button>
           </div>
         </div>
 
-        {/* =================================================
-         * BOTTOM ACTION
-         * =============================================== */}
-
+        {/* BOTTOM ACTION */}
         <div className="pointer-events-auto space-y-2 pb-1">
-          <button
-            type="button"
+          <Button
+            variant="mapAction"
+            size="md"
+            icon={<FiMapPin />}
             onClick={handleConfirmMapLocation}
             disabled={
               searchLoading === "retrieve-origin" ||
               searchLoading === "retrieve-destination"
             }
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/80 bg-white/95 px-5 py-3 text-sm font-bold text-[#003d9b] shadow-xl backdrop-blur-md hover:bg-white active:scale-[0.98] disabled:opacity-50"
+            isLoading={
+              searchLoading === "retrieve-origin" ||
+              searchLoading === "retrieve-destination"
+            }
+            loadingText="Mengambil lokasi..."
           >
-            <FiMapPin />
-
-            {searchLoading === "retrieve-origin" ||
-            searchLoading === "retrieve-destination"
-              ? "Mengambil lokasi..."
-              : pickingMode === "origin"
-                ? "Tetapkan Titik Penjemputan"
-                : "Tetapkan Titik Tujuan"}
-          </button>
+            {pickingMode === "origin"
+              ? "Tetapkan Titik Penjemputan"
+              : "Tetapkan Titik Tujuan"}
+          </Button>
 
           <Button
             variant="primary"
