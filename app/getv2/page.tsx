@@ -1,36 +1,58 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FiArrowLeft, FiMapPin, FiNavigation } from "react-icons/fi";
+
 import mapboxgl from "mapbox-gl";
+import { useQueryClient } from "@tanstack/react-query";
+import { FiArrowLeft, FiMapPin, FiNavigation } from "react-icons/fi";
+
 import "mapbox-gl/dist/mapbox-gl.css";
+
+// Hooks
 import {
   useRouteSearch,
   useUpcomingVehicles,
 } from "@/hooks/routes/useRouteSearch";
-import Button from "@/components/ui/Button";
-import GpsPermissionModal from "@/components/search-routev2/skenario1/GpsPermissionModal";
-import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
 import { useMapbox } from "@/hooks/useMapbox";
+
+// Services
+import { getUpcomingVehicles } from "@/services/routes/route-route.service";
+
+// Components
+import Button from "@/components/ui/Button";
+
+import GpsPermissionModal from "@/components/search-routev2/skenario1/GpsPermissionModal";
+import QuickDestination from "@/components/search-routev2/skenario1/QuickDestination";
+import LocationInput from "@/components/search-routev2/skenario1/LocationInput";
+import LocationConnector from "@/components/search-routev2/skenario1/LocationConnector";
+
+import UpcomingVehicleList from "@/components/search-routev2/skenario2/UpcomingVehicleList";
+import VehicleMarkers from "@/components/search-routev2/skenario2/VehicleMarkers";
+
+// Data
+import { quickDestinations } from "@/components/search-routev2/skenario1/data";
+import { dummyUpcomingVehicles } from "./data";
+
+// Utils
+import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
+import { validateRouteSearch } from "@/components/search-routev2/skenario1/outeValidation";
+
+// Types
 import {
   Coordinates,
   MapboxSearchLoadingState,
   MapboxSuggestion,
   PointType,
 } from "@/types/mapbox.type";
-import QuickDestination from "@/components/search-routev2/skenario1/QuickDestination";
-import { quickDestinations } from "@/components/search-routev2/skenario1/data";
-import { validateRouteSearch } from "@/components/search-routev2/skenario1/outeValidation";
-import LocationInput from "@/components/search-routev2/skenario1/LocationInput";
-import LocationConnector from "@/components/search-routev2/skenario1/LocationConnector";
+import { UpcomingVehiclesResponse } from "@/types/route-search.type";
+
 type ActiveInputState = PointType | null;
-import { useQueryClient } from "@tanstack/react-query";
-import { getUpcomingVehicles } from "@/services/routes/route-route.service";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 mapboxgl.accessToken = MAPBOX_TOKEN || "";
 
 export default function CariRuteAngkot() {
+  const [scenario, setScenario] = useState<1 | 2>(2);
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [originCoords, setOriginCoords] = useState<Coordinates | null>(null);
@@ -63,6 +85,8 @@ export default function CariRuteAngkot() {
   const suggestionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+
+  const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
 
   const selectingOrigin = useRef(false);
   const selectingDestination = useRef(false);
@@ -104,6 +128,11 @@ export default function CariRuteAngkot() {
     error: upcomingVehiclesError,
   } = useUpcomingVehicles(upcomingVehiclesParams);
 
+  const upcomingVehiclesResult =
+    dummyUpcomingVehicles as UpcomingVehiclesResponse;
+
+  const vehicles = upcomingVehiclesResult.vehicles;
+
   useEffect(() => {
     if (!mapContainerRef.current) {
       return;
@@ -121,14 +150,16 @@ export default function CariRuteAngkot() {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      // Center Malang
       center: [112.6214, -7.9839],
       zoom: 14,
       attributionControl: true,
     });
 
     mapRef.current = map;
+    setMapInstance(map);
+
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
     const marker = new mapboxgl.Marker({
       color: "#2563eb",
     })
@@ -145,22 +176,25 @@ export default function CariRuteAngkot() {
 
     map.on("move", handleMapMove);
 
-    map.on("load", () => {
+    const handleMapLoad = () => {
       map.resize();
-    });
+    };
+
+    map.on("load", handleMapLoad);
 
     return () => {
       map.off("move", handleMapMove);
+      map.off("load", handleMapLoad);
 
       marker.remove();
-
       map.remove();
 
       mapRef.current = null;
       markerRef.current = null;
+
+      setMapInstance(null);
     };
   }, []);
-
   /* =======================================================
    * GET PLACE NAME
    *
@@ -489,6 +523,7 @@ export default function CariRuteAngkot() {
         routeId: firstRoute.routeId,
         direction: firstRoute.direction,
       });
+      setScenario(2);
     } catch (error) {
       console.error("Gagal mencari rute:", error);
       alert("Gagal terhubung ke server.");
@@ -506,6 +541,7 @@ export default function CariRuteAngkot() {
 
       <div className="absolute inset-0 z-0">
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+        <VehicleMarkers map={mapInstance} vehicles={vehicles} />
       </div>
 
       {/* CENTER PIN */}
@@ -601,39 +637,42 @@ export default function CariRuteAngkot() {
           </div>
         </div>
 
-        {/* BOTTOM ACTION */}
-        <div className="pointer-events-auto space-y-2 pb-1">
-          <Button
-            variant="mapAction"
-            size="md"
-            icon={<FiMapPin />}
-            onClick={handleConfirmMapLocation}
-            disabled={
-              searchLoading === "retrieve-origin" ||
-              searchLoading === "retrieve-destination"
-            }
-            isLoading={
-              searchLoading === "retrieve-origin" ||
-              searchLoading === "retrieve-destination"
-            }
-            loadingText="Mengambil lokasi..."
-          >
-            {pickingMode === "origin"
-              ? "Tetapkan Titik Penjemputan"
-              : "Tetapkan Titik Tujuan"}
-          </Button>
+        {scenario === 1 ? (
+          <div className="pointer-events-auto space-y-2 pb-1">
+            <Button
+              variant="mapAction"
+              size="md"
+              icon={<FiMapPin />}
+              onClick={handleConfirmMapLocation}
+              disabled={
+                searchLoading === "retrieve-origin" ||
+                searchLoading === "retrieve-destination"
+              }
+              isLoading={
+                searchLoading === "retrieve-origin" ||
+                searchLoading === "retrieve-destination"
+              }
+              loadingText="Mengambil lokasi..."
+            >
+              {pickingMode === "origin"
+                ? "Tetapkan Titik Penjemputan"
+                : "Tetapkan Titik Tujuan"}
+            </Button>
 
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<FiNavigation className="rotate-90" />}
-            className="w-full"
-            onClick={handleSearch}
-            disabled={isSearchingRoute || !originCoords || !destinationCoords}
-          >
-            {isSearchingRoute ? "Mencari rute..." : "Cari Angkot"}
-          </Button>
-        </div>
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<FiNavigation className="rotate-90" />}
+              className="w-full"
+              onClick={handleSearch}
+              disabled={isSearchingRoute || !originCoords || !destinationCoords}
+            >
+              {isSearchingRoute ? "Mencari rute..." : "Cari Angkot"}
+            </Button>
+          </div>
+        ) : (
+          <UpcomingVehicleList upcomingVehicles={dummyUpcomingVehicles.vehicles} />
+        )}
       </div>
     </div>
   );
