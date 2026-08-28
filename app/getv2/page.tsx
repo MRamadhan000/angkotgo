@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  FiArrowLeft,
-  FiMapPin,
-  FiNavigation,
-} from "react-icons/fi";
+import { FiArrowLeft, FiMapPin, FiNavigation } from "react-icons/fi";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useRouteSearch } from "@/hooks/routes/useRouteSearch";
+import {
+  useRouteSearch,
+  useUpcomingVehicles,
+} from "@/hooks/routes/useRouteSearch";
 import Button from "@/components/ui/Button";
 import GpsPermissionModal from "@/components/search-routev2/skenario1/GpsPermissionModal";
 import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
@@ -25,6 +24,8 @@ import { validateRouteSearch } from "@/components/search-routev2/skenario1/outeV
 import LocationInput from "@/components/search-routev2/skenario1/LocationInput";
 import LocationConnector from "@/components/search-routev2/skenario1/LocationConnector";
 type ActiveInputState = PointType | null;
+import { useQueryClient } from "@tanstack/react-query";
+import { getUpcomingVehicles } from "@/services/routes/route-route.service";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 mapboxgl.accessToken = MAPBOX_TOKEN || "";
@@ -33,7 +34,7 @@ export default function CariRuteAngkot() {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [originCoords, setOriginCoords] = useState<Coordinates | null>(null);
-
+  const queryClient = useQueryClient();
   const [destinationCoords, setDestinationCoords] =
     useState<Coordinates | null>(null);
 
@@ -43,6 +44,11 @@ export default function CariRuteAngkot() {
   const [destinationSuggestions, setDestinationSuggestions] = useState<
     MapboxSuggestion[]
   >([]);
+
+  const [selectedRoute, setSelectedRoute] = useState<{
+    routeId: number;
+    direction: "FORWARD" | "BACKWARD";
+  } | null>(null);
 
   const [activeInput, setActiveInput] = useState<ActiveInputState>(null);
   const [showGpsModal, setShowGpsModal] = useState(true);
@@ -62,6 +68,7 @@ export default function CariRuteAngkot() {
   const selectingDestination = useRef(false);
 
   const { suggest, retrieve, reverse, resetSession } = useMapbox();
+
   const routeSearchParams =
     originCoords && destinationCoords
       ? {
@@ -79,6 +86,23 @@ export default function CariRuteAngkot() {
     error: routeSearchError,
     refetch: searchRoute,
   } = useRouteSearch(routeSearchParams);
+
+  const upcomingVehiclesParams =
+    selectedRoute && originCoords
+      ? {
+          routeId: selectedRoute.routeId,
+          direction: selectedRoute.direction,
+          latitude: originCoords.lat,
+          longitude: originCoords.lng,
+        }
+      : null;
+
+  const {
+    data: upcomingVehicles,
+    isFetching: isLoadingUpcomingVehicles,
+    isError: isUpcomingVehiclesError,
+    error: upcomingVehiclesError,
+  } = useUpcomingVehicles(upcomingVehiclesParams);
 
   useEffect(() => {
     if (!mapContainerRef.current) {
@@ -443,7 +467,28 @@ export default function CariRuteAngkot() {
 
     try {
       const result = await searchRoute();
-      console.log("Hasil pencarian rute:", result.data);
+      const firstRoute = result.data?.[0];
+      if (!firstRoute) {
+        alert("Rute tidak ditemukan.");
+        return;
+      }
+
+      const params = {
+        routeId: firstRoute.routeId,
+        direction: firstRoute.direction,
+        latitude: originCoords!.lat,
+        longitude: originCoords!.lng,
+      };
+
+      const upcomingVehicles = await queryClient.fetchQuery({
+        queryKey: ["upcoming-vehicles", params],
+        queryFn: () => getUpcomingVehicles(params),
+      });
+
+      setSelectedRoute({
+        routeId: firstRoute.routeId,
+        direction: firstRoute.direction,
+      });
     } catch (error) {
       console.error("Gagal mencari rute:", error);
       alert("Gagal terhubung ke server.");
