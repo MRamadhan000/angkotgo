@@ -49,11 +49,17 @@ import {
 } from "@/types/mapbox.type";
 import { UpcomingVehiclesResponse } from "@/types/route-search.type";
 import { routePathService } from "@/services/routes/route-path.service";
+import LocationSummary from "@/components/search-routev2/skenario2/LocationSummary";
 
 type ActiveInputState = PointType | null;
+type SheetSnap = "peek" | "full";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 mapboxgl.accessToken = MAPBOX_TOKEN || "";
+
+const SHEET_TOP_PEEK = 68; // posisi "mengecil" -> sheet cuma nongol sedikit dari bawah
+const SHEET_TOP_FULL = 10; // posisi "penuh" -> sheet naik hampir ke atas, nutup form
+const SHEET_OVERDRAG_LIMIT = SHEET_TOP_PEEK + 12; // batas elastis kalau ditarik turun berlebihan
 
 export default function CariRuteAngkot() {
   const [scenario, setScenario] = useState<1 | 2>(1);
@@ -67,6 +73,7 @@ export default function CariRuteAngkot() {
   const [originSuggestions, setOriginSuggestions] = useState<
     MapboxSuggestion[]
   >([]);
+
   const [destinationSuggestions, setDestinationSuggestions] = useState<
     MapboxSuggestion[]
   >([]);
@@ -82,6 +89,14 @@ export default function CariRuteAngkot() {
   const [searchLoading, setSearchLoading] =
     useState<MapboxSearchLoadingState>(null);
   const [pickingMode, setPickingMode] = useState<PointType>("origin");
+
+  // ==== Bottom sheet state ====
+  const [sheetTop, setSheetTop] = useState(SHEET_TOP_PEEK);
+  const [sheetSnapped, setSheetSnapped] = useState<SheetSnap>("peek");
+  const [isSheetTransitioning, setIsSheetTransitioning] = useState(true);
+  const isDraggingSheetRef = useRef(false);
+  const dragStartYRef = useRef(0);
+  const dragStartTopRef = useRef(SHEET_TOP_PEEK);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -208,6 +223,75 @@ export default function CariRuteAngkot() {
       setMapInstance(null);
     };
   }, []);
+
+  // Reset posisi sheet tiap kali masuk scenario 2 (habis klik "Cari Angkot")
+  useEffect(() => {
+    if (scenario === 2) {
+      setIsSheetTransitioning(true);
+      setSheetTop(SHEET_TOP_PEEK);
+      setSheetSnapped("peek");
+    }
+  }, [scenario]);
+
+  /* =======================================================
+   * BOTTOM SHEET DRAG HANDLERS
+   * ===================================================== */
+
+  const handleSheetPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingSheetRef.current = true;
+    dragStartYRef.current = e.clientY;
+    dragStartTopRef.current = sheetTop;
+    setIsSheetTransitioning(false);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handleSheetPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingSheetRef.current) return;
+
+    const deltaYPx = e.clientY - dragStartYRef.current;
+    const deltaVh = (deltaYPx / window.innerHeight) * 100;
+
+    let newTop = dragStartTopRef.current + deltaVh;
+    newTop = Math.min(Math.max(newTop, SHEET_TOP_FULL), SHEET_OVERDRAG_LIMIT);
+
+    setSheetTop(newTop);
+  };
+
+  const handleSheetPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingSheetRef.current) return;
+    isDraggingSheetRef.current = false;
+
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore kalau capture sudah lepas duluan
+    }
+
+    setIsSheetTransitioning(true);
+
+    const midpoint = (SHEET_TOP_PEEK + SHEET_TOP_FULL) / 2;
+
+    if (sheetTop < midpoint) {
+      setSheetTop(SHEET_TOP_FULL);
+      setSheetSnapped("full");
+    } else {
+      setSheetTop(SHEET_TOP_PEEK);
+      setSheetSnapped("peek");
+    }
+  };
+
+  // 1 = form sepenuhnya kelihatan (sheet posisi peek), 0 = form ke-hide penuh (sheet posisi full)
+  const topSectionProgress =
+    scenario === 2
+      ? Math.min(
+          Math.max(
+            (sheetTop - SHEET_TOP_FULL) / (SHEET_TOP_PEEK - SHEET_TOP_FULL),
+            0,
+          ),
+          1,
+        )
+      : 1;
+
   /* =======================================================
    * GET PLACE NAME
    *
@@ -567,144 +651,194 @@ export default function CariRuteAngkot() {
         onSkip={handleSkipGps}
       />
 
+      {/* BACKGROUND: peta selalu paling belakang */}
       <div className="absolute inset-0 z-0">
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
         <RoutePathLine map={mapInstance} routePaths={routePaths ?? []} />
         <VehicleMarkers map={mapInstance} vehicles={vehicles} />
       </div>
 
-      {/* CENTER PIN */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-full border-4 border-white shadow-xl ${
-            pickingMode === "origin" ? "bg-blue-600" : "bg-rose-600"
-          }`}
-        >
-          <FiMapPin className="text-xl text-white" />
+      {/* CENTER PIN - hanya relevan saat scenario 1 (memilih titik di map) */}
+      {scenario === 1 && (
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-full border-4 border-white shadow-xl ${
+              pickingMode === "origin" ? "bg-blue-600" : "bg-rose-600"
+            }`}
+          >
+            <FiMapPin className="text-xl text-white" />
+          </div>
+
+          <div className="mx-auto mt-[-2px] h-2 w-2 rounded-full bg-black/30 blur-[2px]" />
+        </div>
+      )}
+
+      {/* TOP SECTION: header + search card. Fade/hide mengikuti posisi bottom sheet */}
+      <div
+        className="pointer-events-auto absolute inset-x-0 top-0 z-20 mx-auto flex w-full max-w-md flex-col gap-3 px-4 pt-4 sm:px-5 sm:pt-6"
+        style={{
+          opacity: topSectionProgress,
+          transform: `translateY(${(1 - topSectionProgress) * -16}px)`,
+          pointerEvents: topSectionProgress < 0.4 ? "none" : "auto",
+          transition: isSheetTransitioning
+            ? "opacity 300ms ease-out, transform 300ms ease-out"
+            : "none",
+        }}
+      >
+        {/* HEADER */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="icon"
+            size="lg"
+            icon={<FiArrowLeft />}
+            onClick={() => window.history.back()}
+            aria-label="Kembali"
+          />
+
+          <h1 className="text-base font-bold tracking-tight text-[#003d9b] sm:text-lg">
+            Cari Rute Angkot
+          </h1>
+          <div className="w-9 sm:w-10" />
         </div>
 
-        <div className="mx-auto mt-[-2px] h-2 w-2 rounded-full bg-black/30 blur-[2px]" />
+        {/* SEARCH CARD */}
+        <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-[24px] sm:p-4">
+          {scenario === 1 ? (
+            <>
+              <LocationInput
+                type="origin"
+                value={origin}
+                suggestions={originSuggestions}
+                isActive={activeInput === "origin"}
+                isLoading={
+                  searchLoading === "origin" ||
+                  searchLoading === "retrieve-origin"
+                }
+                onChange={handleOriginChange}
+                onFocus={() => setActiveInput("origin")}
+                onClear={handleClearOrigin}
+                onSelectSuggestion={(item) =>
+                  handleSelectSuggestion(item, "origin")
+                }
+              />
+
+              <LocationConnector />
+
+              <LocationInput
+                type="destination"
+                value={destination}
+                suggestions={destinationSuggestions}
+                isActive={activeInput === "destination"}
+                isLoading={
+                  searchLoading === "destination" ||
+                  searchLoading === "retrieve-destination"
+                }
+                onChange={handleDestinationChange}
+                onFocus={() => setActiveInput("destination")}
+                onClear={handleClearDestination}
+                onSelectSuggestion={(item) =>
+                  handleSelectSuggestion(item, "destination")
+                }
+              />
+
+              {/* QUICK DESTINATION */}
+              <QuickDestination
+                items={quickDestinations}
+                onSelect={handleQuickDestination}
+              />
+
+              {/* CURRENT LOCATION */}
+              <Button
+                variant="textAction"
+                size="sm"
+                onClick={handleResetToGPS}
+                isLoading={isLocating}
+                loadingText="Mendeteksi lokasi..."
+                icon={
+                  <FiNavigation className={isLocating ? "animate-pulse" : ""} />
+                }
+              >
+                Gunakan lokasi saya saat ini
+              </Button>
+            </>
+          ) : (
+            <LocationSummary
+              origin={origin}
+              destination={destination}
+              onEdit={() => {
+                // balik ke scenario 1 buat edit ulang origin/destination
+                setScenario(1);
+                setSelectedRoute(null);
+              }}
+            />
+          )}
+        </div>
       </div>
 
-      {/* MAIN CONTAINER */}
-      <div className="pointer-events-none relative z-20 mx-auto flex h-full w-full max-w-md flex-col justify-between px-4 pb-4 pt-4 sm:px-5 sm:pt-6">
-        {/* TOP SECTION */}
-        <div className="pointer-events-auto flex flex-col gap-3">
-          {/* HEADER */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="icon"
-              size="lg"
-              icon={<FiArrowLeft />}
-              onClick={() => window.history.back()}
-              aria-label="Kembali"
-            />
+      {/* BOTTOM AREA */}
+      {scenario === 1 ? (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md space-y-2 px-4 pb-4 sm:px-5">
+          <Button
+            variant="mapAction"
+            size="md"
+            icon={<FiMapPin />}
+            onClick={handleConfirmMapLocation}
+            disabled={
+              searchLoading === "retrieve-origin" ||
+              searchLoading === "retrieve-destination"
+            }
+            isLoading={
+              searchLoading === "retrieve-origin" ||
+              searchLoading === "retrieve-destination"
+            }
+            loadingText="Mengambil lokasi..."
+          >
+            {pickingMode === "origin"
+              ? "Tetapkan Titik Penjemputan"
+              : "Tetapkan Titik Tujuan"}
+          </Button>
 
-            <h1 className="text-base font-bold tracking-tight text-[#003d9b] sm:text-lg">
-              Cari Rute Angkot
-            </h1>
-            <div className="w-9 sm:w-10" />
-          </div>
-
-          {/* SEARCH CARD */}
-          <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-[24px] sm:p-4">
-            <LocationInput
-              type="origin"
-              value={origin}
-              suggestions={originSuggestions}
-              isActive={activeInput === "origin"}
-              isLoading={
-                searchLoading === "origin" ||
-                searchLoading === "retrieve-origin"
-              }
-              onChange={handleOriginChange}
-              onFocus={() => setActiveInput("origin")}
-              onClear={handleClearOrigin}
-              onSelectSuggestion={(item) =>
-                handleSelectSuggestion(item, "origin")
-              }
-            />
-
-            <LocationConnector />
-
-            <LocationInput
-              type="destination"
-              value={destination}
-              suggestions={destinationSuggestions}
-              isActive={activeInput === "destination"}
-              isLoading={
-                searchLoading === "destination" ||
-                searchLoading === "retrieve-destination"
-              }
-              onChange={handleDestinationChange}
-              onFocus={() => setActiveInput("destination")}
-              onClear={handleClearDestination}
-              onSelectSuggestion={(item) =>
-                handleSelectSuggestion(item, "destination")
-              }
-            />
-
-            {/* QUICK DESTINATION */}
-            <QuickDestination
-              items={quickDestinations}
-              onSelect={handleQuickDestination}
-            />
-
-            {/* CURRENT LOCATION */}
-            <Button
-              variant="textAction"
-              size="sm"
-              onClick={handleResetToGPS}
-              isLoading={isLocating}
-              loadingText="Mendeteksi lokasi..."
-              icon={
-                <FiNavigation className={isLocating ? "animate-pulse" : ""} />
-              }
-            >
-              Gunakan lokasi saya saat ini
-            </Button>
-          </div>
-        </div>
-
-        {scenario === 1 ? (
-          <div className="pointer-events-auto space-y-2 pb-1">
-            <Button
-              variant="mapAction"
-              size="md"
-              icon={<FiMapPin />}
-              onClick={handleConfirmMapLocation}
-              disabled={
-                searchLoading === "retrieve-origin" ||
-                searchLoading === "retrieve-destination"
-              }
-              isLoading={
-                searchLoading === "retrieve-origin" ||
-                searchLoading === "retrieve-destination"
-              }
-              loadingText="Mengambil lokasi..."
-            >
-              {pickingMode === "origin"
-                ? "Tetapkan Titik Penjemputan"
-                : "Tetapkan Titik Tujuan"}
-            </Button>
-
+          {originCoords && destinationCoords && (
             <Button
               variant="primary"
               size="lg"
               icon={<FiNavigation className="rotate-90" />}
               className="w-full"
               onClick={handleSearch}
-              disabled={isSearchingRoute || !originCoords || !destinationCoords}
+              disabled={isSearchingRoute}
             >
               {isSearchingRoute ? "Mencari rute..." : "Cari Angkot"}
             </Button>
+          )}
+        </div>
+      ) : (
+        /* ===== DRAGGABLE BOTTOM SHEET: daftar kendaraan ===== */
+        <div
+          className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-[#faf8ff]/95 shadow-[0_-8px_30px_rgba(0,0,0,0.15)] backdrop-blur-md"
+          style={{
+            top: `${sheetTop}vh`,
+            transition: isSheetTransitioning ? "top 300ms ease-out" : "none",
+          }}
+        >
+          {/* Handle drag */}
+          <div
+            className="flex shrink-0 cursor-grab touch-none items-center justify-center py-2.5 active:cursor-grabbing"
+            onPointerDown={handleSheetPointerDown}
+            onPointerMove={handleSheetPointerMove}
+            onPointerUp={handleSheetPointerUp}
+            onPointerCancel={handleSheetPointerUp}
+          >
+            <div className="h-1.5 w-10 rounded-full bg-[#c3c6d6]" />
           </div>
-        ) : (
-          <UpcomingVehicleList
-            upcomingVehicles={dummyUpcomingVehicles.vehicles}
-          />
-        )}
-      </div>
+
+          {/* Konten scrollable */}
+          <div className="min-h-0 flex-1">
+            <UpcomingVehicleList
+              upcomingVehicles={dummyUpcomingVehicles.vehicles}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

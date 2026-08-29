@@ -12,9 +12,9 @@ export default function UpcomingVehicleList({
   upcomingVehicles: vehicles,
 }: UpcomingVehicleListProps) {
   return (
-    <div className="pointer-events-auto w-full shrink-0 rounded-t-[24px] bg-[#faf8ff]/95 p-4 shadow-2xl backdrop-blur-md">
-      {/* HEADER */}
-      <div className="mb-3 flex items-center justify-between">
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {/* HEADER - tetap kelihatan, gak ikut scroll */}
+      <div className="flex shrink-0 items-center justify-between px-4 pb-3">
         <div>
           <h2 className="text-sm font-bold text-[#191b23]">
             Angkot yang tersedia
@@ -30,15 +30,15 @@ export default function UpcomingVehicleList({
         </div>
       </div>
 
-      {/* VEHICLES */}
+      {/* VEHICLES - satu-satunya area yang scroll */}
       {vehicles.length > 0 ? (
-        <div className="max-h-[45vh] min-h-0 space-y-2.5 overflow-y-auto overscroll-contain pr-1">
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-4 pb-4">
           {vehicles.map((vehicle) => (
             <UpcomingVehicleCard key={vehicle.assignmentId} vehicle={vehicle} />
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-2xl bg-white px-5 py-8 text-center">
+        <div className="mx-4 mb-4 flex flex-col items-center justify-center rounded-2xl bg-white px-5 py-8 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#003d9b]/10 text-[#003d9b]">
             <FiNavigation className="text-xl" />
           </div>

@@ -33,9 +33,7 @@ export default function LocationInput({
 }: LocationInputProps) {
   const isOrigin = type === "origin";
 
-  const placeholder = isOrigin
-    ? "Lokasi Penjemputan"
-    : "Lokasi Tujuan";
+  const placeholder = isOrigin ? "Lokasi Penjemputan" : "Lokasi Tujuan";
 
   const clearLabel = isOrigin
     ? "Hapus lokasi penjemputan"
@@ -46,7 +44,7 @@ export default function LocationInput({
       <div className="relative flex items-center">
         {/* Input Icon */}
         <div
-          className={`absolute left-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full sm:h-8 sm:w-8 ${
+          className={`absolute left-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-xs sm:left-2.5 sm:h-8 sm:w-8 sm:text-sm ${
             isOrigin
               ? "bg-[#0052cc]/10 text-[#003d9b]"
               : "bg-[#e7e7f2] text-[#434654]"
@@ -58,7 +56,7 @@ export default function LocationInput({
         {/* Input */}
         <input
           type="text"
-          className="h-11 w-full truncate rounded-xl border border-[#c3c6d6] bg-[#faf8ff] pl-11 pr-10 text-xs outline-none focus:border-[#003d9b] focus:ring-2 focus:ring-[#003d9b]/20 sm:h-12 sm:pl-12 sm:text-sm"
+          className="h-9 w-full truncate rounded-lg border border-[#c3c6d6] bg-[#faf8ff] pl-9 pr-8 text-[11px] outline-none focus:border-[#003d9b] focus:ring-2 focus:ring-[#003d9b]/20 sm:h-12 sm:rounded-xl sm:pl-12 sm:pr-10 sm:text-sm"
           placeholder={placeholder}
           value={value}
           onFocus={onFocus}
@@ -67,7 +65,7 @@ export default function LocationInput({
 
         {/* Loading */}
         {isLoading && (
-          <span className="absolute right-9 text-[10px] text-black/40">
+          <span className="absolute right-7 text-[9px] text-black/40 sm:right-9 sm:text-[10px]">
             ...
           </span>
         )}
