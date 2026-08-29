@@ -18,7 +18,7 @@ export function useRouteSearch(params: SearchRoutesParams | null) {
 
       return searchRoutes(params);
     },
-    enabled: !!params,
+    enabled: false, // ubah dari !!params -> false, biar cuma jalan lewat refetch()
   });
 }
 
