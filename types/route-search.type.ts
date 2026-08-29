@@ -1,3 +1,5 @@
+import type { DirectionType } from "@/types/vehicles/vehicle.type";
+
 export interface WalkingInfo {
   distance: number;
   duration: number;
@@ -48,7 +50,7 @@ export interface UpcomingVehicle {
 
 export interface UpcomingVehiclesParams {
   routeId: number;
-  direction: "FORWARD" | "BACKWARD";
+  direction: DirectionType;
   latitude: number;
   longitude: number;
 }

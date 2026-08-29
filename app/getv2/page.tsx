@@ -7,12 +7,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FiArrowLeft, FiMapPin, FiNavigation } from "react-icons/fi";
 
 import "mapbox-gl/dist/mapbox-gl.css";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 
 // Hooks
 import {
   useRouteSearch,
   useUpcomingVehicles,
 } from "@/hooks/routes/useRouteSearch";
+import { routePathKeys, useRoutePaths } from "@/hooks/routes/useRoutePath";
 import { useMapbox } from "@/hooks/useMapbox";
 
 // Services
@@ -28,6 +30,7 @@ import LocationConnector from "@/components/search-routev2/skenario1/LocationCon
 
 import UpcomingVehicleList from "@/components/search-routev2/skenario2/UpcomingVehicleList";
 import VehicleMarkers from "@/components/search-routev2/skenario2/VehicleMarkers";
+import RoutePathLine from "@/components/search-routev2/skenario2/RoutePathLine";
 
 // Data
 import { quickDestinations } from "@/components/search-routev2/skenario1/data";
@@ -45,6 +48,7 @@ import {
   PointType,
 } from "@/types/mapbox.type";
 import { UpcomingVehiclesResponse } from "@/types/route-search.type";
+import { routePathService } from "@/services/routes/route-path.service";
 
 type ActiveInputState = PointType | null;
 
@@ -52,7 +56,7 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 mapboxgl.accessToken = MAPBOX_TOKEN || "";
 
 export default function CariRuteAngkot() {
-  const [scenario, setScenario] = useState<1 | 2>(2);
+  const [scenario, setScenario] = useState<1 | 2>(1);
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [originCoords, setOriginCoords] = useState<Coordinates | null>(null);
@@ -69,7 +73,7 @@ export default function CariRuteAngkot() {
 
   const [selectedRoute, setSelectedRoute] = useState<{
     routeId: number;
-    direction: "FORWARD" | "BACKWARD";
+    direction: DirectionType;
   } | null>(null);
 
   const [activeInput, setActiveInput] = useState<ActiveInputState>(null);
@@ -127,6 +131,15 @@ export default function CariRuteAngkot() {
     isError: isUpcomingVehiclesError,
     error: upcomingVehiclesError,
   } = useUpcomingVehicles(upcomingVehiclesParams);
+
+  const {
+    data: routePaths,
+    isFetching: isLoadingRoutePath,
+    isError: isRoutePathError,
+  } = useRoutePaths(
+    selectedRoute?.routeId ?? 0,
+    selectedRoute?.direction ?? DirectionType.FORWARD,
+  );
 
   const upcomingVehiclesResult =
     dummyUpcomingVehicles as UpcomingVehiclesResponse;
@@ -507,22 +520,37 @@ export default function CariRuteAngkot() {
         return;
       }
 
-      const params = {
-        routeId: firstRoute.routeId,
-        direction: firstRoute.direction,
+      const routeId = firstRoute.routeId;
+      const direction = firstRoute.direction as DirectionType;
+
+      // 2. Upcoming vehicles
+      const vehicleParams = {
+        routeId,
+        direction,
         latitude: originCoords!.lat,
         longitude: originCoords!.lng,
       };
 
       const upcomingVehicles = await queryClient.fetchQuery({
-        queryKey: ["upcoming-vehicles", params],
-        queryFn: () => getUpcomingVehicles(params),
+        queryKey: ["upcoming-vehicles", vehicleParams],
+        queryFn: () => getUpcomingVehicles(vehicleParams),
+      });
+
+      // 3. Route path - TERAKHIR
+      const routePaths = await queryClient.fetchQuery({
+        queryKey: routePathKeys.byRouteAndDirection(routeId, direction),
+        queryFn: () =>
+          routePathService.getRoutePathByRouteIdandDirection(
+            routeId,
+            direction,
+          ),
       });
 
       setSelectedRoute({
-        routeId: firstRoute.routeId,
-        direction: firstRoute.direction,
+        routeId,
+        direction,
       });
+
       setScenario(2);
     } catch (error) {
       console.error("Gagal mencari rute:", error);
@@ -541,6 +569,7 @@ export default function CariRuteAngkot() {
 
       <div className="absolute inset-0 z-0">
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+        <RoutePathLine map={mapInstance} routePaths={routePaths ?? []} />
         <VehicleMarkers map={mapInstance} vehicles={vehicles} />
       </div>
 
@@ -671,7 +700,9 @@ export default function CariRuteAngkot() {
             </Button>
           </div>
         ) : (
-          <UpcomingVehicleList upcomingVehicles={dummyUpcomingVehicles.vehicles} />
+          <UpcomingVehicleList
+            upcomingVehicles={dummyUpcomingVehicles.vehicles}
+          />
         )}
       </div>
     </div>
