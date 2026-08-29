@@ -31,6 +31,7 @@ import LocationConnector from "@/components/search-routev2/skenario1/LocationCon
 import UpcomingVehicleList from "@/components/search-routev2/skenario2/UpcomingVehicleList";
 import VehicleMarkers from "@/components/search-routev2/skenario2/VehicleMarkers";
 import RoutePathLine from "@/components/search-routev2/skenario2/RoutePathLine";
+import LocationSummary from "@/components/search-routev2/skenario2/LocationSummary";
 
 // Data
 import { quickDestinations } from "@/components/search-routev2/skenario1/data";
@@ -49,27 +50,30 @@ import {
 } from "@/types/mapbox.type";
 import { UpcomingVehiclesResponse } from "@/types/route-search.type";
 import { routePathService } from "@/services/routes/route-path.service";
-import LocationSummary from "@/components/search-routev2/skenario2/LocationSummary";
 
 type ActiveInputState = PointType | null;
 type SheetSnap = "peek" | "full";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
 mapboxgl.accessToken = MAPBOX_TOKEN || "";
 
-const SHEET_TOP_PEEK = 68; // posisi "mengecil" -> sheet cuma nongol sedikit dari bawah
-const SHEET_TOP_FULL = 10; // posisi "penuh" -> sheet naik hampir ke atas, nutup form
-const SHEET_OVERDRAG_LIMIT = SHEET_TOP_PEEK + 12; // batas elastis kalau ditarik turun berlebihan
+const SHEET_TOP_PEEK = 68;
+const SHEET_TOP_FULL = 10;
+const SHEET_OVERDRAG_LIMIT = SHEET_TOP_PEEK + 12;
 
 export default function CariRuteAngkot() {
   const [scenario, setScenario] = useState<1 | 2>(1);
+  // Nama lokasi untuk ditampilkan ke user
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
+
+  // Koordinat sebenarnya
   const [originCoords, setOriginCoords] = useState<Coordinates | null>(null);
-  const queryClient = useQueryClient();
   const [destinationCoords, setDestinationCoords] =
     useState<Coordinates | null>(null);
 
+  // MAPBOX SEARCH STATE
   const [originSuggestions, setOriginSuggestions] = useState<
     MapboxSuggestion[]
   >([]);
@@ -78,40 +82,51 @@ export default function CariRuteAngkot() {
     MapboxSuggestion[]
   >([]);
 
+  const [activeInput, setActiveInput] = useState<ActiveInputState>(null);
+
+  const [searchLoading, setSearchLoading] =
+    useState<MapboxSearchLoadingState>(null);
+
+  // Menentukan titik mana yang sedang dipilih melalui map
+  const [pickingMode, setPickingMode] = useState<PointType>("origin");
+
+  // GPS
+  const [showGpsModal, setShowGpsModal] = useState(true);
+  const [isLocating, setIsLocating] = useState(false);
+
+  // MAP REFS
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
+
+  // FIXED MARKERS
+  // Marker ini menempel pada koordinat geografis.
+  // Tidak ikut bergerak ketika map di-drag.
+
+  const originMarkerRef = useRef<mapboxgl.Marker | null>(null);
+
+  const destinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+
+  // SEARCH REFS
+  const suggestionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const selectingOrigin = useRef(false);
+  const selectingDestination = useRef(false);
+
+  // REACT QUERY
+  const queryClient = useQueryClient();
+
+  // MAPBOX HOOK
+  const { suggest, retrieve, reverse, resetSession } = useMapbox();
+
+  // SELECTED ROUTE
   const [selectedRoute, setSelectedRoute] = useState<{
     routeId: number;
     direction: DirectionType;
   } | null>(null);
 
-  const [activeInput, setActiveInput] = useState<ActiveInputState>(null);
-  const [showGpsModal, setShowGpsModal] = useState(true);
-  const [isLocating, setIsLocating] = useState(false);
-  const [searchLoading, setSearchLoading] =
-    useState<MapboxSearchLoadingState>(null);
-  const [pickingMode, setPickingMode] = useState<PointType>("origin");
-
-  // ==== Bottom sheet state ====
-  const [sheetTop, setSheetTop] = useState(SHEET_TOP_PEEK);
-  const [sheetSnapped, setSheetSnapped] = useState<SheetSnap>("peek");
-  const [isSheetTransitioning, setIsSheetTransitioning] = useState(true);
-  const isDraggingSheetRef = useRef(false);
-  const dragStartYRef = useRef(0);
-  const dragStartTopRef = useRef(SHEET_TOP_PEEK);
-
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markerRef = useRef<mapboxgl.Marker | null>(null);
-  const suggestionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
-
-  const selectingOrigin = useRef(false);
-  const selectingDestination = useRef(false);
-
-  const { suggest, retrieve, reverse, resetSession } = useMapbox();
-
+  // ROUTE SEARCH
   const routeSearchParams =
     originCoords && destinationCoords
       ? {
@@ -130,6 +145,7 @@ export default function CariRuteAngkot() {
     refetch: searchRoute,
   } = useRouteSearch(routeSearchParams);
 
+  // UPCOMING VEHICLES
   const upcomingVehiclesParams =
     selectedRoute && originCoords
       ? {
@@ -147,6 +163,7 @@ export default function CariRuteAngkot() {
     error: upcomingVehiclesError,
   } = useUpcomingVehicles(upcomingVehiclesParams);
 
+  // ROUTE PATH
   const {
     data: routePaths,
     isFetching: isLoadingRoutePath,
@@ -156,11 +173,21 @@ export default function CariRuteAngkot() {
     selectedRoute?.direction ?? DirectionType.FORWARD,
   );
 
+  // TEMPORARY DUMMY VEHICLES
   const upcomingVehiclesResult =
     dummyUpcomingVehicles as UpcomingVehiclesResponse;
 
   const vehicles = upcomingVehiclesResult.vehicles;
 
+  // BOTTOM SHEET
+  const [sheetTop, setSheetTop] = useState(SHEET_TOP_PEEK);
+  const [sheetSnapped, setSheetSnapped] = useState<SheetSnap>("peek");
+  const [isSheetTransitioning, setIsSheetTransitioning] = useState(true);
+  const isDraggingSheetRef = useRef(false);
+  const dragStartYRef = useRef(0);
+  const dragStartTopRef = useRef(SHEET_TOP_PEEK);
+
+  // MAP INITIALIZATION
   useEffect(() => {
     if (!mapContainerRef.current) {
       return;
@@ -184,25 +211,10 @@ export default function CariRuteAngkot() {
     });
 
     mapRef.current = map;
+
     setMapInstance(map);
 
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
-
-    const marker = new mapboxgl.Marker({
-      color: "#2563eb",
-    })
-      .setLngLat([112.6214, -7.9839])
-      .addTo(map);
-
-    markerRef.current = marker;
-
-    const handleMapMove = () => {
-      const center = map.getCenter();
-
-      marker.setLngLat([center.lng, center.lat]);
-    };
-
-    map.on("move", handleMapMove);
 
     const handleMapLoad = () => {
       map.resize();
@@ -211,20 +223,71 @@ export default function CariRuteAngkot() {
     map.on("load", handleMapLoad);
 
     return () => {
-      map.off("move", handleMapMove);
       map.off("load", handleMapLoad);
 
-      marker.remove();
+      originMarkerRef.current?.remove();
+      destinationMarkerRef.current?.remove();
+
+      originMarkerRef.current = null;
+      destinationMarkerRef.current = null;
+
       map.remove();
 
       mapRef.current = null;
-      markerRef.current = null;
 
       setMapInstance(null);
     };
   }, []);
 
-  // Reset posisi sheet tiap kali masuk scenario 2 (habis klik "Cari Angkot")
+  // ORIGIN FIXED MARKER
+  // Marker mengikuti originCoords,
+  // bukan mengikuti map center.
+
+  useEffect(() => {
+    if (!mapInstance || !originCoords) {
+      originMarkerRef.current?.remove();
+      originMarkerRef.current = null;
+
+      return;
+    }
+
+    if (!originMarkerRef.current) {
+      originMarkerRef.current = new mapboxgl.Marker({
+        color: "#2563eb",
+      })
+        .setLngLat([originCoords.lng, originCoords.lat])
+        .addTo(mapInstance);
+    } else {
+      originMarkerRef.current.setLngLat([originCoords.lng, originCoords.lat]);
+    }
+  }, [mapInstance, originCoords]);
+
+  // DESTINATION FIXED MARKER
+  // Marker mengikuti destinationCoords,
+  // bukan mengikuti map center.
+  useEffect(() => {
+    if (!mapInstance || !destinationCoords) {
+      destinationMarkerRef.current?.remove();
+      destinationMarkerRef.current = null;
+
+      return;
+    }
+
+    if (!destinationMarkerRef.current) {
+      destinationMarkerRef.current = new mapboxgl.Marker({
+        color: "#e11d48",
+      })
+        .setLngLat([destinationCoords.lng, destinationCoords.lat])
+        .addTo(mapInstance);
+    } else {
+      destinationMarkerRef.current.setLngLat([
+        destinationCoords.lng,
+        destinationCoords.lat,
+      ]);
+    }
+  }, [mapInstance, destinationCoords]);
+
+  // RESET BOTTOM SHEET
   useEffect(() => {
     if (scenario === 2) {
       setIsSheetTransitioning(true);
@@ -233,10 +296,7 @@ export default function CariRuteAngkot() {
     }
   }, [scenario]);
 
-  /* =======================================================
-   * BOTTOM SHEET DRAG HANDLERS
-   * ===================================================== */
-
+  // BOTTOM SHEET DRAG
   const handleSheetPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     isDraggingSheetRef.current = true;
     dragStartYRef.current = e.clientY;
@@ -246,25 +306,27 @@ export default function CariRuteAngkot() {
   };
 
   const handleSheetPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingSheetRef.current) return;
-
+    if (!isDraggingSheetRef.current) {
+      return;
+    }
     const deltaYPx = e.clientY - dragStartYRef.current;
     const deltaVh = (deltaYPx / window.innerHeight) * 100;
-
     let newTop = dragStartTopRef.current + deltaVh;
     newTop = Math.min(Math.max(newTop, SHEET_TOP_FULL), SHEET_OVERDRAG_LIMIT);
-
     setSheetTop(newTop);
   };
 
   const handleSheetPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingSheetRef.current) return;
+    if (!isDraggingSheetRef.current) {
+      return;
+    }
+
     isDraggingSheetRef.current = false;
 
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
-      // ignore kalau capture sudah lepas duluan
+      // Ignore
     }
 
     setIsSheetTransitioning(true);
@@ -280,7 +342,7 @@ export default function CariRuteAngkot() {
     }
   };
 
-  // 1 = form sepenuhnya kelihatan (sheet posisi peek), 0 = form ke-hide penuh (sheet posisi full)
+  // TOP SECTION PROGRESS
   const topSectionProgress =
     scenario === 2
       ? Math.min(
@@ -292,12 +354,13 @@ export default function CariRuteAngkot() {
         )
       : 1;
 
-  /* =======================================================
-   * GET PLACE NAME
-   *
-   * reverse:
-   * koordinat -> nama lokasi
-   * ===================================================== */
+  // CENTER PICKER VISIBILITY
+  // Center picker hanya muncul kalau titik yang sedang
+  // dipilih belum mempunyai koordinat.
+  const showCenterPicker =
+    scenario === 1 &&
+    ((pickingMode === "origin" && !originCoords) ||
+      (pickingMode === "destination" && !destinationCoords));
 
   const getPlaceName = async (lat: number, lng: number) => {
     try {
@@ -322,14 +385,6 @@ export default function CariRuteAngkot() {
     });
   };
 
-  /* =======================================================
-   * ENABLE GPS
-   *
-   * GPS -> koordinat
-   * koordinat -> reverse geocode
-   * hasil -> origin
-   * ===================================================== */
-
   const handleEnableGps = async () => {
     setIsLocating(true);
 
@@ -342,15 +397,25 @@ export default function CariRuteAngkot() {
       };
 
       const placeName = await getPlaceName(latitude, longitude);
+
       setOriginCoords(coords);
+
       setOrigin(placeName);
+
+      // Setelah origin ditentukan,
+      // lanjut memilih destination.
       setPickingMode("destination");
+
       moveMapToLocation(latitude, longitude);
+
       setShowGpsModal(false);
     } catch (error) {
       console.error("Gagal mendapatkan lokasi:", error);
+
       setOrigin("Stasiun Malang Kota Baru");
+
       setOriginCoords(null);
+
       setShowGpsModal(false);
     } finally {
       setIsLocating(false);
@@ -359,8 +424,11 @@ export default function CariRuteAngkot() {
 
   const handleSkipGps = () => {
     setShowGpsModal(false);
+
     setOrigin("");
+
     setOriginCoords(null);
+
     setPickingMode("origin");
   };
 
@@ -369,14 +437,20 @@ export default function CariRuteAngkot() {
 
     try {
       const { latitude, longitude } = await getCurrentLocation();
+
       const coords: Coordinates = {
         lat: latitude,
         lng: longitude,
       };
+
       const placeName = await getPlaceName(latitude, longitude);
+
       setOriginCoords(coords);
+
       setOrigin(placeName);
+
       setPickingMode("destination");
+
       moveMapToLocation(latitude, longitude);
     } catch (error) {
       console.error("Gagal mendapatkan GPS:", error);
@@ -392,6 +466,7 @@ export default function CariRuteAngkot() {
     }
 
     const center = mapRef.current.getCenter();
+
     const lat = center.lat;
     const lng = center.lng;
 
@@ -401,27 +476,27 @@ export default function CariRuteAngkot() {
       );
 
       const placeName = await getPlaceName(lat, lng);
+
       const coords: Coordinates = {
         lat,
         lng,
       };
+
       if (pickingMode === "origin") {
         setOrigin(placeName);
-        setOriginCoords(coords);
-        setPickingMode("destination");
-        /*
-         * Ubah warna marker.
-         *
-         * Karena marker center tetap satu,
-         * warna hanya sebagai indikator visual.
-         */
 
-        markerRef.current
-          ?.getElement()
-          .style.setProperty("filter", "hue-rotate(120deg)");
+        setOriginCoords(coords);
+
+        // Setelah origin selesai,
+        // center picker berubah menjadi destination.
+        setPickingMode("destination");
+
+        setActiveInput(null);
       } else {
         setDestination(placeName);
+
         setDestinationCoords(coords);
+
         setActiveInput(null);
       }
     } catch (error) {
@@ -431,18 +506,7 @@ export default function CariRuteAngkot() {
     }
   };
 
-  /* =======================================================
-   * SEARCH PLACES
-   *
-   * Input text
-   *     ↓
-   * Search Box Suggest
-   *     ↓
-   * suggestion
-   *
-   * Belum mendapatkan koordinat.
-   * ===================================================== */
-
+  // SEARCH PLACES
   const searchPlaces = (query: string, type: PointType) => {
     if (suggestionTimeoutRef.current) {
       clearTimeout(suggestionTimeoutRef.current);
@@ -463,7 +527,9 @@ export default function CariRuteAngkot() {
         setSearchLoading(type);
 
         const center = mapRef.current?.getCenter();
+
         const proximity = center ? `${center.lng},${center.lat}` : undefined;
+
         const result = await suggest.mutateAsync({
           query: query.trim(),
           type,
@@ -519,9 +585,7 @@ export default function CariRuteAngkot() {
         setDestinationCoords(coords);
         setDestinationSuggestions([]);
       }
-
       setActiveInput(null);
-
       moveMapToLocation(coords.lat, coords.lng);
     } catch (error) {
       console.error("Gagal mengambil detail lokasi:", error);
@@ -538,9 +602,15 @@ export default function CariRuteAngkot() {
     if (selectingOrigin.current) {
       return;
     }
+
     setOrigin(value);
+
+    // Sangat penting:
+    // ketika user mengetik ulang origin,
+    // koordinat lama tidak valid lagi.
     setOriginCoords(null);
     setActiveInput("origin");
+    setPickingMode("origin");
     searchPlaces(value, "origin");
   };
 
@@ -548,9 +618,14 @@ export default function CariRuteAngkot() {
     if (selectingDestination.current) {
       return;
     }
+
     setDestination(value);
+
+    // Koordinat lama dibuang karena text
+    // destination sudah berubah.
     setDestinationCoords(null);
     setActiveInput("destination");
+    setPickingMode("destination");
     searchPlaces(value, "destination");
   };
 
@@ -580,6 +655,7 @@ export default function CariRuteAngkot() {
 
   const handleQuickDestination = (label: string) => {
     handleDestinationChange(label);
+
     setActiveInput("destination");
   };
 
@@ -606,8 +682,6 @@ export default function CariRuteAngkot() {
 
       const routeId = firstRoute.routeId;
       const direction = firstRoute.direction as DirectionType;
-
-      // 2. Upcoming vehicles
       const vehicleParams = {
         routeId,
         direction,
@@ -615,29 +689,27 @@ export default function CariRuteAngkot() {
         longitude: originCoords!.lng,
       };
 
-      const upcomingVehicles = await queryClient.fetchQuery({
+      await queryClient.fetchQuery({
         queryKey: ["upcoming-vehicles", vehicleParams],
         queryFn: () => getUpcomingVehicles(vehicleParams),
       });
-
-      // 3. Route path - TERAKHIR
-      const routePaths = await queryClient.fetchQuery({
+      await queryClient.fetchQuery({
         queryKey: routePathKeys.byRouteAndDirection(routeId, direction),
+
         queryFn: () =>
           routePathService.getRoutePathByRouteIdandDirection(
             routeId,
             direction,
           ),
       });
-
       setSelectedRoute({
         routeId,
         direction,
       });
-
       setScenario(2);
     } catch (error) {
       console.error("Gagal mencari rute:", error);
+
       alert("Gagal terhubung ke server.");
     }
   };
@@ -651,15 +723,13 @@ export default function CariRuteAngkot() {
         onSkip={handleSkipGps}
       />
 
-      {/* BACKGROUND: peta selalu paling belakang */}
       <div className="absolute inset-0 z-0">
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
         <RoutePathLine map={mapInstance} routePaths={routePaths ?? []} />
         <VehicleMarkers map={mapInstance} vehicles={vehicles} />
       </div>
 
-      {/* CENTER PIN - hanya relevan saat scenario 1 (memilih titik di map) */}
-      {scenario === 1 && (
+      {showCenterPicker && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full border-4 border-white shadow-xl ${
@@ -673,19 +743,22 @@ export default function CariRuteAngkot() {
         </div>
       )}
 
-      {/* TOP SECTION: header + search card. Fade/hide mengikuti posisi bottom sheet */}
       <div
         className="pointer-events-auto absolute inset-x-0 top-0 z-20 mx-auto flex w-full max-w-md flex-col gap-3 px-4 pt-4 sm:px-5 sm:pt-6"
         style={{
           opacity: topSectionProgress,
+
           transform: `translateY(${(1 - topSectionProgress) * -16}px)`,
+
           pointerEvents: topSectionProgress < 0.4 ? "none" : "auto",
+
           transition: isSheetTransitioning
             ? "opacity 300ms ease-out, transform 300ms ease-out"
             : "none",
         }}
       >
         {/* HEADER */}
+
         <div className="flex items-center justify-between">
           <Button
             variant="icon"
@@ -698,10 +771,12 @@ export default function CariRuteAngkot() {
           <h1 className="text-base font-bold tracking-tight text-[#003d9b] sm:text-lg">
             Cari Rute Angkot
           </h1>
+
           <div className="w-9 sm:w-10" />
         </div>
 
         {/* SEARCH CARD */}
+
         <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-[24px] sm:p-4">
           {scenario === 1 ? (
             <>
@@ -715,7 +790,11 @@ export default function CariRuteAngkot() {
                   searchLoading === "retrieve-origin"
                 }
                 onChange={handleOriginChange}
-                onFocus={() => setActiveInput("origin")}
+                onFocus={() => {
+                  setActiveInput("origin");
+
+                  setPickingMode("origin");
+                }}
                 onClear={handleClearOrigin}
                 onSelectSuggestion={(item) =>
                   handleSelectSuggestion(item, "origin")
@@ -734,20 +813,20 @@ export default function CariRuteAngkot() {
                   searchLoading === "retrieve-destination"
                 }
                 onChange={handleDestinationChange}
-                onFocus={() => setActiveInput("destination")}
+                onFocus={() => {
+                  setActiveInput("destination");
+
+                  setPickingMode("destination");
+                }}
                 onClear={handleClearDestination}
                 onSelectSuggestion={(item) =>
                   handleSelectSuggestion(item, "destination")
                 }
               />
-
-              {/* QUICK DESTINATION */}
               <QuickDestination
                 items={quickDestinations}
                 onSelect={handleQuickDestination}
               />
-
-              {/* CURRENT LOCATION */}
               <Button
                 variant="textAction"
                 size="sm"
@@ -766,8 +845,8 @@ export default function CariRuteAngkot() {
               origin={origin}
               destination={destination}
               onEdit={() => {
-                // balik ke scenario 1 buat edit ulang origin/destination
                 setScenario(1);
+
                 setSelectedRoute(null);
               }}
             />
@@ -775,7 +854,10 @@ export default function CariRuteAngkot() {
         </div>
       </div>
 
-      {/* BOTTOM AREA */}
+      {/* =================================================
+          BOTTOM AREA
+      ================================================= */}
+
       {scenario === 1 ? (
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md space-y-2 px-4 pb-4 sm:px-5">
           <Button
@@ -784,6 +866,7 @@ export default function CariRuteAngkot() {
             icon={<FiMapPin />}
             onClick={handleConfirmMapLocation}
             disabled={
+              !showCenterPicker ||
               searchLoading === "retrieve-origin" ||
               searchLoading === "retrieve-destination"
             }
@@ -797,7 +880,6 @@ export default function CariRuteAngkot() {
               ? "Tetapkan Titik Penjemputan"
               : "Tetapkan Titik Tujuan"}
           </Button>
-
           {originCoords && destinationCoords && (
             <Button
               variant="primary"
@@ -812,15 +894,14 @@ export default function CariRuteAngkot() {
           )}
         </div>
       ) : (
-        /* ===== DRAGGABLE BOTTOM SHEET: daftar kendaraan ===== */
         <div
           className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-[#faf8ff]/95 shadow-[0_-8px_30px_rgba(0,0,0,0.15)] backdrop-blur-md"
           style={{
             top: `${sheetTop}vh`,
+
             transition: isSheetTransitioning ? "top 300ms ease-out" : "none",
           }}
         >
-          {/* Handle drag */}
           <div
             className="flex shrink-0 cursor-grab touch-none items-center justify-center py-2.5 active:cursor-grabbing"
             onPointerDown={handleSheetPointerDown}
@@ -831,7 +912,8 @@ export default function CariRuteAngkot() {
             <div className="h-1.5 w-10 rounded-full bg-[#c3c6d6]" />
           </div>
 
-          {/* Konten scrollable */}
+          {/* CONTENT */}
+
           <div className="min-h-0 flex-1">
             <UpcomingVehicleList
               upcomingVehicles={dummyUpcomingVehicles.vehicles}
