@@ -35,7 +35,6 @@ import LocationSummary from "@/components/search-routev2/skenario2/LocationSumma
 
 // Data
 import { quickDestinations } from "@/components/search-routev2/skenario1/data";
-import { dummyUpcomingVehicles } from "./data";
 
 // Utils
 import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
@@ -172,12 +171,6 @@ export default function CariRuteAngkot() {
     selectedRoute?.routeId ?? 0,
     selectedRoute?.direction ?? DirectionType.FORWARD,
   );
-
-  // TEMPORARY DUMMY VEHICLES
-  const upcomingVehiclesResult =
-    dummyUpcomingVehicles as UpcomingVehiclesResponse;
-
-  const vehicles = upcomingVehiclesResult.vehicles;
 
   // BOTTOM SHEET
   const [sheetTop, setSheetTop] = useState(SHEET_TOP_PEEK);
@@ -673,8 +666,14 @@ export default function CariRuteAngkot() {
     }
 
     try {
+      // =====================================================
+      // 1. Cari route berdasarkan origin + destination
+      // =====================================================
+
       const result = await searchRoute();
+
       const firstRoute = result.data?.[0];
+
       if (!firstRoute) {
         alert("Rute tidak ditemukan.");
         return;
@@ -682,6 +681,11 @@ export default function CariRuteAngkot() {
 
       const routeId = firstRoute.routeId;
       const direction = firstRoute.direction as DirectionType;
+
+      // =====================================================
+      // 2. Parameter untuk mencari angkot terdekat
+      // =====================================================
+
       const vehicleParams = {
         routeId,
         direction,
@@ -689,11 +693,22 @@ export default function CariRuteAngkot() {
         longitude: originCoords!.lng,
       };
 
-      await queryClient.fetchQuery({
+      // =====================================================
+      // 3. Fetch upcoming vehicles
+      // =====================================================
+
+      const upcomingVehicles = await queryClient.fetchQuery({
         queryKey: ["upcoming-vehicles", vehicleParams],
         queryFn: () => getUpcomingVehicles(vehicleParams),
       });
-      await queryClient.fetchQuery({
+
+      console.log("Upcoming vehicles:", upcomingVehicles);
+
+      // =====================================================
+      // 4. Fetch route path
+      // =====================================================
+
+      const routePaths = await queryClient.fetchQuery({
         queryKey: routePathKeys.byRouteAndDirection(routeId, direction),
 
         queryFn: () =>
@@ -702,10 +717,22 @@ export default function CariRuteAngkot() {
             direction,
           ),
       });
+
+      console.log("Route paths:", routePaths);
+
+      // =====================================================
+      // 5. Simpan route yang dipilih
+      // =====================================================
+
       setSelectedRoute({
         routeId,
         direction,
       });
+
+      // =====================================================
+      // 6. Masuk scenario 2
+      // =====================================================
+
       setScenario(2);
     } catch (error) {
       console.error("Gagal mencari rute:", error);
@@ -726,7 +753,10 @@ export default function CariRuteAngkot() {
       <div className="absolute inset-0 z-0">
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
         <RoutePathLine map={mapInstance} routePaths={routePaths ?? []} />
-        <VehicleMarkers map={mapInstance} vehicles={vehicles} />
+        <VehicleMarkers
+          map={mapInstance}
+          vehicles={upcomingVehicles?.vehicles ?? []}
+        />
       </div>
 
       {showCenterPicker && (
@@ -758,7 +788,6 @@ export default function CariRuteAngkot() {
         }}
       >
         {/* HEADER */}
-
         <div className="flex items-center justify-between">
           <Button
             variant="icon"
@@ -854,10 +883,7 @@ export default function CariRuteAngkot() {
         </div>
       </div>
 
-      {/* =================================================
-          BOTTOM AREA
-      ================================================= */}
-
+      {/* BOTTOM AREA */}
       {scenario === 1 ? (
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md space-y-2 px-4 pb-4 sm:px-5">
           <Button
@@ -913,10 +939,9 @@ export default function CariRuteAngkot() {
           </div>
 
           {/* CONTENT */}
-
           <div className="min-h-0 flex-1">
             <UpcomingVehicleList
-              upcomingVehicles={dummyUpcomingVehicles.vehicles}
+              upcomingVehicles={upcomingVehicles?.vehicles ?? []}
             />
           </div>
         </div>
