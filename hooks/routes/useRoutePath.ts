@@ -11,25 +11,17 @@ import { routePathService } from "@/services/routes/route-path.service";
 export const routePathKeys = {
   all: ["route-paths"] as const,
 
-  byRouteAndDirection: (
-    routeId: number,
-    direction: DirectionType,
-  ) => ["route-paths", "route", routeId, direction] as const,
+  byRouteAndDirection: (routeId: number, direction: DirectionType) =>
+    ["route-paths", "route", routeId, direction] as const,
 
   detail: (id: number) => ["route-paths", id] as const,
 };
 
-export function useRoutePaths(
-  routeId: number,
-  direction: DirectionType,
-) {
+export function useRoutePaths(routeId: number, direction: DirectionType) {
   return useQuery({
     queryKey: routePathKeys.byRouteAndDirection(routeId, direction),
     queryFn: () =>
-      routePathService.getRoutePathByRouteIdandDirection(
-        routeId,
-        direction,
-      ),
+      routePathService.getRoutePathByRouteIdandDirection(routeId, direction),
     enabled: !!routeId && !!direction,
   });
 }
@@ -46,8 +38,7 @@ export function useCreateRoutePath() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateRoutePathInput) =>
-      routePathService.create(data),
+    mutationFn: (data: CreateRoutePathInput) => routePathService.create(data),
 
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -61,13 +52,8 @@ export function useUpdateRoutePath() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: UpdateRoutePathInput;
-    }) => routePathService.update(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateRoutePathInput }) =>
+      routePathService.update(id, data),
 
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

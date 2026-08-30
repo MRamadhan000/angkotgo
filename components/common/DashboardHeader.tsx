@@ -4,7 +4,7 @@ import { FaSignOutAlt, FaIdBadge } from "react-icons/fa";
 
 interface DashboardHeaderProps {
   user: any;
-  onLogout: () => void;
+  onLogout?: () => void;
   roleTitle?: string;
 }
 
@@ -44,15 +44,17 @@ export function DashboardHeader({
           </div>
         </div>
 
-        <div className="flex items-center pt-3 sm:pt-0 border-t border-blue-800 sm:border-t-0 sm:self-center">
-          <button
-            onClick={onLogout}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs sm:text-sm font-bold text-red-600 border-2 border-red-200 shadow-sm transition-all hover:bg-red-100 cursor-pointer"
-          >
-            <FaSignOutAlt className="h-4 w-4 flex-shrink-0" />
-            <span>Logout</span>
-          </button>
-        </div>
+        {onLogout && (
+          <div className="flex items-center pt-3 sm:pt-0 border-t border-blue-800 sm:border-t-0 sm:self-center">
+            <button
+              onClick={onLogout}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs sm:text-sm font-bold text-red-600 border-2 border-red-200 shadow-sm transition-all hover:bg-red-100 cursor-pointer"
+            >
+              <FaSignOutAlt className="h-4 w-4 flex-shrink-0" />
+              <span>Logout</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

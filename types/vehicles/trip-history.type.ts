@@ -3,6 +3,7 @@ import { Driver } from "../driver.type";
 import { AssignmentStatus, DirectionType, Vehicle } from "./vehicle.type";
 
 export interface TripHistoryItem {
+  routeId: any;
   assignmentId: number;
   date: string | Date;
   status: AssignmentStatus;
