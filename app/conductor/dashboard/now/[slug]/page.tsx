@@ -15,6 +15,7 @@ import { UpdateStatusModal } from "@/components/now/UpdateStatusModal";
 
 import { useSeatManagement } from "@/hooks/vehicles/useSeatManagement";
 import { SeatGridControl } from "@/components/now/SeatGridControl";
+import { IncomeWidget } from "@/components/now/IncomeWidget";
 
 // Peta
 import DriverMap from "@/app/driver/dashboard/DriverMap";
@@ -128,6 +129,11 @@ export default function AssignmentDetailPage() {
                             isOpen={isStopsOpen}
                             onToggle={() => setIsStopsOpen(!isStopsOpen)}
                         />
+
+                        {/* Widget Pendapatan (Income Info) */}
+                        <div className="mt-1 sm:mt-2 pb-6">
+                            <IncomeWidget assignmentId={assignmentId} />
+                        </div>
                     </div>
                 )}
             </div>
