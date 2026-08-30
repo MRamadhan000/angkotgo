@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AssignmentStatus } from "@/types/vehicles/vehicle.type";
 import {
-  SeatState,
   OperationalStatus,
+  SeatState,
 } from "@/types/vehicles/seat-management.type";
 import { seatManagementService } from "@/services/vehicles/seatManagement.service";
 
@@ -13,110 +13,115 @@ export function useSeatManagement(
   isUserConductor: boolean,
 ) {
   const [status, setStatus] = useState<OperationalStatus | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const MOCK_IDS = ["999999", "888888"];
-  const makeMockStatus = (id: string): OperationalStatus => {
-    const seats = Array.from({ length: 8 }, (_, i) => ({
-      seatNumber: i + 1,
-      isOccupied: false,
-    })) as SeatState[];
-
-    return {
-      assignmentId: id,
-      hasConductor: id === "888888",
-      status: AssignmentStatus.ONGOING,
-      currentPassengers: 0,
-      totalSeats: 8,
-      seats,
-    };
-  };
-
-  const getCumulativeSeats = (count: number) =>
-    Array.from({ length: 8 }, (_, i) => ({
-      seatNumber: i + 1,
-      isOccupied: i + 1 <= count,
-    })) as SeatState[];
-
   const fetchSeats = useCallback(async () => {
+    if (!assignmentId) return;
+
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
       const data =
         await seatManagementService.getOperationalStatus(assignmentId);
+
       setStatus(data);
-    } catch (err: any) {
-      setError(err.message || "Gagal memuat data operasional");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Gagal memuat data operasional.";
+
+      setStatus(null);
+      setError(message);
     } finally {
       setLoading(false);
     }
   }, [assignmentId]);
 
   useEffect(() => {
-    if (!assignmentId) return;
+    void fetchSeats();
+  }, [fetchSeats]);
 
-    // If this is a known mock assignment id, immediately set mock status
-    if (MOCK_IDS.includes(assignmentId)) {
-      setStatus(makeMockStatus(assignmentId));
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    fetchSeats();
-  }, [assignmentId, fetchSeats]);
-
-  // Hak akses kontrol:
-  // - Jika ada kondektur: hanya kondektur yang bisa klik.
-  // - Jika tidak ada kondektur: driver bisa klik.
   const canControl = status
     ? (!status.hasConductor && !isUserConductor) ||
       (status.hasConductor && isUserConductor)
     : false;
 
+  const createSeats = (totalSeats: number, passengerCount: number) => {
+    return Array.from({ length: totalSeats }, (_, index) => ({
+      seatNumber: index + 1,
+      isOccupied: index + 1 <= passengerCount,
+    })) as SeatState[];
+  };
+
   const toggleSeat = async (seatNumber: number) => {
     if (!status || !canControl) return;
 
-    const currentCount = status.seats.filter((s) => s.isOccupied).length;
-    const targetCount =
-      currentCount === seatNumber ? seatNumber - 1 : seatNumber;
+    const currentPassengers = status.currentPassengers;
+    const nextPassengers =
+      seatNumber === currentPassengers ? currentPassengers - 1 : seatNumber;
 
-    const updatedSeats = getCumulativeSeats(targetCount);
-
-    setStatus({
+    const nextStatus: OperationalStatus = {
       ...status,
-      seats: updatedSeats,
-      currentPassengers: targetCount,
-    });
+      currentPassengers: nextPassengers,
+      seats: createSeats(status.totalSeats, nextPassengers),
+    };
+
+    setStatus(nextStatus);
 
     try {
-      await seatManagementService.updateSeat(
+      const result = await seatManagementService.updateSeat(
         assignmentId,
         seatNumber,
-        targetCount,
+        nextPassengers,
       );
-    } catch {
-      fetchSeats(); // Revert to server state if the update fails
+
+      setStatus((previous) =>
+        previous
+          ? {
+              ...previous,
+              currentPassengers: result.currentPassengers,
+              seats: createSeats(previous.totalSeats, result.currentPassengers),
+            }
+          : previous,
+      );
+    } catch (err: unknown) {
+      setStatus(status);
+
+      setError(
+        err instanceof Error ? err.message : "Gagal memperbarui status kursi.",
+      );
     }
   };
 
   const toggleJourneyStatus = async () => {
     if (!status || !canControl) return;
 
-    const nextStatus =
+    const nextStatusValue =
       status.status === AssignmentStatus.ONGOING
         ? AssignmentStatus.COMPLETED
         : AssignmentStatus.ONGOING;
 
+    const previousStatus = status;
+
     setStatus({
       ...status,
-      status: nextStatus,
+      status: nextStatusValue,
     });
 
     try {
-      await seatManagementService.updateJourneyStatus(assignmentId, nextStatus);
-    } catch {
-      fetchSeats();
+      await seatManagementService.updateJourneyStatus(
+        assignmentId,
+        nextStatusValue,
+      );
+    } catch (err: unknown) {
+      setStatus(previousStatus);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Gagal memperbarui status perjalanan.",
+      );
     }
   };
 

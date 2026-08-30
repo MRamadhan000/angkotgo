@@ -8,9 +8,9 @@ export function usePersonnelSchedule() {
   const [activeLoading, setActiveLoading] = useState(false);
   const [activeError, setActiveError] = useState<string | null>(null);
 
-  const [historySchedule, setHistorySchedule] = useState<TripHistoryItem[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<TripHistoryItem[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const [assignmentDetail, setAssignmentDetail] =
     useState<VehicleSchedule | null>(null);
@@ -32,19 +32,13 @@ export function usePersonnelSchedule() {
 
         setActiveSchedule(data);
         return data;
-      } catch (err: unknown) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : "Gagal memuat jadwal aktif personel.";
+      } catch (err: any) {
+        const message = err?.message || "Gagal memuat jadwal aktif personel.";
 
         setActiveError(message);
         setActiveSchedule([]);
 
-        console.error("[fetchActiveScheduleByPersonnel]", err);
-
-        // Error ditangani melalui state agar tidak menjadi Runtime Error.
-        return [];
+        throw new Error(message);
       } finally {
         setActiveLoading(false);
       }
@@ -52,32 +46,27 @@ export function usePersonnelSchedule() {
     [],
   );
 
-  const fetchDriverTripHistory = useCallback(
-    async (driverId: number | string) => {
-      setHistoryLoading(true);
-      setHistoryError(null);
+  const fetchScheduleByPersonnel = useCallback(
+    async (params: { driverId?: number; conductorId?: number }) => {
+      setScheduleLoading(true);
+      setScheduleError(null);
 
       try {
         const data =
-          await vehicleAssignmentService.getDriverTripHistory(driverId);
+          await vehicleAssignmentService.getScheduleByPersonnelId(params);
 
-        setHistorySchedule(data);
+        setSchedule(data);
         return data;
-      } catch (err: unknown) {
+      } catch (err: any) {
         const message =
-          err instanceof Error
-            ? err.message
-            : "Gagal memuat riwayat jadwal driver.";
+          err?.message || "Gagal memuat jadwal penugasan personel.";
 
-        setHistorySchedule([]);
-        setHistoryError(message);
+        setScheduleError(message);
+        setSchedule([]);
 
-        console.error("[fetchDriverTripHistory]", err);
-
-        // Error ditampilkan melalui historyError.
-        return [];
+        throw new Error(message);
       } finally {
-        setHistoryLoading(false);
+        setScheduleLoading(false);
       }
     },
     [],
@@ -92,11 +81,9 @@ export function usePersonnelSchedule() {
 
       setAssignmentDetail(data);
       return data;
-    } catch (err: unknown) {
+    } catch (err: any) {
       const message =
-        err instanceof Error
-          ? err.message
-          : `Gagal memuat detail penugasan dengan ID ${id}.`;
+        err?.message || `Gagal memuat detail penugasan dengan ID ${id}.`;
 
       setDetailError(message);
       setAssignmentDetail(null);
@@ -108,17 +95,17 @@ export function usePersonnelSchedule() {
   }, []);
 
   return {
-    // Jadwal aktif untuk dashboard dan halaman now
+    // Jadwal aktif yang sudah digunakan halaman now
     activeSchedule,
     activeLoading,
     activeError,
     fetchActiveScheduleByPersonnel,
 
-    // Riwayat jadwal untuk halaman history
-    historySchedule,
-    historyLoading,
-    historyError,
-    fetchDriverTripHistory,
+    // Jadwal personel untuk filter jadwal mendatang
+    schedule,
+    scheduleLoading,
+    scheduleError,
+    fetchScheduleByPersonnel,
 
     // Detail penugasan
     assignmentDetail,
