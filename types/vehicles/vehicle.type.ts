@@ -1,30 +1,30 @@
 export enum VehicleStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  MAINTENANCE = 'MAINTENANCE',
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  MAINTENANCE = "MAINTENANCE",
 }
 
 export enum VehicleType {
-  PREMIUM = 'PREMIUM',
-  REGULER = 'REGULER',
+  PREMIUM = "PREMIUM",
+  REGULER = "REGULER",
 }
 
 export enum AssignmentStatus {
-  SCHEDULED = 'SCHEDULED',
-  ONGOING = 'ONGOING',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
+  SCHEDULED = "SCHEDULED",
+  ONGOING = "ONGOING",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
 }
 
 export enum DirectionType {
-  FORWARD = 'FORWARD',
-  RETURN = 'RETURN',
+  FORWARD = "FORWARD",
+  RETURN = "RETURN",
 }
 
 export enum ServiceType {
-  ROUTINE = 'ROUTINE',
-  REPAIR = 'REPAIR',
-  INSPECTION = 'INSPECTION',
+  ROUTINE = "ROUTINE",
+  REPAIR = "REPAIR",
+  INSPECTION = "INSPECTION",
 }
 
 export interface VehicleAssignment {
@@ -44,9 +44,11 @@ export interface Vehicle {
   capacity: number;
   currentOdometer: number;
   status: VehicleStatus;
-  type: VehicleType;  
-  assignments?: VehicleAssignment[];
-  services?: VehicleService[];
+  type: VehicleType;
+
+  assignmentCount: number;
+  serviceCount: number;
+
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -58,8 +60,6 @@ export type CreateVehicleInput = {
   currentOdometer?: number;
   status?: VehicleStatus;
   type?: VehicleType;
-  assignments?: any[];
-  services?: any[];
 };
 
 export type UpdateVehicleInput = Partial<CreateVehicleInput>;

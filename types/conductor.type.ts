@@ -16,7 +16,7 @@ export interface Conductor {
   photoUrl?: string | null;
   isVerified: boolean;
   status: ConductorStatus;
-  totalTrips: number;
+  assignmentCount: number;
   assignments?: VehicleAssignment[];
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -36,5 +36,5 @@ export type CreateConductorInput = Pick<
   address?: string;
   photoUrl?: string;
   status?: ConductorStatus;
-  totalTrips?: number;
+  assignmentCount?: number;
 };

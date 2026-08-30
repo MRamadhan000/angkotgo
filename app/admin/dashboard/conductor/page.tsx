@@ -25,7 +25,7 @@ const TABLE_HEADERS = [
   "Kondektur & Kontak",
   "NIK",
   "Alamat",
-  "Statistik & Penugasan",
+  "Jumlah Penugasan",
   "Status Akun",
   "Verifikasi",
   "Waktu (Dibuat/Diubah)",
@@ -282,12 +282,12 @@ export default function ConductorsDashboardPage() {
 
                     <td className="py-4 px-6 text-xs text-gray-600 whitespace-nowrap">
                       <div className="font-semibold text-gray-800">
-                        {conductor.totalTrips ?? 0} Trip Selesai
+                        {conductor.assignmentCount}
                       </div>
 
-                      <div className="text-[11px] text-gray-400 mt-0.5">
+                      {/* <div className="text-[11px] text-gray-400 mt-0.5">
                         {conductor.assignments?.length ?? 0} Penugasan Kendaraan
-                      </div>
+                      </div> */}
                     </td>
 
                     {/* ================================================= */}
