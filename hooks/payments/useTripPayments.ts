@@ -101,9 +101,23 @@ export function useTripPayments(assignmentId: string | number) {
         return { success: true };
     };
 
+    const removePayment = async (id: number) => {
+        // Mock removing a payment
+        setPayments((prev) => prev.filter((p) => p.id !== id));
+        return { success: true };
+    };
+
+    const updatePayment = async (id: number, newAmount: number) => {
+        // Mock updating a payment
+        setPayments((prev) =>
+            prev.map((p) => p.id === id ? { ...p, amount: newAmount } : p)
+        );
+        return { success: true };
+    };
+
     const totalIncome = payments
         .filter((p) => p.status === PaymentStatus.PAID)
         .reduce((sum, p) => sum + p.amount, 0);
 
-    return { payments, loading, error, totalIncome, refetch: fetchPayments, addPayment };
+    return { payments, loading, error, totalIncome, refetch: fetchPayments, addPayment, removePayment, updatePayment };
 }

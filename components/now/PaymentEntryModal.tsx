@@ -22,24 +22,31 @@ export function PaymentEntryModal({ isOpen, onClose, onAddPayment }: PaymentEntr
     const [customAmount, setCustomAmount] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showCustom, setShowCustom] = useState(false);
+    const [confirmData, setConfirmData] = useState<{ amount: number; type: PaymentType } | null>(null);
 
     if (!isOpen) return null;
 
-    const handleSelectAmount = async (amount: number) => {
+    const initiateSelectAmount = (amount: number) => {
+        setConfirmData({ amount, type: activeTab === "CASH" ? PaymentType.CASH : PaymentType.QRIS });
+    };
+
+    const handleConfirmAdd = async () => {
+        if (!confirmData) return;
         setIsSubmitting(true);
-        await onAddPayment(amount, activeTab === "CASH" ? PaymentType.CASH : PaymentType.QRIS);
+        await onAddPayment(confirmData.amount, confirmData.type);
         setIsSubmitting(false);
         onClose();
         // Reset states after close
         setCustomAmount("");
         setShowCustom(false);
+        setConfirmData(null);
     };
 
     const handleCustomSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const amountStr = customAmount.replace(/\D/g, "");
         if (!amountStr) return;
-        handleSelectAmount(parseInt(amountStr, 10));
+        initiateSelectAmount(parseInt(amountStr, 10));
     };
 
     const formatRupiahInput = (val: string) => {
@@ -83,8 +90,8 @@ export function PaymentEntryModal({ isOpen, onClose, onAddPayment }: PaymentEntr
                         <button
                             onClick={() => setActiveTab("CASH")}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all ${activeTab === "CASH"
-                                    ? "bg-white text-blue-700 shadow-sm"
-                                    : "text-slate-500 hover:text-slate-700"
+                                ? "bg-white text-blue-700 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700"
                                 }`}
                         >
                             <FaMoneyBillWave size={16} />
@@ -93,8 +100,8 @@ export function PaymentEntryModal({ isOpen, onClose, onAddPayment }: PaymentEntr
                         <button
                             onClick={() => setActiveTab("QRIS")}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all ${activeTab === "QRIS"
-                                    ? "bg-white text-emerald-700 shadow-sm"
-                                    : "text-slate-500 hover:text-slate-700"
+                                ? "bg-white text-emerald-700 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700"
                                 }`}
                         >
                             <FaQrcode size={16} />
@@ -116,7 +123,7 @@ export function PaymentEntryModal({ isOpen, onClose, onAddPayment }: PaymentEntr
                                         {QUICK_AMOUNTS.map((amt, idx) => (
                                             <button
                                                 key={idx}
-                                                onClick={() => handleSelectAmount(amt.value)}
+                                                onClick={() => initiateSelectAmount(amt.value)}
                                                 disabled={isSubmitting}
                                                 className="bg-white border-2 border-slate-200 p-4 rounded-2xl text-slate-700 font-bold hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center shadow-sm disabled:opacity-50"
                                             >
@@ -188,15 +195,47 @@ export function PaymentEntryModal({ isOpen, onClose, onAddPayment }: PaymentEntr
                             <div className="bg-emerald-50 p-4 rounded-2xl flex flex-col gap-2">
                                 <p className="text-center text-xs font-semibold text-emerald-700"><FaCheckCircle className="inline mr-1 text-emerald-600" /> (SIMULASI MASUK SYSTEM)</p>
                                 <div className="grid grid-cols-2 gap-2 mt-1">
-                                    <button onClick={() => handleSelectAmount(2500)} className="bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl hover:bg-emerald-700">Rp2.500</button>
-                                    <button onClick={() => handleSelectAmount(5000)} className="bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl hover:bg-emerald-700">Rp5.000</button>
-                                    <button onClick={() => handleSelectAmount(7500)} className="bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl hover:bg-emerald-700">Rp7.500</button>
-                                    <button onClick={() => handleSelectAmount(10000)} className="bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl hover:bg-emerald-700">Rp10.000</button>
+                                    <button onClick={() => initiateSelectAmount(2500)} className="bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl hover:bg-emerald-700">Rp2.500</button>
+                                    <button onClick={() => initiateSelectAmount(5000)} className="bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl hover:bg-emerald-700">Rp5.000</button>
+                                    <button onClick={() => initiateSelectAmount(7500)} className="bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl hover:bg-emerald-700">Rp7.500</button>
+                                    <button onClick={() => initiateSelectAmount(10000)} className="bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl hover:bg-emerald-700">Rp10.000</button>
                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
+
+                {/* Confirmation Overlay */}
+                {confirmData && (
+                    <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 text-center animate-in min-h-[400px]">
+                        <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mb-4">
+                            <FaMoneyBillWave size={24} />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Konfirmasi Pemasukan</h3>
+                        <p className="text-slate-600 mb-6 px-4">
+                            Apakah Anda yakin memasukkan pembayaran senilai<br />
+                            <span className="font-bold text-lg text-slate-900 block mt-2">
+                                Rp {confirmData.amount.toLocaleString("id-ID")} ({confirmData.type})?
+                            </span>
+                        </p>
+                        <div className="flex w-full gap-3">
+                            <button
+                                disabled={isSubmitting}
+                                onClick={() => setConfirmData(null)}
+                                className="flex-1 bg-slate-100 text-slate-700 font-bold py-4 rounded-xl disabled:opacity-50"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                disabled={isSubmitting}
+                                onClick={handleConfirmAdd}
+                                className="flex-1 bg-emerald-600 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                                {isSubmitting ? <FaSpinner className="animate-spin" /> : "Ya, Simpan"}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
