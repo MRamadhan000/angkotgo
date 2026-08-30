@@ -32,24 +32,32 @@ import {
   VehicleType,
 } from "@/types/vehicles/vehicle.type";
 
+function getTodayDateKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getDateKey(value: string | Date): string {
+  if (typeof value === "string") {
+    return value.slice(0, 10);
+  }
+
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+
 const STATUS_CONFIG: Record<
   string,
   { label: string; icon: React.ElementType; className: string; dot: string; pill: string }
 > = {
-  [AssignmentStatus.SCHEDULED]: {
-    label: "Terjadwal",
-    icon: HiOutlineCalendar,
-    className: "bg-blue-50 text-blue-700 border-blue-200",
-    dot: "bg-blue-500",
-    pill: "text-blue-600",
-  },
-  [AssignmentStatus.ONGOING]: {
-    label: "Berlangsung",
-    icon: FiLoader,
-    className: "bg-amber-50 text-amber-700 border-amber-200",
-    dot: "bg-amber-500",
-    pill: "text-amber-600",
-  },
   [AssignmentStatus.COMPLETED]: {
     label: "Selesai",
     icon: FiCheckCircle,
@@ -160,40 +168,20 @@ function VehicleTypeBadge({ type }: { type?: string }) {
   );
 }
 
-function DetailRow({
-  icon: Icon,
-  iconClassName,
-  label,
-  value,
-  truncate = false,
-  className = "",
-}: {
-  icon: React.ElementType;
-  iconClassName: string;
-  label: string;
-  value: React.ReactNode;
-  truncate?: boolean;
-  className?: string;
-}) {
-  return (
-    <div className={`flex items-center gap-2 text-xs sm:text-sm ${className}`}>
-      <span
-        className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md ${iconClassName}`}
-      >
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <span className={truncate ? "min-w-0 truncate" : ""}>
-        <strong className="font-medium text-gray-500">{label}:</strong>{" "}
-        <span className="font-medium text-gray-800">{value}</span>
-      </span>
-    </div>
-  );
+function formatDate(value: string | Date): string {
+  const dateKey = typeof value === "string" ? value.slice(0, 10) : new Date(value).toISOString().slice(0, 10);
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  return new Date(year, month - 1, day).toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 const STATUS_FILTERS: { key: string; label: string }[] = [
   { key: "ALL", label: "Semua" },
-  { key: AssignmentStatus.SCHEDULED, label: "Terjadwal" },
-  { key: AssignmentStatus.ONGOING, label: "Berlangsung" },
   { key: AssignmentStatus.COMPLETED, label: "Selesai" },
   { key: AssignmentStatus.CANCELLED, label: "Dibatalkan" },
 ];
@@ -203,15 +191,15 @@ export default function ConductorHistoryPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   const {
+    fetchConductorTripHistory,
     conductorHistory,
     conductorHistoryLoading,
     conductorHistoryError,
-    fetchConductorTripHistory,
   } = useVehicleAssignments();
 
+  // State untuk Filter & Sort
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
-  const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (user?.id) {
@@ -219,8 +207,14 @@ export default function ConductorHistoryPage() {
     }
   }, [user, fetchConductorTripHistory]);
 
+  // Filter & Sort Data
   const filteredAndSortedHistory = useMemo(() => {
-    let result = [...conductorHistory];
+    const today = getTodayDateKey();
+
+    let result = conductorHistory.filter((trip) => {
+      // Hanya biarkan lewat jika datanya STRICTLY di masa lalu sebelum jadwal hari ini!
+      return getDateKey(trip.date) < today;
+    });
 
     if (statusFilter !== "ALL") {
       result = result.filter((trip) => trip.status === statusFilter);
@@ -235,21 +229,6 @@ export default function ConductorHistoryPage() {
     return result;
   }, [conductorHistory, statusFilter, sortOrder]);
 
-  const groupedByDate = useMemo(() => {
-    const groups: Record<string, typeof filteredAndSortedHistory> = {};
-    filteredAndSortedHistory.forEach((trip) => {
-      const dateKey = String(trip.date);
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(trip);
-    });
-    return groups;
-  }, [filteredAndSortedHistory]);
-
-  const toggleDate = (date: string) => {
-    setCollapsedDates((prev) => ({ ...prev, [date]: !prev[date] }));
-  };
 
   if (authLoading) {
     return (
@@ -280,7 +259,7 @@ export default function ConductorHistoryPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
       <div className="mx-auto w-full max-w-[1200px] space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8">
-        
+
         {/* Header Biru Utama */}
         <div className="relative overflow-hidden rounded-2xl bg-blue-900 p-5 shadow-md sm:rounded-3xl sm:p-8">
           {/* Background Accent Gradient Effect */}
@@ -329,7 +308,7 @@ export default function ConductorHistoryPage() {
 
         {/* Konten Utama */}
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 lg:p-8 space-y-5">
-          
+
           {/* Filter & Sort Control Bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
             {/* Filter Status */}
@@ -342,15 +321,14 @@ export default function ConductorHistoryPage() {
                   <button
                     key={filter.key}
                     onClick={() => setStatusFilter(filter.key)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                      isActive
-                        ? isCancelled
-                          ? "bg-rose-600 text-white shadow-xs"
-                          : "bg-blue-600 text-white shadow-xs"
-                        : isCancelled
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${isActive
+                      ? isCancelled
+                        ? "bg-rose-600 text-white shadow-xs"
+                        : "bg-blue-600 text-white shadow-xs"
+                      : isCancelled
                         ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+                      }`}
                   >
                     {filter.label}
                   </button>
@@ -400,110 +378,65 @@ export default function ConductorHistoryPage() {
               </div>
             )}
 
-          {/* Daftar Riwayat Trip dengan Grouping Tanggal */}
+          {/* Daftar Riwayat Trip dengan Format Tabel */}
           {!conductorHistoryLoading && filteredAndSortedHistory.length > 0 && (
-            <div className="space-y-6">
-              {Object.entries(groupedByDate).map(([date, trips]) => {
-                const isCollapsed = collapsedDates[date];
-                return (
-                  <div key={date} className="space-y-3">
-                    {/* Header Tanggal */}
-                    <button
-                      type="button"
-                      onClick={() => toggleDate(date)}
-                      className="sticky top-0 z-10 flex w-full items-center gap-2 bg-white/95 py-2 backdrop-blur-xs cursor-pointer"
-                    >
-                      <HiOutlineCalendar className="h-4 w-4 text-blue-600" />
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        {date}
-                      </h2>
-                      <span className="text-xs font-normal text-gray-400">
-                        ({trips.length} Perjalanan)
-                      </span>
-                      <span className="ml-auto text-gray-400">
-                        {isCollapsed ? (
-                          <FiChevronDown className="h-4 w-4" />
-                        ) : (
-                          <FiChevronUp className="h-4 w-4" />
-                        )}
-                      </span>
-                    </button>
-
-                    {/* Cards dalam Tanggal tersebut */}
-                    {!isCollapsed && (
-                      <div className="space-y-3">
-                        {trips.map((trip) => {
-                          const statusConfig =
-                            STATUS_CONFIG[trip.status] ??
-                            STATUS_CONFIG[AssignmentStatus.SCHEDULED];
-
-                          return (
-                            <div
-                              key={trip.assignmentId}
-                              className="relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs transition-all hover:border-blue-300 hover:shadow-md sm:p-5"
-                            >
-                              {/* Aksen garis status di kiri */}
-                              <span
-                                className={`absolute left-0 top-0 h-full w-1.5 ${statusConfig.dot}`}
-                              />
-
-                              <div className="flex flex-col gap-3 pl-2">
-                                {/* Baris Atas: Avatar Rute, Nama Rute & Badges */}
-                                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <RouteAvatar code={trip.routeCode || ''} />
-                                    <span className="truncate text-sm sm:text-base font-bold text-gray-900">
-                                      {trip.routeCode || '-'} — {trip.routeName || '-'}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <StatusBadge status={trip.status} />
-                                    <DirectionBadge direction={trip.direction} />
-                                    {trip.vehicle?.type && (
-                                      <VehicleTypeBadge type={trip.vehicle.type} />
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Baris Tengah: Detail Informasi */}
-                                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 pt-1">
-                                  <DetailRow
-                                    icon={HiOutlineClock}
-                                    iconClassName="bg-blue-50 text-blue-600"
-                                    label="Jam"
-                                    value={`${trip.startTime} - ${trip.endTime}`}
-                                  />
-                                  <DetailRow
-                                    icon={HiOutlineTruck}
-                                    iconClassName="bg-indigo-50 text-indigo-600"
-                                    label="Armada"
-                                    value={`${trip.vehicle?.vehicleCode || ""} (${trip.vehicle?.plateNumber || "-"})`}
-                                    truncate
-                                  />
-                                  <DetailRow
-                                    icon={HiOutlineUser}
-                                    iconClassName="bg-sky-50 text-sky-600"
-                                    label="Driver"
-                                    value={trip.driver?.name || "-"}
-                                    truncate
-                                  />
-                                  <DetailRow
-                                    icon={HiOutlineTicket}
-                                    iconClassName="bg-blue-50 text-blue-700"
-                                    label="Kondektur"
-                                    value={trip.conductor?.name || "-"}
-                                    truncate
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-blue-50/50 text-xs uppercase text-slate-500">
+                  <tr>
+                    <th scope="col" className="px-4 py-3 font-semibold">Tanggal</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Rute</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Waktu / Armada</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Driver</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {filteredAndSortedHistory.map((trip) => {
+                    return (
+                      <tr
+                        key={trip.assignmentId}
+                        className="hover:bg-slate-50/50 transition duration-150"
+                      >
+                        <td className="px-4 py-4 align-top">
+                          <p className="font-semibold text-slate-800">
+                            {formatDate(trip.date)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <p className="font-bold text-slate-900">
+                            {trip.routeName || "-"}
+                          </p>
+                          <p className="text-xs font-semibold text-blue-600">
+                            {trip.routeCode || "-"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <p className="font-semibold text-slate-800">
+                            {trip.startTime || "-"} -{" "}
+                            {trip.endTime || "-"}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {trip.vehicle?.plateNumber || "-"} (
+                            {trip.vehicle?.vehicleCode || "-"})
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <p className="font-medium text-slate-700">
+                            {trip.driver?.name || "Tidak ada"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <div className="flex flex-col items-start gap-1.5">
+                            <StatusBadge status={trip.status} />
+                            <DirectionBadge direction={trip.direction} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

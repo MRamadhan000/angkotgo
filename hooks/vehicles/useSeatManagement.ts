@@ -67,12 +67,9 @@ export function useSeatManagement(
   }, [assignmentId, fetchSeats]);
 
   // Hak akses kontrol:
-  // - Jika ada kondektur: hanya kondektur yang bisa klik.
-  // - Jika tidak ada kondektur: driver bisa klik.
-  const canControl = status
-    ? (!status.hasConductor && !isUserConductor) ||
-      (status.hasConductor && isUserConductor)
-    : false;
+  // - Kondektur: Memiliki hak istimewa (Write) penuh secara mutlak.
+  // - Driver: Kini distandardisasi menjadi Read-Only.
+  const canControl = status ? isUserConductor : false;
 
   const toggleSeat = async (seatNumber: number) => {
     if (!status || !canControl) return;

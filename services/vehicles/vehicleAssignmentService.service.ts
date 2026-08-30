@@ -73,11 +73,9 @@ export const vehicleAssignmentService = {
     return Array.isArray(result) ? result : result.data || [];
   },
 
-  async getDriverTripHistory(
-    driverId: number | string,
-  ): Promise<TripHistoryItem[]> {
+  async getDriverTripHistory(driverId: number | string) {
     const response = await fetch(
-      `${API_URL}/vehicle-assignments/driver/${driverId}/history`,
+      `${API_URL}/vehicle-assignments/history?id=${driverId}&type=driver`,
       {
         method: "GET",
         headers: {
@@ -88,28 +86,23 @@ export const vehicleAssignmentService = {
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message ||
-          `Gagal mengambil riwayat trip untuk driver ID ${driverId}.`,
-      );
+      throw new Error("Gagal mengambil riwayat driver.");
     }
 
     const result = await response.json();
-    return Array.isArray(result) ? result : result.data || [];
+    return result.data ?? result;
   },
 
   async getConductorTripHistory(
     conductorId: number | string,
   ): Promise<TripHistoryItem[]> {
     const response = await fetch(
-      `${API_URL}/vehicle-assignments/conductor/${conductorId}/history`,
+      `${API_URL}/vehicle-assignments/history?id=${conductorId}&type=conductor`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        cache: "no-store",
       },
     );
 

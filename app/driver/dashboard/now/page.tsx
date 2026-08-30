@@ -14,8 +14,6 @@ import {
 
 import { useAuth } from "@/context/AuthContext";
 import { usePersonnelSchedule } from "@/hooks/vehicles/usePersonalSchedules";
-import { useSeatManagement } from "@/hooks/vehicles/useSeatManagement";
-import { SeatGridControl } from "@/components/now/SeatGridControl";
 import { DetailHeader } from "@/components/common/DetailHeader";
 import {
   AssignmentStatus,
@@ -24,7 +22,6 @@ import {
   VehicleType,
 } from "@/types/vehicles/vehicle.type";
 import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
-import DriverMap from "@/app/driver/dashboard/DriverMap";
 
 export default function DriverActivePage() {
   const { user, logout } = useAuth();
@@ -45,6 +42,7 @@ export default function DriverActivePage() {
       assignmentId: 999999,
       date: getTodayDateString(),
       status: AssignmentStatus.ONGOING,
+      routeId: 0,
       routeCode: "MK-01",
       routeName: "Rute Mock - Kota",
       direction: DirectionType.FORWARD,
@@ -58,6 +56,8 @@ export default function DriverActivePage() {
         currentOdometer: 0,
         status: VehicleStatus.ACTIVE,
         type: VehicleType.REGULER,
+        assignmentCount: 0,
+        serviceCount: 0,
         createdAt: getTodayDateString(),
         updatedAt: getTodayDateString(),
       },
@@ -72,92 +72,14 @@ export default function DriverActivePage() {
         photoUrl: null,
         isVerified: true,
         status: "ACTIVE",
-        totalTrips: 0,
+        assignmentCount: 0,
         createdAt: getTodayDateString(),
         updatedAt: getTodayDateString(),
       },
     },
   ];
 
-  function AssignmentSeatWidget({
-    assignmentId,
-    initialStatus,
-  }: {
-    assignmentId: number;
-    initialStatus: AssignmentStatus;
-  }) {
-    const {
-      status,
-      loading: seatsLoading,
-      error: seatsError,
-      canControl,
-      toggleSeat,
-      toggleJourneyStatus,
-    } = useSeatManagement(String(assignmentId), false);
 
-    const currentStatus = status?.status || initialStatus;
-
-    return (
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-gray-800">
-              Kontrol Perjalanan
-            </h3>
-            <p className="text-xs text-gray-500">
-              Status:{" "}
-              <span className="font-semibold text-slate-800">
-                {currentStatus}
-              </span>
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={!canControl || !status}
-            onClick={toggleJourneyStatus}
-            className={`px-3 py-2 text-xs font-semibold rounded-lg transition ${
-              canControl && status
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "bg-gray-200 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {status?.status === AssignmentStatus.ONGOING
-              ? "Set Selesai"
-              : "Mulai Perjalanan"}
-          </button>
-        </div>
-
-        <SeatGridControl
-          seats={status?.seats || []}
-          canControl={canControl}
-          onToggleSeat={toggleSeat}
-          hasConductor={status?.hasConductor || false}
-          isUserConductor={false}
-        />
-
-        {seatsLoading && (
-          <div className="text-xs text-gray-400 mt-2">
-            Memuat status kursi...
-          </div>
-        )}
-
-        {seatsError && (
-          <div className="text-xs text-rose-600 mt-2">{seatsError}</div>
-        )}
-
-        {status?.status === AssignmentStatus.ONGOING && (
-          <div className="mt-4">
-            <h4 className="text-sm font-semibold text-slate-900 mb-2">
-              Live Map Tracking
-            </h4>
-            <div className="h-72 rounded-3xl overflow-hidden border border-gray-200">
-              <DriverMap />
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   // Prefer mock displaySchedule when backend returns empty
   const displaySchedule: TripHistoryItem[] =
@@ -233,11 +155,10 @@ export default function DriverActivePage() {
               <button
                 type="button"
                 onClick={() => setSelectedDate("")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center justify-center gap-1 ${
-                  selectedDate === ""
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center justify-center gap-1 ${selectedDate === ""
+                  ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                  : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
+                  }`}
               >
                 <FaTimesCircle
                   className={
@@ -340,11 +261,10 @@ export default function DriverActivePage() {
                                   Arah:
                                 </span>
                                 <span
-                                  className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wide border ${
-                                    item.direction === "FORWARD"
-                                      ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                                      : "bg-amber-50 text-amber-700 border-amber-200"
-                                  }`}
+                                  className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wide border ${item.direction === "FORWARD"
+                                    ? "bg-cyan-50 text-cyan-700 border-cyan-200"
+                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                    }`}
                                 >
                                   {item.direction}
                                 </span>
@@ -380,13 +300,7 @@ export default function DriverActivePage() {
                             </div>
                           </div>
 
-                          {/* Seat control rendered directly in assignment card */}
-                          <div className="mt-2">
-                            <AssignmentSeatWidget
-                              assignmentId={item.assignmentId}
-                              initialStatus={item.status}
-                            />
-                          </div>
+
 
                           {/* Footer / Kondektur & Action Prompt */}
                           <div className="pt-2.5 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] sm:text-xs">

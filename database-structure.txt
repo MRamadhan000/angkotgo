@@ -1,0 +1,205 @@
+**Daftar Lengkap Skema Tabel `public` (`angkotgo-backend`)**
+
+* **bookings**
+* `booking_code` (`varchar`)
+* `user_id` (`int4`)
+* `vehicle_assignment_id` (`int4`)
+* `passenger_count` (`int4`)
+* `total_amount` (`numeric`)
+* `status` (`bookings_status_enum`)
+* `payment_method` (`varchar`)
+
+
+* **conductors**
+* `id` (`int4`)
+* `name` (`varchar`)
+* `nik` (`varchar`)
+* `email` (`varchar`)
+* `phone` (`varchar`)
+* `password` (`varchar`)
+
+
+* **costs**
+* `id` (`int4`)
+* `name` (`varchar`)
+* `nominal` (`numeric`)
+* `created_at` (`timestamp`)
+* `updated_at` (`timestamp`)
+
+
+* **driver_testing_position**
+* `id` (`int4`)
+* `nama_angkot` (`varchar`)
+* `nama_tempat` (`varchar`)
+* `geom` (`geography`)
+
+
+* **drivers**
+* `id` (`int4`)
+* `name` (`varchar`)
+* `phone` (`varchar`)
+* `license_number` (`varchar`)
+* `status` (`drivers_status_enum`)
+* `created_at` (`timestamp`)
+
+
+* **geography_columns**
+* `f_table_catalog` (`name`)
+* `f_table_schema` (`name`)
+* `f_table_name` (`name`)
+* `f_geography_column` (`name`)
+* `coord_dimension` (`int4`)
+* `srid` (`int4`)
+
+
+* **geometry_columns**
+* `f_table_catalog` (`varchar`)
+* `f_table_schema` (`name`)
+* `f_table_name` (`name`)
+* `f_geometry_column` (`name`)
+* `coord_dimension` (`int4`)
+* `srid` (`int4`)
+
+
+* **mock_live_locations**
+* `id` (`int4`)
+* `name` (`varchar`)
+* `route_id` (`int4`)
+* `direction` (`int4`)
+* `direction` (`mock_live_locations_direction_enum`)
+* `coordinates` (`jsonb`)
+* `recorded_at` (`timestamp`)
+
+
+* **payments**
+* `id` (`int4`)
+* `payment_code` (`varchar`)
+* `vehicle_assignment_id` (`int4`)
+* `user_id` (`int4`)
+* `payment_type` (`payments_payment_type_enum`)
+* `amount` (`numeric`)
+
+
+* **route_paths**
+* `id` (`int4`)
+* `route_id` (`int4`)
+* `direction` (`int4` / `route_paths_direction_enum`)
+* `latitude` (`numeric`)
+* `longitude` (`numeric`)
+* `sequence_order` (`int4`)
+* `geom` (`geography`)
+
+
+* **route_stops**
+* `id` (`int4`)
+* `route_id` (`int4`)
+* `direction` (`route_stops_direction_enum`)
+* `stop_name` (`varchar`)
+* `latitude` (`numeric`)
+* `longitude` (`numeric`)
+* `stop_order` (`int4`)
+
+
+* **routes**
+* `id` (`int4`)
+* `route_code` (`varchar`)
+* `route_name` (`varchar`)
+* `created_at` (`timestamp`)
+* `updated_at` (`timestamp`)
+* `deleted_at` (`timestamp`)
+
+
+* **schedule_templates**
+* `id` (`int4`)
+* `route_id` (`int4`)
+* `vehicle_id` (`int4`)
+* `driver_id` (`int4`)
+* `conductor_id` (`int4`)
+* `start_time` (`time`)
+* `end_time` (`time`)
+* `direction` (`schedule_templates_direction_enum`)
+* `active_days` (`text`)
+
+
+* **sinyal_detail**
+* `id` (`uuid`)
+* `id_sinyal` (`uuid`)
+* `vehicleAssignmentId` (`varchar`)
+* `createdAt` (`timestamp`)
+
+
+* **sinyal_penumpang**
+* `id` (`uuid`)
+* `latitude` (`numeric`)
+* `longitude` (`numeric`)
+* `geom` (`geometry`)
+* `status` (`sinyal_penumpang_status_enum`)
+* `vehicleAssignmentId` (`varchar`)
+* `createdAt` (`timestamp`)
+
+
+* **spatial_ref_sys**
+* `srid` (`int4`)
+* `auth_name` (`varchar`)
+* `auth_srid` (`int4`)
+* `srtext` (`varchar`)
+* `proj4text` (`varchar`)
+
+
+* **stop_intervals**
+* `id` (`int4`)
+* `route_id` (`int4`)
+* `direction` (`int4` / `stop_intervals_direction_enum`)
+* `from_stop_id` (`int4`)
+* `to_stop_id` (`int4`)
+* `duration_in_seconds` (`int4`)
+* `distance_in_meters` (`numeric`)
+
+
+* **users**
+* `id` (`int4`)
+* `email` (`varchar`)
+* `password` (`varchar`)
+* `name` (`varchar`)
+* `phone` (`varchar`)
+* `created_at` (`timestamp`)
+
+
+* **vehicle_assignments**
+* `id` (`int4`)
+* `vehicle_id` (`int4`)
+* `driver_id` (`int4`)
+* `route_id` (`int4`)
+* `direction` (`vehicle_assignments_direction_enum`)
+* `current_passengers` (`int4`)
+* `assignment_date` (`date`)
+
+
+* **vehicle_locations**
+* `id` (`int4`)
+* `vehicle_assignment_id` (`int4`)
+* `latitude` (`numeric`)
+* `longitude` (`numeric`)
+* `current_stop_id` (`int4`)
+* `stop_status` (`vehicle_locations_stop_status_enum`)
+* `geom` (`geography`)
+
+
+* **vehicle_services**
+* `id` (`int4`)
+* `vehicle_id` (`int4`)
+* `service_type` (`vehicle_services_service_type_enum`)
+* `description` (`text`)
+* `cost` (`numeric`)
+* `odometer_at_service` (`int4`)
+* `service_date` (`date`)
+
+
+* **vehicles**
+* `id` (`int4`)
+* `plate_number` (`varchar`)
+* `vehicle_code` (`varchar`)
+* `capacity` (`int4`)
+* `status` (`vehicles_status_enum`)
+* `created_at` (`timestamp`)
+* `updated_at` (`timestamp`)

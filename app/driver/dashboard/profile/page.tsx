@@ -62,7 +62,7 @@ function ProfileHeader() {
 
 export default function DriverProfilePage() {
   const { user } = useAuth();
-  const { driver, loading, error } = useDriverDetail(user?.id ?? null);
+  const { data: driver, isLoading: loading, error: driverError } = useDriverDetail(user?.id ?? null);
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
@@ -77,10 +77,10 @@ export default function DriverProfilePage() {
               <span>Memuat data profil...</span>
             </div>
           </div>
-        ) : error ? (
+        ) : driverError ? (
           <div className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs sm:text-sm text-rose-800 shadow-xs">
             <FiAlertCircle className="h-5 w-5 shrink-0" />
-            <span className="break-words">Gagal memuat profil: {error}</span>
+            <span className="break-words">Gagal memuat profil: {driverError?.message}</span>
           </div>
         ) : !driver ? (
           <div className="rounded-2xl border border-gray-100 bg-white p-8 sm:p-10 text-center text-xs sm:text-sm text-gray-400 shadow-sm sm:rounded-3xl">
@@ -189,8 +189,8 @@ export default function DriverProfilePage() {
                     value={
                       driver.licenseExpiryDate
                         ? new Date(driver.licenseExpiryDate).toLocaleDateString(
-                            "id-ID"
-                          )
+                          "id-ID"
+                        )
                         : "-"
                     }
                   />

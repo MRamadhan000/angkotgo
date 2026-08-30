@@ -53,7 +53,17 @@ const passengerPoints: [number, number][] = [
 
 const angkotPosition: [number, number] = [-7.9515, 112.619];
 
-export default function DriverMap() {
+interface DriverMapProps {
+  currentPassengers?: number;
+  capacity?: number;
+  routeName?: string;
+}
+
+export default function DriverMap({
+  currentPassengers = 8,
+  capacity = 12,
+  routeName = "Arjosari - Gadang",
+}: DriverMapProps) {
   const [leafletReady, setLeafletReady] = useState(false);
 
   const [angkotIcon, setAngkotIcon] = useState<any>(null);
@@ -252,19 +262,22 @@ export default function DriverMap() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500">Passenger</span>
 
-                    <span className="font-semibold">8 / 12</span>
+                    <span className="font-semibold">{currentPassengers} / {capacity}</span>
                   </div>
 
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500">Route</span>
 
                     <span className="font-semibold text-blue-600">
-                      Arjosari - Gadang
+                      {routeName}
                     </span>
                   </div>
 
                   <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden mt-2">
-                    <div className="w-[67%] h-full bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full" />
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${Math.min(100, Math.max(0, (currentPassengers / capacity) * 100))}%` }}
+                    />
                   </div>
                 </div>
               </div>
