@@ -37,51 +37,7 @@ export default function ConductorActivePage() {
   const [selectedDate, setSelectedDate] =
     useState<string>(getTodayDateString());
 
-  // Mock fallback assignment for local visual testing when activeSchedule is empty
-  const MOCK_ACTIVE_ASSIGNMENTS: TripHistoryItem[] = [
-    {
-      assignmentId: 888888,
-      date: getTodayDateString(),
-      status: AssignmentStatus.ONGOING,
-      routeCode: "MK-02",
-      routeName: "Rute Kondektur Mock",
-      direction: DirectionType.FORWARD,
-      startTime: "08:00",
-      endTime: "10:00",
-      vehicle: {
-        id: 0,
-        plateNumber: "D 5678 YY",
-        vehicleCode: "V-MOCK2",
-        capacity: 8,
-        currentOdometer: 0,
-        status: VehicleStatus.ACTIVE,
-        type: VehicleType.REGULER,
-        createdAt: getTodayDateString(),
-        updatedAt: getTodayDateString(),
-      },
-      driver: {
-        id: 0,
-        name: "Siti Mock",
-        nik: "0000000000",
-        email: "siti.mock@example.com",
-        phone: "081234567890",
-        licenseNumber: "SIM-123456",
-        licenseExpiryDate: getTodayDateString(),
-        isVerified: true,
-        status: "ACTIVE",
-        averageRating: 5,
-        totalTrips: 0,
-        createdAt: getTodayDateString(),
-        updatedAt: getTodayDateString(),
-      },
-    },
-  ];
-
-  // Prefer mock displaySchedule when backend returns empty
-  const displaySchedule: TripHistoryItem[] =
-    activeSchedule && activeSchedule.length > 0
-      ? activeSchedule
-      : MOCK_ACTIVE_ASSIGNMENTS;
+  const displaySchedule: TripHistoryItem[] = activeSchedule || [];
 
   useEffect(() => {
     if (user?.id) {
@@ -160,11 +116,10 @@ export default function ConductorActivePage() {
               <button
                 type="button"
                 onClick={() => setSelectedDate("")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center justify-center gap-1 ${
-                  selectedDate === ""
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center justify-center gap-1 ${selectedDate === ""
+                  ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                  : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
+                  }`}
               >
                 <FaTimesCircle
                   className={
@@ -253,11 +208,10 @@ export default function ConductorActivePage() {
                                   Arah:
                                 </span>
                                 <span
-                                  className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wide border ${
-                                    item.direction === "FORWARD"
-                                      ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                                      : "bg-amber-50 text-amber-700 border-amber-200"
-                                  }`}
+                                  className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wide border ${item.direction === "FORWARD"
+                                    ? "bg-cyan-50 text-cyan-700 border-cyan-200"
+                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                    }`}
                                 >
                                   {item.direction}
                                 </span>
@@ -353,11 +307,10 @@ function AssignmentSeatWidget({ assignmentId }: { assignmentId: number }) {
           type="button"
           disabled={!canControl || !status}
           onClick={toggleJourneyStatus}
-          className={`px-3 py-2 text-xs font-semibold rounded-lg transition ${
-            canControl && status
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "bg-gray-200 text-gray-500 cursor-not-allowed"
-          }`}
+          className={`px-3 py-2 text-xs font-semibold rounded-lg transition ${canControl && status
+            ? "bg-blue-600 text-white hover:bg-blue-700"
+            : "bg-gray-200 text-gray-500 cursor-not-allowed"
+            }`}
         >
           {status?.status === AssignmentStatus.ONGOING
             ? "Set Selesai"

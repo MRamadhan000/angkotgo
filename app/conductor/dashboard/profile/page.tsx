@@ -57,7 +57,7 @@ function ProfileHeader() {
 
 export default function ConductorProfilePage() {
   const { user } = useAuth();
-  const { conductor, loading, error } = useConductorDetail(user?.id ?? null);
+  const { data: conductor, isLoading: loading, error: conductorError } = useConductorDetail(user?.id ?? null);
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
@@ -72,10 +72,10 @@ export default function ConductorProfilePage() {
               <span>Memuat data profil...</span>
             </div>
           </div>
-        ) : error ? (
+        ) : conductorError ? (
           <div className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs sm:text-sm text-rose-800 shadow-xs">
             <FiAlertCircle className="h-5 w-5 shrink-0" />
-            <span className="break-words">Gagal memuat profil: {error}</span>
+            <span className="break-words">Gagal memuat profil: {conductorError?.message}</span>
           </div>
         ) : !conductor ? (
           <div className="rounded-2xl border border-gray-100 bg-white p-8 sm:p-10 text-center text-xs sm:text-sm text-gray-400 shadow-sm sm:rounded-3xl">

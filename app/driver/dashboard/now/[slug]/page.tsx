@@ -12,8 +12,9 @@ import { DetailLoading } from "@/components/common/DetaiLoading";
 import ErrorAlert from "@/components/common/ErrorAlert";
 import { AssignmentStatusCard } from "@/components/common/AssignmentStatusCard";
 import { UpdateStatusModal } from "@/components/now/UpdateStatusModal";
-import { useSeatManagement } from "@/hooks/vehicles/useSeatManagement";
+
 import { SeatGridControl } from "@/components/now/SeatGridControl";
+import DriverMap from "@/app/driver/dashboard/DriverMap";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
@@ -30,11 +31,11 @@ export default function AssignmentDetailPage() {
   const { assignmentDetail, detailLoading, detailError, getAssignmentById } =
     usePersonnelSchedule() as {
       assignmentDetail:
-        | (VehicleSchedule & {
-            conductor?: { id: number; name: string } | null;
-            status?: string;
-          })
-        | null;
+      | (VehicleSchedule & {
+        conductor?: { id: number; name: string } | null;
+        status?: string;
+      })
+      | null;
       detailLoading: boolean;
       detailError: string | null;
       getAssignmentById: (id: number) => Promise<any>;
@@ -89,8 +90,19 @@ export default function AssignmentDetailPage() {
 
             {/* Seat control for driver (driver is not conductor) */}
             <div>
-              <DriverSeatControl assignmentId={assignmentId} />
+              <DriverSeatControl assignmentDetail={assignmentDetail as any} />
             </div>
+
+            {assignmentDetail.status === "ONGOING" && (
+              <div className="mt-1 sm:mt-2">
+                <h4 className="text-sm font-semibold text-slate-900 mb-3">
+                  Live Map Tracking
+                </h4>
+                <div className="h-72 w-full rounded-3xl overflow-hidden border border-gray-200 shadow-xs relative z-0">
+                  <DriverMap />
+                </div>
+              </div>
+            )}
 
             {/* Konten Timeline Halte */}
             <EstimatedStopsTimeline
@@ -114,30 +126,24 @@ export default function AssignmentDetailPage() {
   );
 }
 
-function DriverSeatControl({ assignmentId }: { assignmentId: number }) {
-  const {
-    status,
-    loading: seatsLoading,
-    error: seatsError,
-    canControl,
-    toggleSeat,
-  } = useSeatManagement(String(assignmentId), false);
+function DriverSeatControl({ assignmentDetail }: { assignmentDetail: any }) {
+  const currentPassengers = assignmentDetail?.currentPassengers || 0;
+  const capacity = assignmentDetail?.vehicle?.capacity || 8;
+
+  const seats = Array.from({ length: capacity }, (_, i) => ({
+    seatNumber: i + 1,
+    isOccupied: i < currentPassengers,
+  }));
 
   return (
     <div>
       <SeatGridControl
-        seats={status?.seats || []}
-        canControl={canControl}
-        onToggleSeat={toggleSeat}
-        hasConductor={status?.hasConductor || false}
+        seats={seats}
+        canControl={false}
+        onToggleSeat={() => { }}
+        hasConductor={false}
         isUserConductor={false}
       />
-      {seatsLoading && (
-        <div className="text-xs text-gray-400 mt-2">Memuat status kursi...</div>
-      )}
-      {seatsError && (
-        <div className="text-xs text-rose-600 mt-2">{seatsError}</div>
-      )}
     </div>
   );
 }

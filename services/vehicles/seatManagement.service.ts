@@ -24,13 +24,30 @@ export const seatManagementService = {
     }
 
     const res = await fetch(
-      `${API_BASE_URL}/vehicle-assignments/${assignmentId}/seats`,
+      `${API_BASE_URL}/vehicle-assignments/${assignmentId}`,
       {
         headers: { "Content-Type": "application/json" },
       },
     );
     if (!res.ok) throw new Error("Gagal mengambil status kursi");
-    return res.json();
+
+    const result = await res.json();
+    const assignment = result.data || result;
+
+    const totalSeats = assignment.vehicle?.capacity || 8;
+    const currentPassengers = assignment.currentPassengers || 0;
+
+    return {
+      assignmentId: String(assignment.id || assignmentId),
+      hasConductor: !!(assignment.conductorId || assignment.conductor_id || assignment.conductor),
+      status: assignment.status,
+      currentPassengers: currentPassengers,
+      totalSeats: totalSeats,
+      seats: Array.from({ length: totalSeats }, (_, i) => ({
+        seatNumber: i + 1,
+        isOccupied: i < currentPassengers,
+      })),
+    };
   },
 
   // Toggle status kursi
@@ -44,15 +61,15 @@ export const seatManagementService = {
     }
 
     const res = await fetch(
-      `${API_BASE_URL}/vehicle-assignments/${assignmentId}/seats`,
+      `${API_BASE_URL}/vehicle-assignments/${assignmentId}`,
       {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seatNumber, passengerCount }),
+        body: JSON.stringify({ currentPassengers: passengerCount }),
       },
     );
     if (!res.ok) throw new Error("Gagal memperbarui kursi");
-    return res.json();
+    return { success: true, currentPassengers: passengerCount };
   },
 
   async updateJourneyStatus(
@@ -64,15 +81,15 @@ export const seatManagementService = {
     }
 
     const res = await fetch(
-      `${API_BASE_URL}/vehicle-assignments/${assignmentId}/status`,
+      `${API_BASE_URL}/vehicle-assignments/${assignmentId}`,
       {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       },
     );
     if (!res.ok) throw new Error("Gagal memperbarui status perjalanan");
-    return res.json();
+    return { success: true, status };
   },
 
   // Sambungkan Kondektur ke Driver
