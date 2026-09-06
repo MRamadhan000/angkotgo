@@ -7,6 +7,7 @@ interface GpsPermissionModalProps {
   isLocating: boolean;
   onEnable: () => void;
   onSkip: () => void;
+  hideSkip?: boolean;
 }
 
 export default function GpsPermissionModal({
@@ -14,6 +15,7 @@ export default function GpsPermissionModal({
   isLocating,
   onEnable,
   onSkip,
+  hideSkip = false,
 }: GpsPermissionModalProps) {
   if (!open) return null;
 
@@ -54,13 +56,15 @@ export default function GpsPermissionModal({
             )}
           </button>
 
-          <button
-            onClick={onSkip}
-            disabled={isLocating}
-            className="w-full h-10 bg-transparent text-[#434654] hover:bg-[#ededf8] rounded-xl font-medium text-xs transition-all disabled:opacity-50"
-          >
-            Gunakan Manual / Lewati
-          </button>
+          {!hideSkip && (
+            <button
+              onClick={onSkip}
+              disabled={isLocating}
+              className="w-full h-10 bg-transparent text-[#434654] hover:bg-[#ededf8] rounded-xl font-medium text-xs transition-all disabled:opacity-50"
+            >
+              Gunakan Manual / Lewati
+            </button>
+          )}
         </div>
       </div>
     </div>

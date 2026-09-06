@@ -17,6 +17,7 @@ interface UpcomingVehicleCardProps {
   vehicle: UpcomingVehicle;
   onBook?: (vehicle: UpcomingVehicle) => void;
   isSelected?: boolean;
+  isBookingEnabled?: boolean;
 }
 
 const formatDistance = (meters: number | null | undefined) => {
@@ -87,6 +88,7 @@ export default function UpcomingVehicleCard({
   vehicle,
   onBook,
   isSelected = false,
+  isBookingEnabled = false,
 }: UpcomingVehicleCardProps) {
   const status = getStatus(vehicle.status);
   const StatusIcon = status.icon;
@@ -101,7 +103,7 @@ export default function UpcomingVehicleCard({
     vehicle.lastLocationAgeSeconds !== null &&
     vehicle.lastLocationAgeSeconds < 120;
 
-  const canBook = vehicle.status === "ONGOING";
+  const canBook = vehicle.status === "ONGOING" && isBookingEnabled;
 
   return (
     <div

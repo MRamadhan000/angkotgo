@@ -31,6 +31,7 @@ export default function UpcomingVehicleList({
   isSubmitting = false,
 }: UpcomingVehicleListProps) {
   const [submitted, setSubmitted] = useState(false);
+  const [hasBoarded, setHasBoarded] = useState(false);
 
   const handleSubmit = async () => {
     try {
@@ -95,6 +96,31 @@ export default function UpcomingVehicleList({
         </button>
       </div>
 
+      {submitted && (
+        <div className="mx-4 mb-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
+          <p className="text-sm font-semibold text-slate-800">
+            Apakah Anda sudah naik?
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setHasBoarded(true)}
+              disabled={hasBoarded}
+              className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-blue-300"
+            >
+              Ya, saya sudah naik
+            </button>
+            <button
+              type="button"
+              onClick={() => setHasBoarded(false)}
+              className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"
+            >
+              Belum
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* VEHICLES */}
       {vehicles.length > 0 ? (
         <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-4 pb-4">
@@ -102,6 +128,7 @@ export default function UpcomingVehicleList({
             <UpcomingVehicleCard
               key={vehicle.assignmentId}
               vehicle={vehicle}
+              isBookingEnabled={hasBoarded}
             />
           ))}
         </div>

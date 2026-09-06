@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import {
   VehicleSocketService,
   VehicleRealtimePayload,
-} from "@/services/vehicles/vehicle-socket.service";
+} from "@/services/vehicles/vehicleSocket.service";
 
 export function useVehicleSocket(vehicleAssignmentId: number) {
   const [vehicle, setVehicle] = useState<VehicleRealtimePayload | null>(null);
@@ -14,39 +14,63 @@ export function useVehicleSocket(vehicleAssignmentId: number) {
 
   useEffect(() => {
     if (!vehicleAssignmentId) {
+      setVehicle(null);
+      setConnected(false);
       return;
     }
 
+    // Reset ketika assignment berubah
+    setVehicle(null);
+    setConnected(false);
+
     const socket = VehicleSocketService.connect();
 
-    // =========================
-    // CONNECT
-    // =========================
+    /**
+     * Socket connected
+     */
     const handleConnect = () => {
       console.log("Vehicle socket connected:", socket.id);
 
       setConnected(true);
 
+      /**
+       * Join room setelah socket connected
+       */
       VehicleSocketService.joinAssignment(socket, vehicleAssignmentId);
     };
 
-    // =========================
-    // DISCONNECT
-    // =========================
+    /**
+     * Socket disconnected
+     */
     const handleDisconnect = () => {
       console.log("Vehicle socket disconnected");
 
       setConnected(false);
     };
 
-    // =========================
-    // VEHICLE UPDATE
-    // =========================
+    /**
+     * Vehicle location update
+     */
     const handleVehicleUpdate = (data: VehicleRealtimePayload) => {
-      console.log("Vehicle update:", data);
+      console.log("Vehicle location update:", data);
+
+      /**
+       * Pastikan update berasal dari
+       * vehicle assignment yang sedang dilihat.
+       */
+      if (data.vehicleAssignmentId !== vehicleAssignmentId) {
+        return;
+      }
 
       setVehicle(data);
     };
+
+    /**
+     * Register listener
+     *
+     * Listener dipasang sebelum join supaya
+     * latest data dari Redis tidak terlewat.
+     */
 
     socket.on("connect", handleConnect);
 
@@ -54,9 +78,9 @@ export function useVehicleSocket(vehicleAssignmentId: number) {
 
     VehicleSocketService.onVehicleUpdate(socket, handleVehicleUpdate);
 
-    // =========================
-    // CLEANUP
-    // =========================
+    /**
+     * Cleanup
+     */
     return () => {
       VehicleSocketService.offVehicleUpdate(socket, handleVehicleUpdate);
 

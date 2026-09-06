@@ -1,290 +1,187 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useRef } from "react";
+import mapboxgl from "mapbox-gl";
+import { RoutePath } from "@/types/routes/route-path.type";
+import { RouteStopType } from "@/types/routes/route-stop.type";
+import "mapbox-gl/dist/mapbox-gl.css";
 
-import { FaBus, FaUsers, FaMapMarkerAlt, FaRoute } from "react-icons/fa";
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-// ================= DYNAMIC IMPORT =================
-const MapContainer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.MapContainer),
-  { ssr: false },
-);
+type Coordinate = [number, number];
 
-const TileLayer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.TileLayer),
-  { ssr: false },
-);
+function toCoordinate(
+  longitude: unknown,
+  latitude: unknown,
+): Coordinate | null {
+  const lng = Number(longitude);
+  const lat = Number(latitude);
 
-const Marker = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Marker),
-  { ssr: false },
-);
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+  if (lng < -180 || lng > 180 || lat < -90 || lat > 90) return null;
 
-const Polyline = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Polyline),
-  { ssr: false },
-);
-
-const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
-  ssr: false,
-});
-
-const CircleMarker = dynamic(
-  () => import("react-leaflet").then((mod) => mod.CircleMarker),
-  { ssr: false },
-);
-
-// ================= DATA =================
-const routePath: [number, number][] = [
-  [-7.955, 112.612],
-  [-7.954, 112.615],
-  [-7.952, 112.618],
-  [-7.95, 112.621],
-  [-7.948, 112.625],
-];
-
-const passengerPoints: [number, number][] = [
-  [-7.9545, 112.6135],
-  [-7.9532, 112.6162],
-  [-7.9515, 112.6195],
-  [-7.9495, 112.623],
-];
-
-const angkotPosition: [number, number] = [-7.9515, 112.619];
+  return [lng, lat];
+}
 
 interface DriverMapProps {
+  routePaths?: RoutePath[];
+  routeStops?: RouteStopType[];
+  currentLocation?: { latitude: number; longitude: number } | null;
   currentPassengers?: number;
   capacity?: number;
   routeName?: string;
 }
 
 export default function DriverMap({
-  currentPassengers = 8,
+  routePaths = [],
+  routeStops = [],
+  currentLocation = null,
+  currentPassengers = 0,
   capacity = 12,
-  routeName = "Arjosari - Gadang",
+  routeName = "Rute angkot",
 }: DriverMapProps) {
-  const [leafletReady, setLeafletReady] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const vehicleMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const stopMarkersRef = useRef<mapboxgl.Marker[]>([]);
 
-  const [angkotIcon, setAngkotIcon] = useState<any>(null);
+  const sortedPaths = [...routePaths]
+    .map((path) => ({
+      path,
+      coordinate: toCoordinate(path.longitude, path.latitude),
+    }))
+    .filter((item): item is { path: RoutePath; coordinate: Coordinate } =>
+      item.coordinate !== null,
+    )
+    .sort((a, b) => a.path.sequenceOrder - b.path.sequenceOrder);
+  const sortedStops = [...routeStops]
+    .map((stop) => ({
+      stop,
+      coordinate: toCoordinate(stop.longitude, stop.latitude),
+    }))
+    .filter((item): item is { stop: RouteStopType; coordinate: Coordinate } =>
+      item.coordinate !== null,
+    )
+    .sort((a, b) => a.stop.stopOrder - b.stop.stopOrder);
 
   useEffect(() => {
-    const initLeaflet = async () => {
-      const L = (await import("leaflet")).default;
+    if (!containerRef.current || !MAPBOX_TOKEN || mapRef.current) return;
 
-      // ================= DEFAULT ICON FIX =================
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+    const center =
+      toCoordinate(currentLocation?.longitude, currentLocation?.latitude) ??
+      sortedPaths[0]?.coordinate ??
+      sortedStops[0]?.coordinate ??
+      ([112.6214, -7.9839] as Coordinate);
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center,
+      zoom: 14,
+      attributionControl: true,
+    });
 
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl:
-          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        shadowUrl:
-          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      });
+    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    mapRef.current = map;
 
-      // ================= CUSTOM ANGKOT ICON =================
-      const customIcon = L.divIcon({
-        html: `
-          <div style="
-            position: relative;
-            width: 72px;
-            height: 72px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          ">
-            
-            <div style="
-              position: absolute;
-              width: 72px;
-              height: 72px;
-              background: rgba(59,130,246,0.18);
-              border-radius: 999px;
-              animation: pulse 2s infinite;
-            "></div>
-
-            <div style="
-              width: 56px;
-              height: 56px;
-              background: linear-gradient(135deg,#2563eb,#06b6d4);
-              border-radius: 18px;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              box-shadow: 0 12px 30px rgba(37,99,235,0.35);
-              border: 4px solid white;
-              font-size: 28px;
-            ">
-              🚌
-            </div>
-          </div>
-
-          <style>
-            @keyframes pulse {
-              0% {
-                transform: scale(0.9);
-                opacity: 0.7;
-              }
-
-              70% {
-                transform: scale(1.4);
-                opacity: 0;
-              }
-
-              100% {
-                transform: scale(1.4);
-                opacity: 0;
-              }
-            }
-          </style>
-        `,
-        className: "custom-angkot-marker",
-        iconSize: [72, 72],
-        iconAnchor: [36, 36],
-      });
-
-      setAngkotIcon(customIcon);
-      setLeafletReady(true);
+    return () => {
+      vehicleMarkerRef.current?.remove();
+      stopMarkersRef.current.forEach((marker) => marker.remove());
+      map.remove();
+      mapRef.current = null;
     };
-
-    initLeaflet();
   }, []);
 
-  if (!leafletReady) {
-    return (
-      <div className="h-[500px] rounded-[32px] bg-gradient-to-br from-blue-50 to-cyan-50 flex flex-col items-center justify-center border border-blue-100">
-        <div className="w-16 h-16 rounded-3xl bg-gradient-to-r from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-200 animate-pulse">
-          <FaBus className="text-white text-2xl" />
-        </div>
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
 
-        <h3 className="mt-6 text-xl font-bold text-slate-800">
-          Loading Live Map
-        </h3>
+    const drawRoute = () => {
+      const coordinates = sortedPaths.map((item) => item.coordinate);
+      if (coordinates.length < 2) return;
 
-        <p className="text-slate-500 mt-2">Menyiapkan tracking angkot...</p>
-      </div>
+      const sourceId = "driver-route-path";
+      const layerId = "driver-route-path-line";
+      const data: GeoJSON.Feature<GeoJSON.LineString> = {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "LineString", coordinates },
+      };
+
+      const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource | undefined;
+      if (source) source.setData(data);
+      else map.addSource(sourceId, { type: "geojson", data });
+
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: "line",
+          source: sourceId,
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: { "line-color": "#2563eb", "line-width": 5, "line-opacity": 0.9 },
+        });
+      }
+
+      const bounds = new mapboxgl.LngLatBounds();
+      coordinates.forEach((coordinate) => bounds.extend(coordinate));
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 0 });
+      }
+    };
+
+    if (map.isStyleLoaded()) drawRoute();
+    else map.once("load", drawRoute);
+
+    return () => {
+      map.off("load", drawRoute);
+    };
+  }, [routePaths]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    stopMarkersRef.current.forEach((marker) => marker.remove());
+    stopMarkersRef.current = sortedStops.map(({ stop, coordinate }) => {
+      const element = document.createElement("div");
+      element.className = "flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-teal-700 text-xs font-bold text-white shadow";
+      element.textContent = String(stop.stopOrder);
+      return new mapboxgl.Marker({ element })
+        .setLngLat(coordinate)
+        .setPopup(new mapboxgl.Popup().setText(`Halte ${stop.stopOrder}: ${stop.stopName}`))
+        .addTo(map);
+    });
+  }, [routeStops]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const coordinate = toCoordinate(
+      currentLocation?.longitude,
+      currentLocation?.latitude,
     );
+    if (!map || !coordinate || !currentLocation) return;
+
+    if (!vehicleMarkerRef.current) {
+      const element = document.createElement("div");
+      element.className = "flex h-12 w-12 items-center justify-center rounded-full border-4 border-white bg-blue-600 text-white shadow-xl";
+      element.innerHTML = "<span aria-label=\"Posisi angkot\">🚌</span>";
+      vehicleMarkerRef.current = new mapboxgl.Marker({ element })
+        .setLngLat(coordinate)
+        .addTo(map);
+    }
+
+    vehicleMarkerRef.current
+      .setLngLat(coordinate)
+      .setPopup(
+        new mapboxgl.Popup({ offset: 28 }).setHTML(
+          `<strong>${routeName}</strong><br/>GPS live: ${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}<br/>Penumpang: ${currentPassengers}/${capacity}`,
+        ),
+      );
+  }, [currentLocation, routeName, currentPassengers, capacity]);
+
+  if (!MAPBOX_TOKEN) {
+    return <div className="flex h-full items-center justify-center bg-slate-100 p-4 text-center text-sm text-slate-600">NEXT_PUBLIC_MAPBOX_TOKEN belum dikonfigurasi.</div>;
   }
 
-  return (
-    <div className="relative h-full w-full">
-      {/* ================= MAP ================= */}
-      <MapContainer
-        center={angkotPosition}
-        zoom={15}
-        zoomControl={false}
-        style={{
-          height: "100%",
-          width: "100%",
-          borderRadius: "32px",
-        }}
-        className="shadow-2xl"
-      >
-        {/* ================= TILE ================= */}
-        <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        />
-
-        {/* ================= ROUTE LINE ================= */}
-        <Polyline
-          positions={routePath}
-          pathOptions={{
-            color: "#2563eb",
-            weight: 7,
-            opacity: 0.9,
-            lineCap: "round",
-            lineJoin: "round",
-            dashArray: "12 10",
-          }}
-        />
-
-        {/* ================= PASSENGER POINTS ================= */}
-        {passengerPoints.map((point, index) => (
-          <CircleMarker
-            key={index}
-            center={point}
-            radius={12}
-            pathOptions={{
-              color: "#ffffff",
-              fillColor: "#3b82f6",
-              fillOpacity: 1,
-              weight: 4,
-            }}
-          >
-            <Popup>
-              <div className="min-w-[180px]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                    <FaMapMarkerAlt />
-                  </div>
-
-                  <div>
-                    <h3 className="font-bold text-slate-800">
-                      Passenger Point
-                    </h3>
-
-                    <p className="text-sm text-slate-500">
-                      Calon Penumpang #{index + 1}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 bg-slate-50 rounded-2xl p-3 text-sm text-slate-600">
-                  Penumpang sedang menunggu angkot di titik ini.
-                </div>
-              </div>
-            </Popup>
-          </CircleMarker>
-        ))}
-
-        {/* ================= ANGKOT POSITION ================= */}
-        {angkotIcon && (
-          <Marker position={angkotPosition} icon={angkotIcon}>
-            <Popup>
-              <div className="min-w-[220px]">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-lg">
-                    <FaBus size={22} />
-                  </div>
-
-                  <div>
-                    <h3 className="font-bold text-lg">Angkot Jalur AG</h3>
-
-                    <p className="text-sm text-green-600 font-medium">
-                      ● Sedang Beroperasi
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Passenger</span>
-
-                    <span className="font-semibold">{currentPassengers} / {capacity}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Route</span>
-
-                    <span className="font-semibold text-blue-600">
-                      {routeName}
-                    </span>
-                  </div>
-
-                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden mt-2">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${Math.min(100, Math.max(0, (currentPassengers / capacity) * 100))}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        )}
-      </MapContainer>
-    </div>
-  );
+  return <div ref={containerRef} className="h-full w-full" aria-label={`Peta live ${routeName}`} />;
 }

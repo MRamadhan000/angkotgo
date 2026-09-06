@@ -29,8 +29,7 @@ export const vehicleAssignmentService = {
     return Array.isArray(result) ? result : result.data || [];
   },
 
-  async getById(id: number): Promise<VehicleSchedule> {
-    console.log("Fetching vehicle assignment by ID:", id);
+  async getById(id: number): Promise<VehicleAssignment> {
     const response = await fetch(`${API_URL}/vehicle-assignments/${id}`, {
       method: "GET",
       headers: {
@@ -46,8 +45,22 @@ export const vehicleAssignmentService = {
       );
     }
 
-    const result = await response.json();
-    return result.data || result;
+    const result = (await response.json()) as unknown;
+    const assignment =
+      typeof result === "object" &&
+      result !== null &&
+      "data" in result &&
+      result.data
+        ? result.data
+        : result;
+    const normalizedAssignment = (assignment ?? {}) as Partial<VehicleAssignment> & {
+      assignmentId?: number;
+    };
+
+    return {
+      ...normalizedAssignment,
+      id: normalizedAssignment.id ?? normalizedAssignment.assignmentId ?? id,
+    } as VehicleAssignment;
   },
 
   async getSchedulesByDate(date: string): Promise<VehicleSchedule[]> {
