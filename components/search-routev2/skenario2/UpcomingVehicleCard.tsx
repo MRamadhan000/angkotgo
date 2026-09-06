@@ -1,14 +1,12 @@
 "use client";
 
 import {
-  FiAlertCircle,
   FiCheckCircle,
   FiClock,
   FiMapPin,
   FiNavigation,
   FiUser,
   FiUsers,
-  FiXCircle,
 } from "react-icons/fi";
 
 import { UpcomingVehicle } from "@/types/route-search.type";
@@ -32,56 +30,19 @@ const formatDistance = (meters: number | null | undefined) => {
   return `${(meters / 1000).toFixed(1)} km`;
 };
 
-const formatLastLocation = (seconds: number | null | undefined) => {
-  if (seconds === null || seconds === undefined) {
-    return "-";
-  }
-
-  if (seconds < 60) {
-    return `${Math.round(seconds)} detik`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-
-  if (minutes < 60) {
-    return `${minutes} mnt`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-
-  return `${hours} jam`;
+const formatDuration = (seconds: number | null | undefined) => {
+  if (seconds === null || seconds === undefined) return "-";
+  const minutes = Math.max(0, Math.round(seconds / 60));
+  if (minutes < 60) return `${minutes} mnt`;
+  return `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
 };
 
-const getStatus = (status: UpcomingVehicle["status"]) => {
-  switch (status) {
-    case "ONGOING":
-      return {
-        label: "Aktif",
-        className: "bg-emerald-50 text-emerald-600",
-        icon: FiCheckCircle,
-      };
-
-    case "COMPLETED":
-      return {
-        label: "Selesai",
-        className: "bg-blue-50 text-blue-600",
-        icon: FiCheckCircle,
-      };
-
-    case "CANCELLED":
-      return {
-        label: "Dibatalkan",
-        className: "bg-red-50 text-red-600",
-        icon: FiXCircle,
-      };
-
-    default:
-      return {
-        label: "-",
-        className: "bg-slate-100 text-slate-500",
-        icon: FiAlertCircle,
-      };
-  }
+const formatEstimateRange = (
+  minSeconds: number | undefined,
+  maxSeconds: number | undefined,
+) => {
+  if (minSeconds === undefined || maxSeconds === undefined) return "-";
+  return `${formatDuration(minSeconds)} - ${formatDuration(maxSeconds)}`;
 };
 
 export default function UpcomingVehicleCard({
@@ -90,20 +51,22 @@ export default function UpcomingVehicleCard({
   isSelected = false,
   isBookingEnabled = false,
 }: UpcomingVehicleCardProps) {
-  const status = getStatus(vehicle.status);
-  const StatusIcon = status.icon;
-
   const hasLocation =
     vehicle.hasLocationData &&
     vehicle.vehicleLat !== null &&
     vehicle.vehicleLng !== null;
 
-  const isLive =
-    vehicle.hasLocationData &&
-    vehicle.lastLocationAgeSeconds !== null &&
-    vehicle.lastLocationAgeSeconds < 120;
-
   const canBook = vehicle.status === "ONGOING" && isBookingEnabled;
+  const capacity = vehicle.vehicleCapacity ?? vehicle.vehicle?.capacity ?? 8;
+  const passengers = vehicle.currentPassengers;
+  const hasPassengerData = passengers !== null && passengers !== undefined;
+  const isFull = hasPassengerData && passengers >= capacity;
+  const driverLabel =
+    vehicle.driverName || vehicle.driver?.name || `Driver #${vehicle.driverId}`;
+  const vehicleLabel =
+    vehicle.vehicleCode ||
+    vehicle.vehicle?.vehicleCode ||
+    `AG-${String(vehicle.vehicleId).padStart(3, "0")}`;
 
   return (
     <div
@@ -142,36 +105,21 @@ export default function UpcomingVehicleCard({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h3 className="truncate text-xs font-bold text-slate-900 sm:text-sm">
-                AG-{String(vehicle.vehicleId).padStart(3, "0")}
+                {vehicleLabel}
               </h3>
 
               <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[8px] font-semibold text-slate-500 sm:text-[9px]">
-                ID {vehicle.vehicleId}
+                ID {vehicle.assignmentId}
               </span>
             </div>
 
             <p className="mt-0.5 flex items-center gap-1 text-[9px] text-slate-500 sm:text-[10px]">
               <FiUser className="shrink-0 text-[9px]" />
 
-              <span className="truncate">Driver #{vehicle.driverId}</span>
+              <span className="truncate">{driverLabel}</span>
             </p>
           </div>
         </div>
-
-        {/* STATUS */}
-        <span
-          className={`
-            flex shrink-0 items-center gap-1
-            rounded-full px-2 py-1
-            text-[8px] font-bold
-            sm:px-2.5 sm:text-[9px]
-            ${status.className}
-          `}
-        >
-          <StatusIcon className="text-[9px]" />
-
-          {status.label}
-        </span>
       </div>
 
       {/* INFORMATION */}
@@ -191,32 +139,16 @@ export default function UpcomingVehicleCard({
           </p>
         </div>
 
-        {/* LOCATION */}
+        {/* SEATS */}
         <div className="min-w-0">
           <p className="mb-1 text-[8px] font-semibold uppercase tracking-wider text-slate-400 sm:text-[9px]">
-            Lokasi
+            Kursi
           </p>
-
-          <p
-            className={`
-              flex items-center gap-1
-              text-[10px] font-bold
-              sm:text-xs
-              ${isLive ? "text-emerald-600" : "text-slate-600"}
-            `}
-          >
-            <span
-              className={`
-                h-1.5 w-1.5 shrink-0 rounded-full
-                ${isLive ? "animate-pulse bg-emerald-500" : "bg-slate-300"}
-              `}
-            />
-
-            <span className="truncate">
-              {hasLocation
-                ? formatLastLocation(vehicle.lastLocationAgeSeconds)
-                : "-"}
-            </span>
+          <p className={`flex items-center gap-1 text-[10px] font-bold sm:text-xs ${!hasPassengerData ? "text-slate-500" : isFull ? "text-red-600" : "text-emerald-600"}`}>
+            <FiUsers className="shrink-0 text-[10px] sm:text-xs" />
+            {hasPassengerData
+              ? `${passengers}/${capacity} ${isFull ? "Penuh" : "Tersedia"}`
+              : `-/${capacity}`}
           </p>
         </div>
 
@@ -228,9 +160,38 @@ export default function UpcomingVehicleCard({
 
           <p className="flex items-center gap-1 text-[10px] font-bold text-slate-700 sm:text-xs">
             <FiClock className="shrink-0 text-[10px] text-blue-500 sm:text-xs" />
-            -
+            {hasLocation
+              ? formatEstimateRange(
+                  vehicle.osrmEstimate?.vehicleToUser?.durationMinSeconds,
+                  vehicle.osrmEstimate?.vehicleToUser?.durationMaxSeconds,
+                )
+              : "-"}
           </p>
         </div>
+      </div>
+
+      <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-xl border border-blue-100 bg-blue-50/60 p-2 sm:gap-2 sm:p-2.5">
+        <EstimateItem
+          label="Total"
+          value={formatEstimateRange(
+            vehicle.osrmEstimate?.total?.durationMinSeconds,
+            vehicle.osrmEstimate?.total?.durationMaxSeconds,
+          )}
+        />
+        <EstimateItem
+          label="Angkot → kamu"
+          value={formatEstimateRange(
+            vehicle.osrmEstimate?.vehicleToUser?.durationMinSeconds,
+            vehicle.osrmEstimate?.vehicleToUser?.durationMaxSeconds,
+          )}
+        />
+        <EstimateItem
+          label="Kamu → tujuan"
+          value={formatEstimateRange(
+            vehicle.osrmEstimate?.userToDestination?.durationMinSeconds,
+            vehicle.osrmEstimate?.userToDestination?.durationMaxSeconds,
+          )}
+        />
       </div>
 
       {/* TRACKING INFO */}
@@ -247,25 +208,13 @@ export default function UpcomingVehicleCard({
           </p>
         </div>
 
-        {vehicle.hasLocationData && (
-          <div
-            className={`
-              flex shrink-0 items-center gap-1
-              text-[8px] font-semibold
-              sm:text-[9px]
-              ${isLive ? "text-emerald-600" : "text-slate-400"}
-            `}
-          >
-            <span
-              className={`
-                h-1.5 w-1.5 rounded-full
-                ${isLive ? "animate-pulse bg-emerald-500" : "bg-slate-300"}
-              `}
-            />
-
-            {isLive ? "Live" : "Offline"}
-          </div>
-        )}
+        <span className="text-[8px] font-semibold text-slate-500 sm:text-[9px]">
+          {!hasPassengerData
+            ? "Menunggu data realtime"
+            : isFull
+              ? "Kapasitas penuh"
+              : `${capacity - passengers} kursi tersisa`}
+        </span>
       </div>
 
       {/* BOOK BUTTON */}
@@ -293,6 +242,19 @@ export default function UpcomingVehicleCard({
 
         {isSelected ? "Angkot Terpilih" : "Book Now"}
       </button>
+    </div>
+  );
+}
+
+function EstimateItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-blue-100 bg-white px-2 py-2">
+      <p className="mb-1 wrap-break-word text-[8px] font-semibold uppercase tracking-wider text-blue-500">
+        {label}
+      </p>
+      <p className="wrap-break-word text-[10px] font-bold text-slate-700 sm:text-xs">
+        {value}
+      </p>
     </div>
   );
 }

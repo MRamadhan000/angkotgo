@@ -1,4 +1,5 @@
 import type { DirectionType } from "@/types/vehicles/vehicle.type";
+import type { OsrmVehicleEstimate } from "@/utils/osrm-estimates";
 
 export interface WalkingInfo {
   distance: number;
@@ -46,6 +47,16 @@ export interface UpcomingVehicle {
   hasPassedUser: boolean;
   distanceToUserMeters: number;
   vehicleFraction: number;
+  driverName?: string | null;
+  vehicleCode?: string | null;
+  vehicleCapacity?: number | null;
+  currentPassengers?: number | null;
+  driver?: { name?: string | null } | null;
+  vehicle?: {
+    vehicleCode?: string | null;
+    capacity?: number | null;
+  } | null;
+  osrmEstimate?: OsrmVehicleEstimate | null;
 }
 
 export interface UpcomingVehiclesParams {

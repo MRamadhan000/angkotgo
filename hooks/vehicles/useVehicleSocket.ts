@@ -17,6 +17,12 @@ interface UseVehicleRealtimeReturn {
   socketId: string | null;
 }
 
+export interface VehicleRealtimeByAssignment {
+  data: Record<number, VehicleRealtimePayload>;
+  connected: boolean;
+  joinedAssignmentIds: number[];
+}
+
 export function useVehicleSocket(
   vehicleAssignmentId: number | null,
 ): UseVehicleRealtimeReturn {
@@ -185,3 +191,61 @@ export function useVehicleSocket(
 }
 
 export const useVehicleRealtime = useVehicleSocket;
+
+export function useVehicleSockets(
+  vehicleAssignmentIds: number[],
+): VehicleRealtimeByAssignment {
+  const [data, setData] = useState<Record<number, VehicleRealtimePayload>>({});
+  const [connected, setConnected] = useState(false);
+  const [joinedAssignmentIds, setJoinedAssignmentIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    const assignmentIds = [...new Set(vehicleAssignmentIds)].filter(Number.isFinite);
+    if (assignmentIds.length === 0) {
+      setData({});
+      setJoinedAssignmentIds([]);
+      setConnected(false);
+      return;
+    }
+
+    const socket = vehicleSocket.connect();
+    const handleConnect = () => {
+      setConnected(true);
+      assignmentIds.forEach((assignmentId) => vehicleSocket.join(assignmentId));
+    };
+    const handleJoined = ({ vehicleAssignmentId }: { vehicleAssignmentId: number }) => {
+      setJoinedAssignmentIds((current) =>
+        current.includes(vehicleAssignmentId)
+          ? current
+          : [...current, vehicleAssignmentId],
+      );
+    };
+    const handleUpdated = (payload: VehicleRealtimePayload) => {
+      if (!assignmentIds.includes(Number(payload.vehicleAssignmentId))) return;
+      setData((current) => ({
+        ...current,
+        [Number(payload.vehicleAssignmentId)]: payload,
+      }));
+    };
+    const handleDisconnect = () => {
+      setConnected(false);
+      setJoinedAssignmentIds([]);
+    };
+
+    vehicleSocket.onConnect(handleConnect);
+    vehicleSocket.onJoined(handleJoined);
+    vehicleSocket.onUpdated(handleUpdated);
+    vehicleSocket.onDisconnect(handleDisconnect);
+
+    if (socket.connected) handleConnect();
+
+    return () => {
+      vehicleSocket.offConnect(handleConnect);
+      vehicleSocket.offJoined(handleJoined);
+      vehicleSocket.offUpdated(handleUpdated);
+      vehicleSocket.offDisconnect(handleDisconnect);
+    };
+  }, [vehicleAssignmentIds.join(",")]);
+
+  return { data, connected, joinedAssignmentIds };
+}

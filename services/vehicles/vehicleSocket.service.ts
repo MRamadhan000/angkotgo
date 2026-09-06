@@ -4,6 +4,7 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 export interface VehicleRealtimePayload {
   vehicleAssignmentId: number;
+  currentPassengers: number;
   latitude: number;
   longitude: number;
   currentStopId?: number;
@@ -81,11 +82,15 @@ class VehicleSocketService {
    * VEHICLE UPDATED
    * =====================================================
    */
-  onUpdated(callback: (data: VehicleRealtimePayload) => void): void {
+  onUpdated(
+    callback: (data: VehicleRealtimePayload) => void,
+  ): void {
     this.socket?.on("vehicle:updated", callback);
   }
 
-  offUpdated(callback: (data: VehicleRealtimePayload) => void): void {
+  offUpdated(
+    callback: (data: VehicleRealtimePayload) => void,
+  ): void {
     this.socket?.off("vehicle:updated", callback);
   }
 
@@ -94,11 +99,15 @@ class VehicleSocketService {
    * VEHICLE JOINED
    * =====================================================
    */
-  onJoined(callback: (data: VehicleJoinResponse) => void): void {
+  onJoined(
+    callback: (data: VehicleJoinResponse) => void,
+  ): void {
     this.socket?.on("vehicle:joined", callback);
   }
 
-  offJoined(callback: (data: VehicleJoinResponse) => void): void {
+  offJoined(
+    callback: (data: VehicleJoinResponse) => void,
+  ): void {
     this.socket?.off("vehicle:joined", callback);
   }
 
@@ -120,11 +129,15 @@ class VehicleSocketService {
    * DISCONNECT
    * =====================================================
    */
-  onDisconnect(callback: (reason: string) => void): void {
+  onDisconnect(
+    callback: (reason: string) => void,
+  ): void {
     this.socket?.on("disconnect", callback);
   }
 
-  offDisconnect(callback: (reason: string) => void): void {
+  offDisconnect(
+    callback: (reason: string) => void,
+  ): void {
     this.socket?.off("disconnect", callback);
   }
 
@@ -133,11 +146,15 @@ class VehicleSocketService {
    * CONNECT ERROR
    * =====================================================
    */
-  onConnectError(callback: (error: Error) => void): void {
+  onConnectError(
+    callback: (error: Error) => void,
+  ): void {
     this.socket?.on("connect_error", callback);
   }
 
-  offConnectError(callback: (error: Error) => void): void {
+  offConnectError(
+    callback: (error: Error) => void,
+  ): void {
     this.socket?.off("connect_error", callback);
   }
 
@@ -169,4 +186,5 @@ class VehicleSocketService {
   }
 }
 
-export const vehicleSocket = new VehicleSocketService();
+export const vehicleSocket =
+  new VehicleSocketService();

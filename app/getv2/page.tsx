@@ -50,6 +50,12 @@ import {
 import { UpcomingVehiclesResponse } from "@/types/route-search.type";
 import { routePathService } from "@/services/routes/route-path.service";
 import { useCreateSinyal } from "@/hooks/sinyal/useSinyal";
+import { useVehicleSockets } from "@/hooks/vehicles/useVehicleSocket";
+import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments2";
+import {
+  calculateOsrmEstimates,
+  type OsrmVehicleEstimate,
+} from "@/utils/osrm-estimates";
 
 type ActiveInputState = PointType | null;
 type SheetSnap = "peek" | "full";
@@ -132,6 +138,10 @@ export default function CariRuteAngkot() {
     routeId: number;
     direction: DirectionType;
   } | null>(null);
+  const [osrmEstimates, setOsrmEstimates] = useState<
+    Record<number, OsrmVehicleEstimate>
+  >({});
+  const osrmEstimateKeyRef = useRef<string | null>(null);
 
   // ROUTE SEARCH
   const routeSearchParams =
@@ -169,6 +179,82 @@ export default function CariRuteAngkot() {
     isError: isUpcomingVehiclesError,
     error: upcomingVehiclesError,
   } = useUpcomingVehicles(upcomingVehiclesParams);
+
+  const upcomingAssignmentIds = (upcomingVehicles?.vehicles ?? []).map(
+    (vehicle) => vehicle.assignmentId,
+  );
+  const { data: realtimeVehicles } = useVehicleSockets(upcomingAssignmentIds);
+  const { data: vehicleAssignments = [] } = useVehicleAssignments();
+  const realtimeUpcomingVehicles = (upcomingVehicles?.vehicles ?? []).map(
+    (vehicle) => {
+      const realtime = realtimeVehicles[vehicle.assignmentId];
+      const assignment = vehicleAssignments.find(
+        (item) => item.id === vehicle.assignmentId,
+      );
+
+      return {
+        ...vehicle,
+        currentPassengers: realtime?.currentPassengers ?? null,
+        ...(realtime
+          ? {
+              vehicleLat: realtime.latitude,
+              vehicleLng: realtime.longitude,
+              hasLocationData: true,
+              lastLocationAt: realtime.createdAt,
+              lastLocationAgeSeconds: 0,
+              distanceToUserMeters: originCoords
+                ? distanceInMeters(
+                    originCoords.lat,
+                    originCoords.lng,
+                    realtime.latitude,
+                    realtime.longitude,
+                  )
+                : vehicle.distanceToUserMeters,
+            }
+          : {}),
+        driverName: vehicle.driverName ?? assignment?.driver?.name,
+        vehicleCode: vehicle.vehicleCode ?? assignment?.vehicle?.vehicleCode,
+        vehicleCapacity: vehicle.vehicleCapacity ?? assignment?.vehicle?.capacity,
+        driver: vehicle.driver ?? assignment?.driver,
+        vehicle: vehicle.vehicle ?? assignment?.vehicle,
+        osrmEstimate: osrmEstimates[vehicle.assignmentId] ?? null,
+      };
+    },
+  );
+
+  useEffect(() => {
+    if (
+      !upcomingVehicles?.vehicles.length ||
+      !originCoords ||
+      !destinationCoords
+    ) {
+      return;
+    }
+
+    const estimateKey = [
+      originCoords.lat,
+      originCoords.lng,
+      destinationCoords.lat,
+      destinationCoords.lng,
+      ...upcomingVehicles.vehicles.map(
+        (vehicle) =>
+          `${vehicle.assignmentId}:${vehicle.vehicleLat}:${vehicle.vehicleLng}`,
+      ),
+    ].join("|");
+
+    if (osrmEstimateKeyRef.current === estimateKey) return;
+    osrmEstimateKeyRef.current = estimateKey;
+
+    calculateOsrmEstimates(
+      upcomingVehicles.vehicles,
+      { latitude: originCoords.lat, longitude: originCoords.lng },
+      { latitude: destinationCoords.lat, longitude: destinationCoords.lng },
+    )
+      .then(setOsrmEstimates)
+      .catch((error) => {
+        console.error("Gagal menghitung estimasi OSRM:", error);
+      });
+  }, [upcomingVehicles, originCoords, destinationCoords]);
 
   // ROUTE PATH
   const {
@@ -772,7 +858,7 @@ export default function CariRuteAngkot() {
   };
 
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-[#faf8ff] text-[#191b23]">
+    <div className="relative h-dvh w-full overflow-hidden bg-[#faf8ff] text-[#191b23]">
       <GpsPermissionModal
         open={showGpsModal}
         isLocating={isLocating}
@@ -785,7 +871,7 @@ export default function CariRuteAngkot() {
         <RoutePathLine map={mapInstance} routePaths={routePaths ?? []} />
         <VehicleMarkers
           map={mapInstance}
-          vehicles={upcomingVehicles?.vehicles ?? []}
+          vehicles={realtimeUpcomingVehicles}
         />
       </div>
 
@@ -799,7 +885,7 @@ export default function CariRuteAngkot() {
             <FiMapPin className="text-xl text-white" />
           </div>
 
-          <div className="mx-auto mt-[-2px] h-2 w-2 rounded-full bg-black/30 blur-[2px]" />
+          <div className="mx-auto -mt-0.5 h-2 w-2 rounded-full bg-black/30 blur-[2px]" />
         </div>
       )}
 
@@ -836,7 +922,7 @@ export default function CariRuteAngkot() {
 
         {/* SEARCH CARD */}
 
-        <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-[24px] sm:p-4">
+        <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-3xl sm:p-4">
           {scenario === 1 ? (
             <>
               <LocationInput
@@ -976,7 +1062,7 @@ export default function CariRuteAngkot() {
               </p>
             )}
             <UpcomingVehicleList
-              upcomingVehicles={upcomingVehicles?.vehicles ?? []}
+              upcomingVehicles={realtimeUpcomingVehicles}
               onSubmit={handleSendSinyal}
               isSubmitting={isCreatingSinyal}
             />
@@ -985,4 +1071,24 @@ export default function CariRuteAngkot() {
       )}
     </div>
   );
+}
+
+function distanceInMeters(
+  firstLatitude: number,
+  firstLongitude: number,
+  secondLatitude: number,
+  secondLongitude: number,
+) {
+  const earthRadius = 6371000;
+  const latitudeDelta = ((secondLatitude - firstLatitude) * Math.PI) / 180;
+  const longitudeDelta = ((secondLongitude - firstLongitude) * Math.PI) / 180;
+  const firstLatitudeRadians = (firstLatitude * Math.PI) / 180;
+  const secondLatitudeRadians = (secondLatitude * Math.PI) / 180;
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(firstLatitudeRadians) *
+      Math.cos(secondLatitudeRadians) *
+      Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadius * Math.asin(Math.sqrt(haversine));
 }
