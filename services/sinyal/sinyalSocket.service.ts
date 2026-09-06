@@ -1,94 +1,113 @@
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
-export type SinyalStatusRealtime = "ACTIVE" | "COMPLETED";
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 export interface SinyalRealtimePayload {
   sinyalId: string;
   vehicleAssignmentId: string;
   latitude: number;
   longitude: number;
-  status: SinyalStatusRealtime;
+  status: "ACTIVE" | "COMPLETED";
 }
 
-export const SinyalSocketService = {
-  /**
-   * =========================================================
-   * CONNECT
-   * =========================================================
-   */
+export interface SinyalJoinPayload {
+  vehicleAssignmentId: string;
+}
+
+class SinyalSocketService {
+  private socket: Socket | null = null;
 
   connect(): Socket {
-    return io(SOCKET_URL, {
-      transports: ["websocket"],
-      autoConnect: true,
+    if (this.socket?.connected) {
+      return this.socket;
+    }
+
+    this.socket = io(SOCKET_URL, {
+      transports: ["polling", "websocket"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
     });
-  },
 
-  /**
-   * =========================================================
-   * JOIN ASSIGNMENT
-   * =========================================================
-   *
-   * Client join room berdasarkan
-   * vehicleAssignmentId.
-   *
-   * Setelah join, Gateway akan:
-   *
-   * 1. memasukkan client ke room
-   * 2. mengambil latest state dari Redis
-   * 3. mengirim latest state ke client
-   */
+    return this.socket;
+  }
 
-  joinAssignment(socket: Socket, vehicleAssignmentId: string): void {
-    if (!socket.connected) {
+  disconnect(): void {
+    if (!this.socket) {
       return;
     }
 
-    socket.emit("sinyal:join", {
+    this.socket.disconnect();
+    this.socket = null;
+  }
+
+  join(vehicleAssignmentId: string): void {
+    if (!this.socket) {
+      console.warn("[SinyalSocket] Socket belum connect");
+
+      return;
+    }
+
+    this.socket.emit("sinyal:join", {
       vehicleAssignmentId,
     });
-  },
+  }
 
-  /**
-   * =========================================================
-   * LISTEN SINYAL UPDATE
-   * =========================================================
-   *
-   * Event ini akan menerima:
-   *
-   * - latest state ketika baru join
-   * - realtime update ketika ada perubahan
-   */
+  onUpdated(callback: (data: SinyalRealtimePayload) => void): void {
+    this.socket?.on("sinyal:updated", callback);
+  }
 
-  onSinyalUpdate(
-    socket: Socket,
-    callback: (data: SinyalRealtimePayload) => void,
+  offUpdated(callback: (data: SinyalRealtimePayload) => void): void {
+    this.socket?.off("sinyal:updated", callback);
+  }
+
+  onJoined(
+    callback: (data: { vehicleAssignmentId: string; room: string }) => void,
   ): void {
-    socket.on("sinyal:updated", callback);
-  },
+    this.socket?.on("sinyal:joined", callback);
+  }
 
-  /**
-   * =========================================================
-   * REMOVE LISTENER
-   * =========================================================
-   */
-
-  offSinyalUpdate(
-    socket: Socket,
-    callback: (data: SinyalRealtimePayload) => void,
+  offJoined(
+    callback: (data: { vehicleAssignmentId: string; room: string }) => void,
   ): void {
-    socket.off("sinyal:updated", callback);
-  },
+    this.socket?.off("sinyal:joined", callback);
+  }
 
-  /**
-   * =========================================================
-   * DISCONNECT
-   * =========================================================
-   */
+  onConnect(callback: () => void): void {
+    this.socket?.on("connect", callback);
+  }
 
-  disconnect(socket: Socket): void {
-    socket.disconnect();
-  },
-};
+  offConnect(callback: () => void): void {
+    this.socket?.off("connect", callback);
+  }
+
+  onDisconnect(callback: (reason: string) => void): void {
+    this.socket?.on("disconnect", callback);
+  }
+
+  offDisconnect(callback: (reason: string) => void): void {
+    this.socket?.off("disconnect", callback);
+  }
+
+  onConnectError(callback: (error: Error) => void): void {
+    this.socket?.on("connect_error", callback);
+  }
+
+  offConnectError(callback: (error: Error) => void): void {
+    this.socket?.off("connect_error", callback);
+  }
+
+  getSocket(): Socket | null {
+    return this.socket;
+  }
+
+  getSocketId(): string | undefined {
+    return this.socket?.id;
+  }
+
+  isConnected(): boolean {
+    return this.socket?.connected ?? false;
+  }
+}
+
+export const sinyalSocket = new SinyalSocketService();

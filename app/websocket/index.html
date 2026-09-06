@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Vehicle Realtime Test - Socket.IO</title>
+
+  <!-- Socket.IO Client -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 30px;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 25px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e5e7eb;
+    }
+
+    .card.full {
+      grid-column: 1 / -1;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 18px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 12px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .row:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: #6b7280;
+    }
+
+    .value {
+      font-weight: 600;
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .status::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status.disconnected {
+      color: #dc2626;
+      background: #fee2e2;
+    }
+
+    .status.connecting {
+      color: #d97706;
+      background: #fef3c7;
+    }
+
+    .status.connected {
+      color: #16a34a;
+      background: #dcfce7;
+    }
+
+    .status.error {
+      color: #dc2626;
+      background: #fee2e2;
+    }
+
+    pre {
+      margin: 0;
+      padding: 15px;
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 8px;
+      overflow-x: auto;
+      min-height: 150px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .logs {
+      height: 300px;
+      overflow-y: auto;
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 15px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .log {
+      padding: 5px 0;
+      border-bottom: 1px solid #374151;
+    }
+
+    .log.success {
+      color: #86efac;
+    }
+
+    .log.error {
+      color: #fca5a5;
+    }
+
+    .log.info {
+      color: #93c5fd;
+    }
+
+    .log.warning {
+      color: #fde68a;
+    }
+
+    .button-container {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      background: #2563eb;
+      color: white;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button.danger {
+      background: #dc2626;
+    }
+
+    button.danger:hover {
+      background: #b91c1c;
+    }
+
+    .coordinates {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    .coordinate-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 15px;
+    }
+
+    .coordinate-box .title {
+      color: #6b7280;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .coordinate-box .number {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .event-box {
+      margin-top: 15px;
+      padding: 15px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+    }
+
+    .event-name {
+      font-size: 13px;
+      color: #2563eb;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .event-time {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 15px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card.full {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h1>🚐 Vehicle Realtime Test</h1>
+
+    <div class="subtitle">
+      Testing Socket.IO + Redis Pub/Sub + Vehicle Location
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- CONNECTION -->
+    <!-- ============================= -->
+
+    <div class="card">
+      <h2>🔌 Socket Connection</h2>
+
+      <div class="row">
+        <span class="label">Backend</span>
+        <span class="value">
+          http://localhost:3001
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="label">Status</span>
+        <span class="value">
+          <span
+            id="connectionStatus"
+            class="status connecting"
+          >
+            Connecting...
+          </span>
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="label">Socket ID</span>
+        <span
+          id="socketId"
+          class="value"
+        >
+          -
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="label">Namespace</span>
+        <span
+          id="namespace"
+          class="value"
+        >
+          -
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="label">Room</span>
+        <span
+          id="room"
+          class="value"
+        >
+          assignment:176
+        </span>
+      </div>
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- VEHICLE -->
+    <!-- ============================= -->
+
+    <div class="card">
+      <h2>🚐 Vehicle</h2>
+
+      <div class="row">
+        <span class="label">
+          Vehicle Assignment ID
+        </span>
+
+        <span
+          id="vehicleAssignmentId"
+          class="value"
+        >
+          176
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="label">
+          Current Stop ID
+        </span>
+
+        <span
+          id="currentStopId"
+          class="value"
+        >
+          -
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="label">
+          Stop Status
+        </span>
+
+        <span
+          id="stopStatus"
+          class="value"
+        >
+          -
+        </span>
+      </div>
+
+      <div class="row">
+        <span class="label">
+          Last Update
+        </span>
+
+        <span
+          id="createdAt"
+          class="value"
+        >
+          -
+        </span>
+      </div>
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- COORDINATE -->
+    <!-- ============================= -->
+
+    <div class="card full">
+
+      <h2>📍 Latest Vehicle Location</h2>
+
+      <div class="coordinates">
+
+        <div class="coordinate-box">
+
+          <div class="title">
+            Latitude
+          </div>
+
+          <div
+            id="latitude"
+            class="number"
+          >
+            -
+          </div>
+
+        </div>
+
+
+        <div class="coordinate-box">
+
+          <div class="title">
+            Longitude
+          </div>
+
+          <div
+            id="longitude"
+            class="number"
+          >
+            -
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="event-box">
+
+        <div class="event-name">
+          Last Event: vehicle:updated
+        </div>
+
+        <div
+          id="eventTime"
+          class="event-time"
+        >
+          Belum menerima event
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- RAW PAYLOAD -->
+    <!-- ============================= -->
+
+    <div class="card full">
+
+      <h2>📦 Raw Payload</h2>
+
+      <pre id="payload">Belum ada payload...</pre>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- LOG -->
+    <!-- ============================= -->
+
+    <div class="card full">
+
+      <h2>📝 Socket Logs</h2>
+
+      <div
+        id="logs"
+        class="logs"
+      ></div>
+
+      <div class="button-container">
+
+        <button
+          onclick="sendJoin()"
+        >
+          🔄 Join Room Lagi
+        </button>
+
+        <button
+          class="danger"
+          onclick="clearLogs()"
+        >
+          🗑 Clear Logs
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <script>
+
+    // =====================================================
+    // CONFIG
+    // =====================================================
+
+    const BACKEND_URL = "http://localhost:3001";
+
+    const VEHICLE_ASSIGNMENT_ID = 176;
+
+    const ROOM =
+      `assignment:${VEHICLE_ASSIGNMENT_ID}`;
+
+
+    // =====================================================
+    // ELEMENTS
+    // =====================================================
+
+    const connectionStatus =
+      document.getElementById(
+        "connectionStatus"
+      );
+
+    const socketId =
+      document.getElementById(
+        "socketId"
+      );
+
+    const namespace =
+      document.getElementById(
+        "namespace"
+      );
+
+    const room =
+      document.getElementById(
+        "room"
+      );
+
+    const vehicleAssignmentId =
+      document.getElementById(
+        "vehicleAssignmentId"
+      );
+
+    const currentStopId =
+      document.getElementById(
+        "currentStopId"
+      );
+
+    const stopStatus =
+      document.getElementById(
+        "stopStatus"
+      );
+
+    const createdAt =
+      document.getElementById(
+        "createdAt"
+      );
+
+    const latitude =
+      document.getElementById(
+        "latitude"
+      );
+
+    const longitude =
+      document.getElementById(
+        "longitude"
+      );
+
+    const eventTime =
+      document.getElementById(
+        "eventTime"
+      );
+
+    const payload =
+      document.getElementById(
+        "payload"
+      );
+
+    const logs =
+      document.getElementById(
+        "logs"
+      );
+
+
+    // =====================================================
+    // INITIAL UI
+    // =====================================================
+
+    vehicleAssignmentId.textContent =
+      VEHICLE_ASSIGNMENT_ID;
+
+    room.textContent =
+      ROOM;
+
+
+    // =====================================================
+    // LOGGER
+    // =====================================================
+
+    function log(
+      message,
+      type = "info"
+    ) {
+
+      const div =
+        document.createElement("div");
+
+      div.className =
+        `log ${type}`;
+
+      const time =
+        new Date().toLocaleTimeString(
+          "id-ID"
+        );
+
+      div.textContent =
+        `[${time}] ${message}`;
+
+      logs.appendChild(div);
+
+      logs.scrollTop =
+        logs.scrollHeight;
+
+      console.log(
+        `[${type}]`,
+        message
+      );
+    }
+
+
+    // =====================================================
+    // SOCKET.IO CONNECTION
+    // =====================================================
+
+    log(
+      `Connecting to ${BACKEND_URL}`,
+      "info"
+    );
+
+    const socket = io(
+      BACKEND_URL,
+      {
+        transports: [
+          "polling",
+          "websocket"
+        ],
+
+        reconnection: true,
+
+        reconnectionAttempts: 10,
+
+        reconnectionDelay: 1000
+      }
+    );
+
+
+    // =====================================================
+    // CONNECT
+    // =====================================================
+
+    socket.on(
+      "connect",
+      () => {
+
+        connectionStatus.textContent =
+          "Connected";
+
+        connectionStatus.className =
+          "status connected";
+
+        socketId.textContent =
+          socket.id || "-";
+
+        namespace.textContent =
+          socket.nsp || "/";
+
+        log(
+          "🔥 SOCKET CONNECTED",
+          "success"
+        );
+
+        log(
+          `Socket ID: ${socket.id}`,
+          "success"
+        );
+
+        log(
+          `Namespace: ${socket.nsp}`,
+          "info"
+        );
+
+        log(
+          `Joining room: ${ROOM}`,
+          "info"
+        );
+
+
+        // Join vehicle room
+        sendJoin();
+
+      }
+    );
+
+
+    // =====================================================
+    // SEND JOIN
+    // =====================================================
+
+    function sendJoin() {
+
+      log(
+        `➡️ emit vehicle:join { vehicleAssignmentId: ${VEHICLE_ASSIGNMENT_ID} }`,
+        "info"
+      );
+
+      socket.emit(
+        "vehicle:join",
+        {
+          vehicleAssignmentId:
+            VEHICLE_ASSIGNMENT_ID
+        }
+      );
+
+    }
+
+
+    // =====================================================
+    // VEHICLE JOINED
+    // =====================================================
+
+    socket.on(
+      "vehicle:joined",
+      (data) => {
+
+        log(
+          `✅ VEHICLE JOINED: ${JSON.stringify(data)}`,
+          "success"
+        );
+
+      }
+    );
+
+
+    // =====================================================
+    // VEHICLE UPDATED
+    // =====================================================
+
+    socket.on(
+      "vehicle:updated",
+      (data) => {
+
+        log(
+          "🚐 VEHICLE UPDATED RECEIVED",
+          "success"
+        );
+
+        log(
+          JSON.stringify(
+            data,
+            null,
+            2
+          ),
+          "success"
+        );
+
+
+        // ---------------------------------------------
+        // Update Vehicle Assignment ID
+        // ---------------------------------------------
+
+        if (
+          data.vehicleAssignmentId !==
+          undefined
+        ) {
+
+          vehicleAssignmentId.textContent =
+            data.vehicleAssignmentId;
+
+        }
+
+
+        // ---------------------------------------------
+        // Latitude
+        // ---------------------------------------------
+
+        if (
+          data.latitude !==
+          undefined
+        ) {
+
+          latitude.textContent =
+            data.latitude;
+
+        }
+
+
+        // ---------------------------------------------
+        // Longitude
+        // ---------------------------------------------
+
+        if (
+          data.longitude !==
+          undefined
+        ) {
+
+          longitude.textContent =
+            data.longitude;
+
+        }
+
+
+        // ---------------------------------------------
+        // Current Stop
+        // ---------------------------------------------
+
+        if (
+          data.currentStopId !==
+          undefined &&
+          data.currentStopId !==
+          null
+        ) {
+
+          currentStopId.textContent =
+            data.currentStopId;
+
+        } else {
+
+          currentStopId.textContent =
+            "-";
+
+        }
+
+
+        // ---------------------------------------------
+        // Stop Status
+        // ---------------------------------------------
+
+        if (
+          data.stopStatus !==
+          undefined
+        ) {
+
+          stopStatus.textContent =
+            data.stopStatus;
+
+        }
+
+
+        // ---------------------------------------------
+        // Created At
+        // ---------------------------------------------
+
+        if (
+          data.createdAt
+        ) {
+
+          const date =
+            new Date(
+              data.createdAt
+            );
+
+          createdAt.textContent =
+            date.toLocaleString(
+              "id-ID"
+            );
+
+        }
+
+
+        // ---------------------------------------------
+        // Event Time
+        // ---------------------------------------------
+
+        eventTime.textContent =
+          `Diterima: ${
+            new Date().toLocaleString(
+              "id-ID"
+            )
+          }`;
+
+
+        // ---------------------------------------------
+        // Raw Payload
+        // ---------------------------------------------
+
+        payload.textContent =
+          JSON.stringify(
+            data,
+            null,
+            2
+          );
+
+      }
+    );
+
+
+    // =====================================================
+    // CONNECT ERROR
+    // =====================================================
+
+    socket.on(
+      "connect_error",
+      (error) => {
+
+        connectionStatus.textContent =
+          "Connection Error";
+
+        connectionStatus.className =
+          "status error";
+
+        log(
+          `❌ SOCKET CONNECT ERROR: ${error.message}`,
+          "error"
+        );
+
+        console.error(
+          "Socket connect error:",
+          error
+        );
+
+      }
+    );
+
+
+    // =====================================================
+    // DISCONNECT
+    // =====================================================
+
+    socket.on(
+      "disconnect",
+      (reason) => {
+
+        connectionStatus.textContent =
+          "Disconnected";
+
+        connectionStatus.className =
+          "status disconnected";
+
+        log(
+          `🔴 SOCKET DISCONNECTED: ${reason}`,
+          "warning"
+        );
+
+      }
+    );
+
+
+    // =====================================================
+    // RECONNECT ATTEMPT
+    // =====================================================
+
+    socket.io.on(
+      "reconnect_attempt",
+      (attempt) => {
+
+        log(
+          `🔄 Reconnect attempt #${attempt}`,
+          "warning"
+        );
+
+      }
+    );
+
+
+    // =====================================================
+    // RECONNECT
+    // =====================================================
+
+    socket.io.on(
+      "reconnect",
+      (attempt) => {
+
+        log(
+          `✅ Reconnected after ${attempt} attempt(s)`,
+          "success"
+        );
+
+      }
+    );
+
+
+    // =====================================================
+    // RECONNECT ERROR
+    // =====================================================
+
+    socket.io.on(
+      "reconnect_error",
+      (error) => {
+
+        log(
+          `❌ Reconnect error: ${error.message}`,
+          "error"
+        );
+
+      }
+    );
+
+
+    // =====================================================
+    // CLEAR LOG
+    // =====================================================
+
+    function clearLogs() {
+
+      logs.innerHTML = "";
+
+      log(
+        "Logs cleared",
+        "info"
+      );
+
+    }
+
+
+    // =====================================================
+    // DEBUG SOCKET
+    // =====================================================
+
+    window.socket = socket;
+
+    window.sendJoin = sendJoin;
+
+    console.log(
+      "Socket object tersedia di window.socket"
+    );
+
+    console.log(
+      "Vehicle Assignment ID:",
+      VEHICLE_ASSIGNMENT_ID
+    );
+
+    console.log(
+      "Room:",
+      ROOM
+    );
+
+  </script>
+
+</body>
+</html>

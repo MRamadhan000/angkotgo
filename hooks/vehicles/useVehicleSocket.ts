@@ -3,97 +3,183 @@
 import { useEffect, useState } from "react";
 
 import {
-  VehicleSocketService,
+  vehicleSocket,
   VehicleRealtimePayload,
 } from "@/services/vehicles/vehicleSocket.service";
 
-export function useVehicleSocket(vehicleAssignmentId: number) {
-  const [vehicle, setVehicle] = useState<VehicleRealtimePayload | null>(null);
+interface UseVehicleRealtimeReturn {
+  data: VehicleRealtimePayload | null;
+
+  connected: boolean;
+
+  joined: boolean;
+
+  socketId: string | null;
+}
+
+export function useVehicleRealtime(
+  vehicleAssignmentId: number | null,
+): UseVehicleRealtimeReturn {
+  const [data, setData] = useState<VehicleRealtimePayload | null>(null);
 
   const [connected, setConnected] = useState(false);
 
+  const [joined, setJoined] = useState(false);
+
+  const [socketId, setSocketId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!vehicleAssignmentId) {
-      setVehicle(null);
-      setConnected(false);
+    /**
+     * Tidak melakukan koneksi kalau
+     * vehicleAssignmentId belum tersedia.
+     */
+    if (vehicleAssignmentId === null) {
       return;
     }
 
-    // Reset ketika assignment berubah
-    setVehicle(null);
-    setConnected(false);
+    /**
+     * =====================================================
+     * CONNECT
+     * =====================================================
+     */
 
-    const socket = VehicleSocketService.connect();
+    const socket = vehicleSocket.connect();
 
     /**
-     * Socket connected
+     * =====================================================
+     * HANDLE CONNECT
+     * =====================================================
      */
+
     const handleConnect = () => {
-      console.log("Vehicle socket connected:", socket.id);
+      console.log("[VehicleRealtime] Connected:", socket.id);
 
       setConnected(true);
 
+      setSocketId(socket.id ?? null);
+
       /**
-       * Join room setelah socket connected
+       * Setelah connect,
+       * join room vehicle.
        */
-      VehicleSocketService.joinAssignment(socket, vehicleAssignmentId);
+
+      vehicleSocket.join(vehicleAssignmentId);
     };
 
     /**
-     * Socket disconnected
+     * =====================================================
+     * HANDLE JOINED
+     * =====================================================
      */
-    const handleDisconnect = () => {
-      console.log("Vehicle socket disconnected");
+
+    const handleJoined = (response: {
+      vehicleAssignmentId: number;
+      room: string;
+    }) => {
+      console.log("[VehicleRealtime] Joined:", response);
+
+      setJoined(true);
+    };
+
+    /**
+     * =====================================================
+     * HANDLE UPDATED
+     * =====================================================
+     */
+
+    const handleUpdated = (payload: VehicleRealtimePayload) => {
+      console.log("[VehicleRealtime] Updated:", payload);
+
+      setData(payload);
+    };
+
+    /**
+     * =====================================================
+     * HANDLE DISCONNECT
+     * =====================================================
+     */
+
+    const handleDisconnect = (reason: string) => {
+      console.log("[VehicleRealtime] Disconnected:", reason);
 
       setConnected(false);
+
+      setJoined(false);
     };
 
     /**
-     * Vehicle location update
+     * =====================================================
+     * HANDLE CONNECT ERROR
+     * =====================================================
      */
-    const handleVehicleUpdate = (data: VehicleRealtimePayload) => {
-      console.log("Vehicle location update:", data);
 
-      /**
-       * Pastikan update berasal dari
-       * vehicle assignment yang sedang dilihat.
-       */
-      if (data.vehicleAssignmentId !== vehicleAssignmentId) {
-        return;
-      }
+    const handleConnectError = (error: Error) => {
+      console.error("[VehicleRealtime] Connection error:", error);
 
-      setVehicle(data);
+      setConnected(false);
+
+      setJoined(false);
     };
 
     /**
-     * Register listener
+     * =====================================================
+     * REGISTER EVENTS
+     * =====================================================
+     */
+
+    vehicleSocket.onConnect(handleConnect);
+
+    vehicleSocket.onJoined(handleJoined);
+
+    vehicleSocket.onUpdated(handleUpdated);
+
+    vehicleSocket.onDisconnect(handleDisconnect);
+
+    vehicleSocket.onConnectError(handleConnectError);
+
+    /**
+     * =====================================================
+     * SOCKET SUDAH CONNECT
+     * =====================================================
      *
-     * Listener dipasang sebelum join supaya
-     * latest data dari Redis tidak terlewat.
+     * Ini penting.
+     *
+     * Bisa saja service sudah connect sebelum
+     * listener di atas dipasang.
+     *
+     * Kalau sudah connect, langsung join.
      */
 
-    socket.on("connect", handleConnect);
-
-    socket.on("disconnect", handleDisconnect);
-
-    VehicleSocketService.onVehicleUpdate(socket, handleVehicleUpdate);
+    if (socket.connected) {
+      handleConnect();
+    }
 
     /**
-     * Cleanup
+     * =====================================================
+     * CLEANUP
+     * =====================================================
      */
+
     return () => {
-      VehicleSocketService.offVehicleUpdate(socket, handleVehicleUpdate);
+      vehicleSocket.offConnect(handleConnect);
 
-      socket.off("connect", handleConnect);
+      vehicleSocket.offJoined(handleJoined);
 
-      socket.off("disconnect", handleDisconnect);
+      vehicleSocket.offUpdated(handleUpdated);
 
-      VehicleSocketService.disconnect(socket);
+      vehicleSocket.offDisconnect(handleDisconnect);
+
+      vehicleSocket.offConnectError(handleConnectError);
     };
   }, [vehicleAssignmentId]);
 
   return {
-    vehicle,
+    data,
+
     connected,
+
+    joined,
+
+    socketId,
   };
 }

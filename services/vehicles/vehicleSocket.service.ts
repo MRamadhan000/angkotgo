@@ -1,6 +1,6 @@
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 export interface VehicleRealtimePayload {
   vehicleAssignmentId: number;
@@ -11,82 +11,162 @@ export interface VehicleRealtimePayload {
   createdAt: string;
 }
 
-export const VehicleSocketService = {
+interface VehicleJoinResponse {
+  vehicleAssignmentId: number;
+  room: string;
+}
+
+class VehicleSocketService {
+  private socket: Socket | null = null;
+
   /**
-   * =========================================================
+   * =====================================================
    * CONNECT
-   * =========================================================
+   * =====================================================
    */
-
   connect(): Socket {
-    return io(SOCKET_URL, {
-      transports: ["websocket"],
-      autoConnect: true,
+    // Jangan membuat connection baru kalau
+    // socket sudah ada dan masih connected
+    if (this.socket?.connected) {
+      return this.socket;
+    }
+
+    this.socket = io(SOCKET_URL, {
+      transports: ["polling", "websocket"],
+
+      reconnection: true,
+
+      reconnectionAttempts: 10,
+
+      reconnectionDelay: 1000,
     });
-  },
+
+    return this.socket;
+  }
 
   /**
-   * =========================================================
-   * JOIN ASSIGNMENT
-   * =========================================================
-   *
-   * Client join room berdasarkan vehicleAssignmentId.
-   *
-   * Setelah join, Gateway akan:
-   *
-   * 1. memasukkan client ke room
-   * 2. mengambil latest location dari Redis
-   * 3. mengirim latest location ke client
+   * =====================================================
+   * DISCONNECT
+   * =====================================================
    */
-
-  joinAssignment(socket: Socket, vehicleAssignmentId: number): void {
-    if (!socket.connected) {
+  disconnect(): void {
+    if (!this.socket) {
       return;
     }
 
-    socket.emit("vehicle:join", {
+    this.socket.disconnect();
+
+    this.socket = null;
+  }
+
+  /**
+   * =====================================================
+   * JOIN VEHICLE
+   * =====================================================
+   */
+  join(vehicleAssignmentId: number): void {
+    if (!this.socket) {
+      console.warn("[VehicleSocket] Socket belum connect");
+
+      return;
+    }
+
+    this.socket.emit("vehicle:join", {
       vehicleAssignmentId,
     });
-  },
+  }
 
   /**
-   * =========================================================
-   * LISTEN VEHICLE UPDATE
-   * =========================================================
-   *
-   * Event ini menerima:
-   *
-   * - latest location ketika pertama kali join
-   * - realtime location ketika driver bergerak
+   * =====================================================
+   * VEHICLE UPDATED
+   * =====================================================
    */
+  onUpdated(callback: (data: VehicleRealtimePayload) => void): void {
+    this.socket?.on("vehicle:updated", callback);
+  }
 
-  onVehicleUpdate(
-    socket: Socket,
-    callback: (data: VehicleRealtimePayload) => void,
-  ): void {
-    socket.on("vehicle:updated", callback);
-  },
+  offUpdated(callback: (data: VehicleRealtimePayload) => void): void {
+    this.socket?.off("vehicle:updated", callback);
+  }
 
   /**
-   * =========================================================
-   * REMOVE LISTENER
-   * =========================================================
+   * =====================================================
+   * VEHICLE JOINED
+   * =====================================================
    */
+  onJoined(callback: (data: VehicleJoinResponse) => void): void {
+    this.socket?.on("vehicle:joined", callback);
+  }
 
-  offVehicleUpdate(
-    socket: Socket,
-    callback: (data: VehicleRealtimePayload) => void,
-  ): void {
-    socket.off("vehicle:updated", callback);
-  },
+  offJoined(callback: (data: VehicleJoinResponse) => void): void {
+    this.socket?.off("vehicle:joined", callback);
+  }
 
   /**
-   * =========================================================
+   * =====================================================
+   * CONNECT
+   * =====================================================
+   */
+  onConnect(callback: () => void): void {
+    this.socket?.on("connect", callback);
+  }
+
+  offConnect(callback: () => void): void {
+    this.socket?.off("connect", callback);
+  }
+
+  /**
+   * =====================================================
    * DISCONNECT
-   * =========================================================
+   * =====================================================
    */
+  onDisconnect(callback: (reason: string) => void): void {
+    this.socket?.on("disconnect", callback);
+  }
 
-  disconnect(socket: Socket): void {
-    socket.disconnect();
-  },
-};
+  offDisconnect(callback: (reason: string) => void): void {
+    this.socket?.off("disconnect", callback);
+  }
+
+  /**
+   * =====================================================
+   * CONNECT ERROR
+   * =====================================================
+   */
+  onConnectError(callback: (error: Error) => void): void {
+    this.socket?.on("connect_error", callback);
+  }
+
+  offConnectError(callback: (error: Error) => void): void {
+    this.socket?.off("connect_error", callback);
+  }
+
+  /**
+   * =====================================================
+   * GET SOCKET
+   * =====================================================
+   */
+  getSocket(): Socket | null {
+    return this.socket;
+  }
+
+  /**
+   * =====================================================
+   * GET SOCKET ID
+   * =====================================================
+   */
+  getSocketId(): string | undefined {
+    return this.socket?.id;
+  }
+
+  /**
+   * =====================================================
+   * IS CONNECTED
+   * =====================================================
+   */
+  isConnected(): boolean {
+    return this.socket?.connected ?? false;
+  }
+}
+
+export const vehicleSocket = new VehicleSocketService();

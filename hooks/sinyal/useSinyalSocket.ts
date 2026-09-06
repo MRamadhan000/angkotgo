@@ -3,84 +3,121 @@
 import { useEffect, useState } from "react";
 
 import {
-  SinyalSocketService,
+  sinyalSocket,
   SinyalRealtimePayload,
 } from "@/services/sinyal/sinyalSocket.service";
 
-export function useSinyalSocket(vehicleAssignmentId: string) {
-  const [sinyal, setSinyal] = useState<SinyalRealtimePayload | null>(null);
+interface UseSinyalRealtimeReturn {
+  data: SinyalRealtimePayload | null;
+
+  connected: boolean;
+
+  socketId: string | null;
+
+  joined: boolean;
+}
+
+export function useSinyalRealtime(
+  vehicleAssignmentId: string | null,
+): UseSinyalRealtimeReturn {
+  const [data, setData] = useState<SinyalRealtimePayload | null>(null);
 
   const [connected, setConnected] = useState(false);
 
+  const [socketId, setSocketId] = useState<string | null>(null);
+
+  const [joined, setJoined] = useState(false);
+
   useEffect(() => {
     if (!vehicleAssignmentId) {
-      setSinyal(null);
-      setConnected(false);
       return;
     }
 
-    // Reset data ketika assignment berubah
-    setSinyal(null);
-    setConnected(false);
+    /**
+     * =====================================================
+     * CONNECT
+     * =====================================================
+     */
 
-    const socket = SinyalSocketService.connect();
+    const socket = sinyalSocket.connect();
 
     /**
-     * Socket berhasil connect
+     * =====================================================
+     * EVENT HANDLERS
+     * =====================================================
      */
+
     const handleConnect = () => {
-      console.log("Sinyal socket connected:", socket.id);
+      console.log("[SinyalRealtime] Connected", socket.id);
 
       setConnected(true);
 
-      // Join room berdasarkan vehicle assignment
-      SinyalSocketService.joinAssignment(socket, vehicleAssignmentId);
+      setSocketId(socket.id ?? null);
+
+      /**
+       * Join assignment room
+       */
+
+      sinyalSocket.join(vehicleAssignmentId);
     };
 
-    /**
-     * Socket disconnect
-     */
-    const handleDisconnect = () => {
-      console.log("Sinyal socket disconnected");
+    const handleDisconnect = (reason: string) => {
+      console.log("[SinyalRealtime] Disconnected:", reason);
+
+      setConnected(false);
+
+      setJoined(false);
+    };
+
+    const handleConnectError = (error: Error) => {
+      console.error("[SinyalRealtime] Connection error:", error);
 
       setConnected(false);
     };
 
-    /**
-     * Menerima update sinyal
-     *
-     * Event ini bisa berasal dari:
-     *
-     * 1. Latest data dari Redis ketika join
-     * 2. Update realtime dari driver
-     */
-    const handleSinyalUpdate = (data: SinyalRealtimePayload) => {
-      console.log("Sinyal update:", data);
+    const handleJoined = (response: {
+      vehicleAssignmentId: string;
+      room: string;
+    }) => {
+      console.log("[SinyalRealtime] Joined:", response);
 
-      // Pastikan data untuk assignment yang sedang dilihat
-      if (data.vehicleAssignmentId !== vehicleAssignmentId) {
-        return;
-      }
+      setJoined(true);
+    };
 
-      setSinyal(data);
+    const handleUpdated = (payload: SinyalRealtimePayload) => {
+      console.log("[SinyalRealtime] Updated:", payload);
+
+      setData(payload);
     };
 
     /**
      * =====================================================
-     * REGISTER LISTENER
+     * REGISTER LISTENERS
      * =====================================================
-     *
-     * Listener dipasang SEBELUM join.
-     *
-     * Karena setelah join Gateway bisa langsung
-     * mengirim latest data dari Redis.
      */
 
-    socket.on("connect", handleConnect);
+    sinyalSocket.onConnect(handleConnect);
 
-    socket.on("disconnect", handleDisconnect);
+    sinyalSocket.onDisconnect(handleDisconnect);
 
-    SinyalSocketService.onSinyalUpdate(socket, handleSinyalUpdate);
+    sinyalSocket.onConnectError(handleConnectError);
+
+    sinyalSocket.onJoined(handleJoined);
+
+    sinyalSocket.onUpdated(handleUpdated);
+
+    /**
+     * =====================================================
+     * IMPORTANT
+     * =====================================================
+     *
+     * Kalau socket sudah connect sebelum listener
+     * dipasang, kita tetap harus join.
+     */
+
+    if (socket.connected) {
+      handleConnect();
+    }
 
     /**
      * =====================================================
@@ -89,18 +126,24 @@ export function useSinyalSocket(vehicleAssignmentId: string) {
      */
 
     return () => {
-      SinyalSocketService.offSinyalUpdate(socket, handleSinyalUpdate);
+      sinyalSocket.offConnect(handleConnect);
 
-      socket.off("connect", handleConnect);
+      sinyalSocket.offDisconnect(handleDisconnect);
 
-      socket.off("disconnect", handleDisconnect);
+      sinyalSocket.offConnectError(handleConnectError);
 
-      SinyalSocketService.disconnect(socket);
+      sinyalSocket.offJoined(handleJoined);
+
+      sinyalSocket.offUpdated(handleUpdated);
+
+      setJoined(false);
     };
   }, [vehicleAssignmentId]);
 
   return {
-    sinyal,
+    data,
     connected,
+    socketId,
+    joined,
   };
 }

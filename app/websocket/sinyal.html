@@ -1,0 +1,537 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Sinyal Realtime Test</title>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      background: #eee;
+    }
+
+    .connected {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .disconnected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .label {
+      font-size: 12px;
+      color: #777;
+      margin-bottom: 5px;
+    }
+
+    .value {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    pre {
+      background: #111;
+      color: #0f0;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      min-height: 100px;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    #logs {
+      max-height: 300px;
+      overflow-y: auto;
+      background: #111;
+      color: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .log {
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>🚦 Sinyal Realtime Test</h1>
+
+  <div id="status" class="status disconnected">
+    🔴 Connecting...
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="label">Backend</div>
+      <div class="value">http://localhost:3001</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Socket ID</div>
+      <div id="socketId" class="value">-</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Vehicle Assignment</div>
+      <div class="value">176</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Room</div>
+      <div class="value">
+        sinyal:assignment:176
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Joined</div>
+      <div id="joined" class="value">❌ No</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Sinyal</div>
+      <div id="sinyal" class="value">-</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Status</div>
+      <div id="sinyalStatus" class="value">-</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Last Update</div>
+      <div id="lastUpdate" class="value">-</div>
+    </div>
+
+  </div>
+
+  <button onclick="joinRoom()">
+    🔌 Join Sinyal Room
+  </button>
+
+  <h3>📦 Latest Payload</h3>
+
+  <pre id="payload">
+Menunggu data...
+  </pre>
+
+  <h3>📜 Logs</h3>
+
+  <div id="logs"></div>
+
+</div>
+
+<script>
+
+  // ==========================================
+  // CONFIG
+  // ==========================================
+
+  const BACKEND_URL = "http://localhost:3001";
+
+  const VEHICLE_ASSIGNMENT_ID = 176;
+
+  const ROOM =
+    `sinyal:assignment:${VEHICLE_ASSIGNMENT_ID}`;
+
+
+  // ==========================================
+  // ELEMENTS
+  // ==========================================
+
+  const statusElement =
+    document.getElementById("status");
+
+  const socketIdElement =
+    document.getElementById("socketId");
+
+  const joinedElement =
+    document.getElementById("joined");
+
+  const sinyalElement =
+    document.getElementById("sinyal");
+
+  const sinyalStatusElement =
+    document.getElementById("sinyalStatus");
+
+  const lastUpdateElement =
+    document.getElementById("lastUpdate");
+
+  const payloadElement =
+    document.getElementById("payload");
+
+  const logsElement =
+    document.getElementById("logs");
+
+
+  // ==========================================
+  // LOG
+  // ==========================================
+
+  function log(message, data = null) {
+
+    const time =
+      new Date().toLocaleTimeString("id-ID");
+
+    const div =
+      document.createElement("div");
+
+    div.className = "log";
+
+    let text =
+      `[${time}] ${message}`;
+
+    if (data) {
+      text += ` ${JSON.stringify(data)}`;
+    }
+
+    div.textContent = text;
+
+    logsElement.prepend(div);
+
+    console.log(message, data);
+  }
+
+
+  // ==========================================
+  // SOCKET.IO
+  // ==========================================
+
+  const socket = io(BACKEND_URL, {
+
+    transports: [
+      "polling",
+      "websocket"
+    ],
+
+    reconnection: true,
+
+    reconnectionAttempts: 10,
+
+    reconnectionDelay: 1000
+
+  });
+
+
+  // ==========================================
+  // CONNECT
+  // ==========================================
+
+  socket.on("connect", () => {
+
+    console.log(
+      "Socket connected:",
+      socket.id
+    );
+
+    statusElement.textContent =
+      "🟢 Connected";
+
+    statusElement.className =
+      "status connected";
+
+    socketIdElement.textContent =
+      socket.id;
+
+    log(
+      "Socket connected",
+      {
+        socketId: socket.id
+      }
+    );
+
+
+    // otomatis join
+    joinRoom();
+
+  });
+
+
+  // ==========================================
+  // JOIN ROOM
+  // ==========================================
+
+  function joinRoom() {
+
+    if (!socket.connected) {
+
+      log(
+        "Socket belum connected"
+      );
+
+      return;
+    }
+
+
+    const payload = {
+
+      vehicleAssignmentId:
+        VEHICLE_ASSIGNMENT_ID
+
+    };
+
+
+    log(
+      "Mengirim sinyal:join",
+      payload
+    );
+
+
+    socket.emit(
+      "sinyal:join",
+      payload
+    );
+
+  }
+
+
+  // ==========================================
+  // JOINED
+  // ==========================================
+
+  socket.on(
+    "sinyal:joined",
+    (response) => {
+
+      console.log(
+        "Sinyal joined:",
+        response
+      );
+
+
+      joinedElement.textContent =
+        "✅ Yes";
+
+
+      log(
+        "Berhasil join room",
+        response
+      );
+
+    }
+  );
+
+
+  // ==========================================
+  // REALTIME UPDATE
+  // ==========================================
+
+  socket.on(
+    "sinyal:updated",
+    (payload) => {
+
+      console.log(
+        "🚦 SINYAL UPDATED",
+        payload
+      );
+
+
+      log(
+        "🚦 sinyal:updated",
+        payload
+      );
+
+
+      // Payload mentah
+
+      payloadElement.textContent =
+        JSON.stringify(
+          payload,
+          null,
+          2
+        );
+
+
+      // ========================================
+      // Ambil field
+      // ========================================
+
+      if (
+        payload.sinyal !== undefined
+      ) {
+
+        sinyalElement.textContent =
+          payload.sinyal;
+
+      }
+
+
+      if (
+        payload.status !== undefined
+      ) {
+
+        sinyalStatusElement.textContent =
+          payload.status;
+
+      }
+
+
+      if (
+        payload.createdAt
+      ) {
+
+        lastUpdateElement.textContent =
+          new Date(
+            payload.createdAt
+          ).toLocaleString(
+            "id-ID"
+          );
+
+      }
+
+    }
+  );
+
+
+  // ==========================================
+  // CONNECT ERROR
+  // ==========================================
+
+  socket.on(
+    "connect_error",
+    (error) => {
+
+      console.error(
+        "Socket error:",
+        error
+      );
+
+
+      statusElement.textContent =
+        "🔴 Connection Error";
+
+      statusElement.className =
+        "status disconnected";
+
+
+      log(
+        "Connection error",
+        {
+          message: error.message
+        }
+      );
+
+    }
+  );
+
+
+  // ==========================================
+  // DISCONNECT
+  // ==========================================
+
+  socket.on(
+    "disconnect",
+    (reason) => {
+
+      console.log(
+        "Socket disconnected:",
+        reason
+      );
+
+
+      statusElement.textContent =
+        "🔴 Disconnected";
+
+      statusElement.className =
+        "status disconnected";
+
+
+      joinedElement.textContent =
+        "❌ No";
+
+
+      log(
+        "Socket disconnected",
+        {
+          reason
+        }
+      );
+
+    }
+  );
+
+
+  // ==========================================
+  // RECONNECT
+  // ==========================================
+
+  socket.io.on(
+    "reconnect",
+    (attempt) => {
+
+      log(
+        "Socket reconnect",
+        {
+          attempt
+        }
+      );
+
+    }
+  );
+
+</script>
+
+</body>
+</html>
+```
