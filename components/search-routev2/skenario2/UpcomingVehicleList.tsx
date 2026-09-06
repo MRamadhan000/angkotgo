@@ -1,19 +1,49 @@
 "use client";
 
-import { FiNavigation } from "react-icons/fi";
+import { useState } from "react";
+import {
+  FiNavigation,
+  FiRadio,
+  FiCheck,
+} from "react-icons/fi";
+
 import UpcomingVehicleCard from "./UpcomingVehicleCard";
 import { UpcomingVehicle } from "@/types/route-search.type";
 
 interface UpcomingVehicleListProps {
   upcomingVehicles: UpcomingVehicle[];
+
+  /**
+   * Method yang dipanggil ketika user
+   * ingin mengirim sinyal.
+   */
+  onSubmit: () => Promise<void> | void;
+
+  /**
+   * Status loading dari parent jika diperlukan.
+   */
+  isSubmitting?: boolean;
 }
 
 export default function UpcomingVehicleList({
   upcomingVehicles: vehicles,
+  onSubmit,
+  isSubmitting = false,
 }: UpcomingVehicleListProps) {
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      await onSubmit();
+      setSubmitted(true);
+    } catch (error) {
+      console.error("Gagal mengirim sinyal:", error);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      {/* HEADER - tetap kelihatan, gak ikut scroll */}
+      {/* HEADER */}
       <div className="flex shrink-0 items-center justify-between px-4 pb-3">
         <div>
           <h2 className="text-sm font-bold text-[#191b23]">
@@ -30,11 +60,49 @@ export default function UpcomingVehicleList({
         </div>
       </div>
 
-      {/* VEHICLES - satu-satunya area yang scroll */}
+      {/* SIGNAL BUTTON */}
+      <div className="shrink-0 px-4 pb-3">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isSubmitting || submitted}
+          className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition ${
+            submitted
+              ? "bg-green-50 text-green-600"
+              : "bg-[#003d9b] text-white hover:bg-[#003d9b]/90"
+          } ${
+            isSubmitting || submitted
+              ? "cursor-not-allowed opacity-80"
+              : ""
+          }`}
+        >
+          {submitted ? (
+            <>
+              <FiCheck className="text-base" />
+              Sinyal berhasil dikirim
+            </>
+          ) : isSubmitting ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              Mengirim sinyal...
+            </>
+          ) : (
+            <>
+              <FiRadio className="text-base" />
+              Kirim sinyal ke angkot terdekat
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* VEHICLES */}
       {vehicles.length > 0 ? (
         <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-4 pb-4">
           {vehicles.map((vehicle) => (
-            <UpcomingVehicleCard key={vehicle.assignmentId} vehicle={vehicle} />
+            <UpcomingVehicleCard
+              key={vehicle.assignmentId}
+              vehicle={vehicle}
+            />
           ))}
         </div>
       ) : (

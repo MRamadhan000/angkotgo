@@ -49,6 +49,7 @@ import {
 } from "@/types/mapbox.type";
 import { UpcomingVehiclesResponse } from "@/types/route-search.type";
 import { routePathService } from "@/services/routes/route-path.service";
+import { useCreateSinyal } from "@/hooks/sinyal/useSinyal";
 
 type ActiveInputState = PointType | null;
 type SheetSnap = "peek" | "full";
@@ -92,6 +93,13 @@ export default function CariRuteAngkot() {
   // GPS
   const [showGpsModal, setShowGpsModal] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
+
+  const {
+    mutateAsync: createSinyal,
+    isPending: isCreatingSinyal,
+    isError: isCreateSinyalError,
+    error: createSinyalError,
+  } = useCreateSinyal();
 
   // MAP REFS
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -741,6 +749,28 @@ export default function CariRuteAngkot() {
     }
   };
 
+  const handleSendSinyal = async () => {
+    if (!originCoords) {
+      alert("Titik penjemputan belum tersedia.");
+      return;
+    }
+
+    const vehicleAssignmentId = (upcomingVehicles?.vehicles ?? []).map(
+      (vehicle) => String(vehicle.assignmentId),
+    );
+
+    if (vehicleAssignmentId.length === 0) {
+      alert("Belum ada kendaraan yang tersedia.");
+      return;
+    }
+
+    await createSinyal({
+      latitude: originCoords.lat,
+      longitude: originCoords.lng,
+      vehicleAssignmentId,
+    });
+  };
+
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden bg-[#faf8ff] text-[#191b23]">
       <GpsPermissionModal
@@ -940,8 +970,15 @@ export default function CariRuteAngkot() {
 
           {/* CONTENT */}
           <div className="min-h-0 flex-1">
+            {isCreateSinyalError && (
+              <p className="px-4 pb-3 text-sm text-red-600" role="alert">
+                {createSinyalError.message || "Gagal mengirim sinyal."}
+              </p>
+            )}
             <UpcomingVehicleList
               upcomingVehicles={upcomingVehicles?.vehicles ?? []}
+              onSubmit={handleSendSinyal}
+              isSubmitting={isCreatingSinyal}
             />
           </div>
         </div>
