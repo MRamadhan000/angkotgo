@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +13,9 @@ import {
   useCreateVehicleLocation,
   useVehicleLocations,
 } from "@/hooks/vehicles/useVehicleLocation";
+import { useVehicleSocket } from "@/hooks/vehicles/useVehicleSocket";
+import { useActiveSinyal } from "@/hooks/sinyal/useSinyal";
+import { useSinyalRealtime } from "@/hooks/sinyal/useSinyalSocket";
 import { useRoutePaths } from "@/hooks/routes/useRoutePath";
 import { useRouteStops } from "@/hooks/routes/useRouteStops";
 import { AssignmentStatus } from "@/types/vehicles/vehicle-assignments.type";
@@ -24,6 +27,7 @@ import { UpdateStatusModal } from "@/components/now/UpdateStatusModal";
 
 import { SeatGridControl } from "@/components/now/SeatGridControl";
 import DriverMap from "../../DriverMap";
+import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
@@ -39,6 +43,14 @@ export default function AssignmentDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("SCHEDULED");
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [gpsLocation, setGpsLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [selectedVehicleLocation, setSelectedVehicleLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const {
     data: assignmentDetail,
@@ -50,6 +62,22 @@ export default function AssignmentDetailPage() {
     hasValidAssignmentId ? assignmentId : undefined,
   );
   const createVehicleLocation = useCreateVehicleLocation();
+  const {
+    data: vehicleRealtime,
+    connected: vehicleSocketConnected,
+    joined: vehicleSocketJoined,
+  } = useVehicleSocket(
+    hasValidAssignmentId ? assignmentId : null,
+  );
+  const assignmentKey = hasValidAssignmentId ? String(assignmentId) : "";
+  const { data: activeUserSignals = [] } = useActiveSinyal(assignmentKey);
+  const {
+    data: userRealtime,
+    connected: userSocketConnected,
+    joined: userSocketJoined,
+  } = useSinyalRealtime(
+    hasValidAssignmentId ? assignmentKey : null,
+  );
   const direction = assignmentDetail?.direction;
   const routeId = assignmentDetail?.routeId ?? 0;
   const { data: routePaths = [] } = useRoutePaths(routeId, direction!);
@@ -63,6 +91,92 @@ export default function AssignmentDetailPage() {
       )[0] ?? null,
     [vehicleLocations],
   );
+  const activeUserLocations = useMemo(() => {
+    const locations = activeUserSignals
+      .filter(
+        (signal) =>
+          signal.status === "ACTIVE" &&
+          (String(signal.vehicleAssignmentId) === assignmentKey ||
+            signal.details.some(
+              (detail) => String(detail.vehicleAssignmentId) === assignmentKey,
+            )),
+      )
+      .map((signal) => ({
+        id: signal.id,
+        latitude: Number(signal.latitude),
+        longitude: Number(signal.longitude),
+        status: "ACTIVE" as const,
+      }));
+
+    if (
+      userRealtime?.status === "ACTIVE" &&
+      String(userRealtime.vehicleAssignmentId) === assignmentKey
+    ) {
+      const realtimeLocation = {
+        id: userRealtime.sinyalId,
+        latitude: Number(userRealtime.latitude),
+        longitude: Number(userRealtime.longitude),
+        status: "ACTIVE" as const,
+      };
+      const existingIndex = locations.findIndex(
+        (location) => location.id === realtimeLocation.id,
+      );
+
+      if (existingIndex >= 0) locations[existingIndex] = realtimeLocation;
+      else locations.push(realtimeLocation);
+    }
+
+    return locations.filter(
+      (location) =>
+        Number.isFinite(location.latitude) &&
+        Number.isFinite(location.longitude),
+    );
+  }, [activeUserSignals, assignmentKey, userRealtime]);
+  const vehicleLocation = vehicleRealtime
+    ? {
+        latitude: Number(vehicleRealtime.latitude),
+        longitude: Number(vehicleRealtime.longitude),
+      }
+    : latestVehicleLocation
+      ? {
+          latitude: Number(latestVehicleLocation.latitude),
+          longitude: Number(latestVehicleLocation.longitude),
+        }
+      : null;
+  const displayedVehicleLocation =
+    selectedVehicleLocation ?? gpsLocation ?? vehicleLocation;
+
+  useEffect(() => {
+    if (!hasValidAssignmentId || !navigator.geolocation) return;
+
+    let isMounted = true;
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        if (!isMounted || selectedVehicleLocation) return;
+        setGpsLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => {
+        if (isMounted && error.code !== 1) {
+          setLocationError("Lokasi GPS belum tersedia. Posisi socket/manual tetap dapat digunakan.");
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+
+    getCurrentLocation()
+      .then((location) => {
+        if (isMounted && !selectedVehicleLocation) setGpsLocation(location);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [hasValidAssignmentId, selectedVehicleLocation]);
 
   const handleUpdateStatus = async () => {
     if (!assignmentDetail || !hasValidAssignmentId) return;
@@ -87,6 +201,10 @@ export default function AssignmentDetailPage() {
         latitude: Number(stop.latitude),
         longitude: Number(stop.longitude),
         currentStopId: stop.id,
+      });
+      setSelectedVehicleLocation({
+        latitude: Number(stop.latitude),
+        longitude: Number(stop.longitude),
       });
       setIsLocationModalOpen(false);
     } catch (error) {
@@ -156,19 +274,33 @@ export default function AssignmentDetailPage() {
                   <DriverMap
                     routePaths={routePaths}
                     routeStops={routeStops}
-                    currentLocation={
-                      latestVehicleLocation
-                        ? {
-                            latitude: Number(latestVehicleLocation.latitude),
-                            longitude: Number(latestVehicleLocation.longitude),
-                          }
-                        : null
-                    }
+                    currentLocation={displayedVehicleLocation}
+                    userLocations={activeUserLocations}
                     currentPassengers={assignmentDetail.currentPassengers}
                     capacity={assignmentDetail.vehicle?.capacity ?? 8}
                     routeName={assignmentDetail.route?.routeName}
                   />
                 </div>
+                <DebugLocationPanel
+                  assignmentId={assignmentId}
+                  vehicleLocation={displayedVehicleLocation}
+                  vehicleLocationSource={
+                    selectedVehicleLocation
+                      ? "manual / route stop"
+                      : gpsLocation
+                        ? "GPS browser"
+                        : vehicleRealtime
+                          ? "socket"
+                          : "POST terakhir"
+                  }
+                  vehicleSocketConnected={vehicleSocketConnected}
+                  vehicleSocketJoined={vehicleSocketJoined}
+                  userSocketConnected={userSocketConnected}
+                  userSocketJoined={userSocketJoined}
+                  userLocations={activeUserLocations}
+                  routePathCount={routePaths.length}
+                  routeStopCount={routeStops.length}
+                />
               </div>
             )}
 
@@ -203,6 +335,102 @@ export default function AssignmentDetailPage() {
       />
     </div>
   );
+}
+
+function DebugLocationPanel({
+  assignmentId,
+  vehicleLocation,
+  vehicleLocationSource,
+  vehicleSocketConnected,
+  vehicleSocketJoined,
+  userSocketConnected,
+  userSocketJoined,
+  userLocations,
+  routePathCount,
+  routeStopCount,
+}: {
+  assignmentId: number;
+  vehicleLocation: { latitude: number; longitude: number } | null;
+  vehicleLocationSource: string;
+  vehicleSocketConnected: boolean;
+  vehicleSocketJoined: boolean;
+  userSocketConnected: boolean;
+  userSocketJoined: boolean;
+  userLocations: Array<{
+    id: string;
+    latitude: number;
+    longitude: number;
+    status: "ACTIVE";
+  }>;
+  routePathCount: number;
+  routeStopCount: number;
+}) {
+  return (
+    <details className="mt-3 rounded-2xl border border-slate-300 bg-slate-900 text-slate-100 shadow-sm">
+      <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+        Debug lokasi realtime
+      </summary>
+      <div className="space-y-3 border-t border-slate-700 px-4 py-3 text-xs">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <DebugValue label="Assignment ID" value={String(assignmentId)} />
+          <DebugValue
+            label="Vehicle socket"
+            value={formatSocketState(vehicleSocketConnected, vehicleSocketJoined)}
+          />
+          <DebugValue
+            label="User socket"
+            value={formatSocketState(userSocketConnected, userSocketJoined)}
+          />
+          <DebugValue
+            label="Data aktif"
+            value={`${userLocations.length} user / ${routeStopCount} halte / ${routePathCount} path`}
+          />
+        </div>
+
+        <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-3">
+          <p className="mb-1 font-semibold text-cyan-300">
+            Posisi angkot ({vehicleLocationSource})
+          </p>
+          <p className="font-mono">
+            {vehicleLocation
+              ? `lat=${vehicleLocation.latitude.toFixed(6)}, lng=${vehicleLocation.longitude.toFixed(6)}`
+              : "Belum ada koordinat"}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-3">
+          <p className="mb-2 font-semibold text-emerald-300">
+            Posisi user aktif ({userLocations.length})
+          </p>
+          {userLocations.length > 0 ? (
+            <div className="space-y-1 font-mono">
+              {userLocations.map((location, index) => (
+                <p key={location.id}>
+                  #{index + 1} {location.id}: lat={location.latitude.toFixed(6)}, lng={location.longitude.toFixed(6)} [{location.status}]
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="font-mono text-slate-400">Belum ada user aktif</p>
+          )}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function DebugValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-2">
+      <p className="text-slate-400">{label}</p>
+      <p className="mt-1 font-mono text-slate-100">{value}</p>
+    </div>
+  );
+}
+
+function formatSocketState(connected: boolean, joined: boolean) {
+  if (!connected) return "DISCONNECTED";
+  return joined ? "CONNECTED / JOINED" : "CONNECTED / NOT JOINED";
 }
 
 function RouteStopLocationModal({

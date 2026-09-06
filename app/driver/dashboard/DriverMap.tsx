@@ -30,6 +30,12 @@ interface DriverMapProps {
   currentPassengers?: number;
   capacity?: number;
   routeName?: string;
+  userLocations?: Array<{
+    id: string;
+    latitude: number;
+    longitude: number;
+    status: "ACTIVE";
+  }>;
 }
 
 export default function DriverMap({
@@ -39,11 +45,13 @@ export default function DriverMap({
   currentPassengers = 0,
   capacity = 12,
   routeName = "Rute angkot",
+  userLocations = [],
 }: DriverMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const vehicleMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const stopMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const userMarkersRef = useRef<mapboxgl.Marker[]>([]);
 
   const sortedPaths = [...routePaths]
     .map((path) => ({
@@ -87,6 +95,7 @@ export default function DriverMap({
     return () => {
       vehicleMarkerRef.current?.remove();
       stopMarkersRef.current.forEach((marker) => marker.remove());
+      userMarkersRef.current.forEach((marker) => marker.remove());
       map.remove();
       mapRef.current = null;
     };
@@ -136,6 +145,40 @@ export default function DriverMap({
       map.off("load", drawRoute);
     };
   }, [routePaths]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    userMarkersRef.current.forEach((marker) => marker.remove());
+    userMarkersRef.current = userLocations.flatMap(
+      ({ id, latitude, longitude }) => {
+        const coordinate = toCoordinate(longitude, latitude);
+        if (!coordinate) return [];
+
+        const element = document.createElement("div");
+        element.className =
+          "h-3 w-3 rounded-full border-2 border-white bg-rose-600 shadow-lg";
+        element.title = `User aktif ${id}`;
+
+        return [
+          new mapboxgl.Marker({ element })
+            .setLngLat(coordinate)
+            .setPopup(
+              new mapboxgl.Popup({ offset: 18 }).setText(
+                `User aktif ${id}\nLat: ${latitude.toFixed(6)}\nLng: ${longitude.toFixed(6)}`,
+              ),
+            )
+            .addTo(map),
+        ];
+      },
+    );
+
+    return () => {
+      userMarkersRef.current.forEach((marker) => marker.remove());
+      userMarkersRef.current = [];
+    };
+  }, [userLocations]);
 
   useEffect(() => {
     const map = mapRef.current;

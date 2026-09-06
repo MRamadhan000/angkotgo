@@ -17,7 +17,7 @@ interface UseVehicleRealtimeReturn {
   socketId: string | null;
 }
 
-export function useVehicleRealtime(
+export function useVehicleSocket(
   vehicleAssignmentId: number | null,
 ): UseVehicleRealtimeReturn {
   const [data, setData] = useState<VehicleRealtimePayload | null>(null);
@@ -183,3 +183,5 @@ export function useVehicleRealtime(
     socketId,
   };
 }
+
+export const useVehicleRealtime = useVehicleSocket;
