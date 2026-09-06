@@ -17,6 +17,11 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useMap } from "react-leaflet";
+import { useRoutes } from "@/hooks/routes/useRoutes";
+import { useRoutePaths } from "@/hooks/routes/useRoutePath";
+import { useRouteStops } from "@/hooks/routes/useRouteStops";
+import type { Route } from "@/types/routes/route.type";
+import { DirectionType } from "@/types/vehicles/vehicle.type";
 import type {
   MapContainerProps,
   TileLayerProps,
@@ -99,50 +104,23 @@ const createNumberIcon = (number: number, color: string, dashed: boolean) => {
 };
 
 // ==================== INTERFACES / TYPES ====================
-interface RouteItem {
-  id: number;
-  routeCode: string;
-  routeName: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface PathItem {
-  id: number;
-  routeId: number;
-  direction: "FORWARD" | "RETURN";
-  latitude: number;
-  longitude: number;
-  sequenceOrder: number;
-  geom: {
-    type: string;
-    coordinates: [number, number];
-  };
-}
-
-interface StopItem {
-  id: number;
-  routeId: number;
-  direction: "FORWARD" | "RETURN";
-  stopName: string;
-  latitude: number;
-  longitude: number;
-  stopOrder: number;
-}
-
-interface ApiResponse<T> {
-  message: string;
-  data: T;
-}
-
 export default function InfoRutePage() {
   const router = useRouter();
-  const [routes, setRoutes] = useState<RouteItem[]>([]);
-  const [selectedRoute, setSelectedRoute] = useState<RouteItem | null>(null);
-  const [direction, setDirection] = useState<"FORWARD" | "RETURN">("FORWARD");
-  const [pathData, setPathData] = useState<PathItem[]>([]);
-  const [stopData, setStopData] = useState<StopItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { data: routes = [] } = useRoutes();
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [direction, setDirection] = useState<DirectionType>(
+    DirectionType.FORWARD,
+  );
+
+  const { data: pathData = [], isLoading: pathsLoading } = useRoutePaths(
+    selectedRoute?.id ?? 0,
+    direction,
+  );
+  const { data: stopData = [], isLoading: stopsLoading } = useRouteStops(
+    selectedRoute?.id ?? 0,
+    direction,
+  );
+  const loading = pathsLoading || stopsLoading;
 
   const isReturn = direction === "RETURN";
 
@@ -162,42 +140,10 @@ export default function InfoRutePage() {
   };
 
   useEffect(() => {
-    fetch("http://localhost:3001/routes")
-      .then((res) => res.json())
-      .then((res: ApiResponse<RouteItem[]>) => {
-        const fetchedRoutes = res.data || [];
-        setRoutes(fetchedRoutes);
-        if (fetchedRoutes.length > 0) {
-          setSelectedRoute(fetchedRoutes[0]);
-        }
-      });
-  }, []);
-
-  useEffect(() => {
-    if (selectedRoute) {
-      setLoading(true);
-      Promise.all([
-        fetch(
-          `http://localhost:3001/route-paths?routeId=${selectedRoute.id}&direction=${direction}`,
-        ).then((res) => res.json()),
-        fetch(
-          `http://localhost:3001/route-stops?routeId=${selectedRoute.id}&direction=${direction}`,
-        ).then((res) => res.json()),
-      ])
-        .then(
-          ([paths, stops]: [
-            ApiResponse<PathItem[]>,
-            ApiResponse<StopItem[]>,
-          ]) => {
-            setPathData(paths.data || []);
-            setStopData(stops.data || []);
-          },
-        )
-        .finally(() => {
-          setLoading(false);
-        });
+    if (!selectedRoute && routes.length > 0) {
+      setSelectedRoute(routes[0]);
     }
-  }, [selectedRoute, direction]);
+  }, [routes, selectedRoute]);
 
   return (
     <div className="min-h-screen bg-white text-slate-800 antialiased overflow-x-hidden font-body">
@@ -318,7 +264,10 @@ export default function InfoRutePage() {
 
                   {/* Direction Switcher */}
                   <div className="flex gap-1.5 bg-slate-100 p-1.5 rounded-full border border-slate-200 shadow-inner">
-                    {(["FORWARD", "RETURN"] as const).map((dir) => {
+                    {[
+                      DirectionType.FORWARD,
+                      DirectionType.RETURN,
+                    ].map((dir) => {
                       const active = direction === dir;
                       return (
                         <button
