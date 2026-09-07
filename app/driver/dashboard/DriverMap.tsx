@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { RoutePath } from "@/types/routes/route-path.type";
 import { RouteStopType } from "@/types/routes/route-stop.type";
@@ -30,6 +30,7 @@ interface DriverMapProps {
   currentPassengers?: number;
   capacity?: number;
   routeName?: string;
+  locationSource?: "manual" | "gps" | "socket" | "last-known";
   userLocations?: Array<{
     id: string;
     latitude: number;
@@ -45,10 +46,12 @@ export default function DriverMap({
   currentPassengers = 0,
   capacity = 12,
   routeName = "Rute angkot",
+  locationSource = "last-known",
   userLocations = [],
 }: DriverMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const vehicleMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const stopMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const userMarkersRef = useRef<mapboxgl.Marker[]>([]);
@@ -91,6 +94,7 @@ export default function DriverMap({
 
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
     mapRef.current = map;
+    setMapReady(true);
 
     return () => {
       vehicleMarkerRef.current?.remove();
@@ -98,6 +102,7 @@ export default function DriverMap({
       userMarkersRef.current.forEach((marker) => marker.remove());
       map.remove();
       mapRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
@@ -202,7 +207,7 @@ export default function DriverMap({
       currentLocation?.longitude,
       currentLocation?.latitude,
     );
-    if (!map || !coordinate || !currentLocation) return;
+    if (!mapReady || !map || !coordinate || !currentLocation) return;
 
     if (!vehicleMarkerRef.current) {
       const element = document.createElement("div");
@@ -217,10 +222,10 @@ export default function DriverMap({
       .setLngLat(coordinate)
       .setPopup(
         new mapboxgl.Popup({ offset: 28 }).setHTML(
-          `<strong>${routeName}</strong><br/>GPS live: ${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}<br/>Penumpang: ${currentPassengers}/${capacity}`,
+          `<strong>${routeName}</strong><br/>Sumber: ${locationSource}<br/>Posisi: ${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}<br/>Penumpang: ${currentPassengers}/${capacity}`,
         ),
       );
-  }, [currentLocation, routeName, currentPassengers, capacity]);
+  }, [mapReady, currentLocation, locationSource, routeName, currentPassengers, capacity]);
 
   if (!MAPBOX_TOKEN) {
     return <div className="flex h-full items-center justify-center bg-slate-100 p-4 text-center text-sm text-slate-600">NEXT_PUBLIC_MAPBOX_TOKEN belum dikonfigurasi.</div>;

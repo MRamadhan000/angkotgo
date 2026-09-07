@@ -2,32 +2,66 @@
 
 import React from "react";
 import { SeatState } from "@/types/vehicles/seat-management.type";
+import { FaChair, FaUserCheck, FaLock, FaInfoCircle } from "react-icons/fa";
 
 interface SeatGridControlProps {
   seats: SeatState[];
   canControl: boolean;
   onToggleSeat: (seatNumber: number) => void;
-  hasConductor: boolean;
-  isUserConductor: boolean;
+  hasConductor?: boolean;
+  isUserConductor?: boolean;
 }
 
 export const SeatGridControl: React.FC<SeatGridControlProps> = ({
   seats,
   canControl,
   onToggleSeat,
+  hasConductor,
+  isUserConductor,
 }) => {
+  const occupiedCount = seats.filter((s) => s.isOccupied).length;
+  const availableCount = seats.length - occupiedCount;
+
   return (
-    <div className="bg-white rounded-[20px] p-5 shadow-sm border border-gray-100">
-      <div className="mb-4">
-        <h3 className="text-[13px] sm:text-sm font-bold text-slate-900 mb-0.5">
-          Ketersediaan Seat
-        </h3>
-        <p className="text-[11px] sm:text-xs text-gray-400">
-          Klik nomor seat untuk mengubah jumlah penumpang.
-        </p>
+    <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 transition-all">
+      {/* HEADER & RINGKASAN */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight">
+              Ketersediaan Kursi
+            </h3>
+            {!canControl && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-200/60">
+                <FaLock className="text-[9px]" />
+                Hanya Lihat
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+            <FaInfoCircle className="text-slate-300 shrink-0" />
+            {canControl
+              ? "Tap kursi untuk mengubah status terisi/kosong."
+              : "Status dipantau secara langsung."}
+          </p>
+        </div>
+
+        {/* COUNTER BADGES */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 text-[11px] font-bold">
+            <FaUserCheck className="text-[10px]" />
+            <span>Kosong: {availableCount}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 text-[11px] font-bold">
+            <FaChair className="text-[10px]" />
+            <span>Terisi: {occupiedCount}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-8 gap-1.5 sm:gap-2 mb-4">
+      {/* SEAT GRID RESPONSIVE MOBILE */}
+      {/* Grid: 4 kolom di layar kecil (HP), 6/8 kolom di tablet & desktop */}
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 mb-4">
         {seats.map((seat) => {
           const isOccupied = seat.isOccupied;
           return (
@@ -36,33 +70,38 @@ export const SeatGridControl: React.FC<SeatGridControlProps> = ({
               type="button"
               disabled={!canControl}
               onClick={() => onToggleSeat(seat.seatNumber)}
-              className={`flex h-9 sm:h-12 w-full flex-col items-center justify-center rounded-lg sm:rounded-xl border text-[11px] sm:text-sm font-bold transition-all
-              ${isOccupied
-                  ? "bg-[#FC6B6B] border-[#FC6B6B] text-white shadow-sm"
-                  : "bg-white border-[#8fe19a] text-slate-700 hover:bg-green-50"
-                } 
-              ${!canControl
+              className={`relative group flex h-11 sm:h-12 w-full flex-col items-center justify-center rounded-xl border text-xs sm:text-sm font-bold transition-all duration-150 select-none ${
+                isOccupied
+                  ? "bg-rose-500 border-rose-500 text-white shadow-xs hover:bg-rose-600"
+                  : "bg-white border-emerald-200 text-slate-700 hover:bg-emerald-50/60 hover:border-emerald-300"
+              } ${
+                !canControl
                   ? "opacity-80 cursor-not-allowed"
-                  : "active:scale-95 cursor-pointer"
-                }
-              `}
+                  : "active:scale-95 cursor-pointer shadow-2xs"
+              }`}
             >
-              <span>{seat.seatNumber}</span>
+              <FaChair
+                className={`text-[10px] sm:text-xs mb-0.5 transition-colors ${
+                  isOccupied ? "text-rose-100" : "text-emerald-500/70"
+                }`}
+              />
+              <span className="leading-none">{seat.seatNumber}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="flex items-center gap-4 text-[10px] sm:text-xs text-gray-500 font-medium">
+      {/* LEGEND / KETERANGAN WARNA */}
+      {/* <div className="flex items-center justify-center sm:justify-start gap-4 pt-2 text-[11px] font-semibold text-slate-500 border-t border-slate-50">
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FC6B6B]"></span>
-          <span>Terisi</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#3ae93a]"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100"></span>
           <span>Kosong</span>
         </div>
-      </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-100"></span>
+          <span>Terisi</span>
+        </div>
+      </div> */}
     </div>
   );
 };
