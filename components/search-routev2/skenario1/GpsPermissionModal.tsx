@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { FiCompass, FiNavigation } from "react-icons/fi";
 
 interface GpsPermissionModalProps {
@@ -17,11 +19,29 @@ export default function GpsPermissionModal({
   onSkip,
   hideSkip = false,
 }: GpsPermissionModalProps) {
+  // Kunci scroll body saat modal terbuka
+  useEffect(() => {
+    if (open) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [open]);
+
   if (!open) return null;
 
-  return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-[#faf8ff] w-full max-w-sm rounded-[24px] shadow-2xl p-6 border border-[#c3c6d6]/30 flex flex-col items-center text-center gap-4">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-[#faf8ff] w-full max-w-sm rounded-[24px] shadow-2xl p-6 border border-[#c3c6d6]/30 flex flex-col items-center text-center gap-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Icon */}
         <div className="w-14 h-14 rounded-full bg-[#0052cc]/10 flex items-center justify-center text-[#003d9b] text-2xl">
           <FiCompass className="animate-spin-slow" />
@@ -29,9 +49,7 @@ export default function GpsPermissionModal({
 
         {/* Content */}
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-bold text-[#003d9b]">
-            Nyalakan GPS
-          </h2>
+          <h2 className="text-lg font-bold text-[#003d9b]">Nyalakan GPS</h2>
 
           <p className="text-xs sm:text-sm text-[#434654] leading-relaxed">
             Mohon aktifkan akses lokasi agar AngkotGo dapat mendeteksi titik
@@ -67,6 +85,7 @@ export default function GpsPermissionModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
