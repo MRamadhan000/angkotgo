@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { useAuth } from "@/context/AuthContext";
-import { DetailHeader } from "@/components/common/DetailHeader";
 import {
   useUpdateVehicleAssignmentv2,
   useVehicleAssignmentv2,
@@ -18,30 +17,35 @@ import { useActiveSinyal } from "@/hooks/sinyal/useSinyal";
 import { useSinyalRealtime } from "@/hooks/sinyal/useSinyalSocket";
 import { useRoutePaths } from "@/hooks/routes/useRoutePath";
 import { useRouteStops } from "@/hooks/routes/useRouteStops";
+import { usePayments } from "@/hooks/payments/usePayments";
+import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
+
 import {
   AssignmentStatus,
   VehicleAssignment,
 } from "@/types/vehicles/vehicle-assignments.type";
 import { RouteStopType } from "@/types/routes/route-stop.type";
+
+import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
+
+import { DetailHeader } from "@/components/common/DetailHeader";
 import { DetailLoading } from "@/components/common/DetaiLoading";
 import ErrorAlert from "@/components/common/ErrorAlert";
 import { AssignmentStatusCard } from "@/components/common/AssignmentStatusCard";
 import { UpdateStatusModal } from "@/components/now/UpdateStatusModal";
-import { usePayments } from "@/hooks/payments/usePayments";
-import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
-
 import { SeatGridControl } from "@/components/now/SeatGridControl";
-import DriverMap from "../../DriverMap";
+import { PaymentMonitor } from "@/components/driver/now/PaymentMonitor";
+import { DebugLocationPanel } from "@/components/driver/now/DebugLocationPanel";
+import { RouteStopLocationModal } from "@/components/driver/now/RouteStopLocationModal";
 import GpsPermissionModal from "@/components/search-routev2/skenario1/GpsPermissionModal";
-import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
+import DriverMap from "../../DriverMap";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
   const rawSlug = params?.slug;
-  const assignmentId = Number(
-    Array.isArray(rawSlug) ? rawSlug[0] : rawSlug,
-  );
-  const hasValidAssignmentId = Number.isInteger(assignmentId) && assignmentId > 0;
+  const assignmentId = Number(Array.isArray(rawSlug) ? rawSlug[0] : rawSlug);
+  const hasValidAssignmentId =
+    Number.isInteger(assignmentId) && assignmentId > 0;
 
   const { user } = useAuth();
 
@@ -85,18 +89,14 @@ export default function AssignmentDetailPage() {
     data: vehicleRealtime,
     connected: vehicleSocketConnected,
     joined: vehicleSocketJoined,
-  } = useVehicleSocket(
-    hasValidAssignmentId ? assignmentId : null,
-  );
+  } = useVehicleSocket(hasValidAssignmentId ? assignmentId : null);
   const assignmentKey = hasValidAssignmentId ? String(assignmentId) : "";
   const { data: activeUserSignals = [] } = useActiveSinyal(assignmentKey);
   const {
     data: userRealtime,
     connected: userSocketConnected,
     joined: userSocketJoined,
-  } = useSinyalRealtime(
-    hasValidAssignmentId ? assignmentKey : null,
-  );
+  } = useSinyalRealtime(hasValidAssignmentId ? assignmentKey : null);
   const direction = assignmentDetail?.direction;
   const routeId = assignmentDetail?.routeId ?? 0;
   const { data: routePaths = [] } = useRoutePaths(routeId, direction!);
@@ -191,7 +191,9 @@ export default function AssignmentDetailPage() {
       },
       (error) => {
         if (isMounted && error.code !== 1) {
-          setLocationError("Lokasi GPS belum tersedia. Posisi socket/manual tetap dapat digunakan.");
+          setLocationError(
+            "Lokasi GPS belum tersedia. Posisi socket/manual tetap dapat digunakan.",
+          );
         }
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
@@ -312,7 +314,9 @@ export default function AssignmentDetailPage() {
               type="button"
               onClick={() => setIsLocationModalOpen(true)}
               className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={createVehicleLocation.isPending || routeStops.length === 0}
+              disabled={
+                createVehicleLocation.isPending || routeStops.length === 0
+              }
             >
               {createVehicleLocation.isPending
                 ? "Menyimpan posisi..."
@@ -359,7 +363,8 @@ export default function AssignmentDetailPage() {
             )}
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              {routeStops.length} halte tersedia untuk arah {assignmentDetail.direction}.
+              {routeStops.length} halte tersedia untuk arah{" "}
+              {assignmentDetail.direction}.
             </div>
           </div>
         )}
@@ -399,252 +404,6 @@ export default function AssignmentDetailPage() {
   );
 }
 
-function DebugLocationPanel({
-  assignmentId,
-  vehicleLocation,
-  vehicleLocationSource,
-  vehicleSocketConnected,
-  vehicleSocketJoined,
-  userSocketConnected,
-  userSocketJoined,
-  userLocations,
-  routePathCount,
-  routeStopCount,
-}: {
-  assignmentId: number;
-  vehicleLocation: { latitude: number; longitude: number } | null;
-  vehicleLocationSource: string;
-  vehicleSocketConnected: boolean;
-  vehicleSocketJoined: boolean;
-  userSocketConnected: boolean;
-  userSocketJoined: boolean;
-  userLocations: Array<{
-    id: string;
-    latitude: number;
-    longitude: number;
-    status: "ACTIVE";
-  }>;
-  routePathCount: number;
-  routeStopCount: number;
-}) {
-  return (
-    <details className="mt-3 rounded-2xl border border-slate-300 bg-slate-900 text-slate-100 shadow-sm">
-      <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
-        Debug lokasi realtime
-      </summary>
-      <div className="space-y-3 border-t border-slate-700 px-4 py-3 text-xs">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <DebugValue label="Assignment ID" value={String(assignmentId)} />
-          <DebugValue
-            label="Vehicle socket"
-            value={formatSocketState(vehicleSocketConnected, vehicleSocketJoined)}
-          />
-          <DebugValue
-            label="User socket"
-            value={formatSocketState(userSocketConnected, userSocketJoined)}
-          />
-          <DebugValue
-            label="Data aktif"
-            value={`${userLocations.length} user / ${routeStopCount} halte / ${routePathCount} path`}
-          />
-        </div>
-
-        <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-3">
-          <p className="mb-1 font-semibold text-cyan-300">
-            Posisi angkot ({vehicleLocationSource})
-          </p>
-          <p className="font-mono">
-            {vehicleLocation
-              ? `lat=${vehicleLocation.latitude.toFixed(6)}, lng=${vehicleLocation.longitude.toFixed(6)}`
-              : "Belum ada koordinat"}
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-3">
-          <p className="mb-2 font-semibold text-emerald-300">
-            Posisi user aktif ({userLocations.length})
-          </p>
-          {userLocations.length > 0 ? (
-            <div className="space-y-1 font-mono">
-              {userLocations.map((location, index) => (
-                <p key={location.id}>
-                  #{index + 1} {location.id}: lat={location.latitude.toFixed(6)}, lng={location.longitude.toFixed(6)} [{location.status}]
-                </p>
-              ))}
-            </div>
-          ) : (
-            <p className="font-mono text-slate-400">Belum ada user aktif</p>
-          )}
-        </div>
-      </div>
-    </details>
-  );
-}
-
-function DebugValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-2">
-      <p className="text-slate-400">{label}</p>
-      <p className="mt-1 font-mono text-slate-100">{value}</p>
-    </div>
-  );
-}
-
-function PaymentMonitor({
-  payments,
-  summary,
-  loading,
-  error,
-  connected,
-  joined,
-}: {
-  payments: Array<{
-    id: number;
-    user_id: number;
-    payment_code: string;
-    payment_type: string;
-    amount: number;
-    status: string;
-    user?: { name: string } | null;
-  }>;
-  summary: Record<string, number> | null;
-  loading: boolean;
-  error: string | null;
-  connected: boolean;
-  joined: boolean;
-}) {
-  const totalPaid = payments
-    .filter((payment) => payment.status === "PAID")
-    .reduce((total, payment) => total + payment.amount, 0);
-
-  return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="font-bold text-slate-900">Pembayaran penumpang</h3>
-          <p className="mt-1 text-xs text-slate-500">
-            {connected && joined ? "Realtime aktif" : "Menghubungkan realtime..."}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-slate-500">Total PAID</p>
-          <p className="font-bold text-emerald-600">
-            Rp {totalPaid.toLocaleString("id-ID")}
-          </p>
-        </div>
-      </div>
-
-      {summary && (
-        <p className="mt-2 text-xs text-slate-500">
-          Rekap server: {Object.entries(summary)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(" | ")}
-        </p>
-      )}
-      {loading && <p className="mt-3 text-sm text-slate-500">Memuat pembayaran...</p>}
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-      {!loading && payments.length === 0 && !error && (
-        <p className="mt-3 text-sm text-slate-500">Belum ada pembayaran.</p>
-      )}
-      {payments.length > 0 && (
-        <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
-          {payments.map((payment) => (
-            <div
-              key={payment.id}
-              className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-800">
-                  {payment.user?.name || `User #${payment.user_id}`}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {payment.payment_type} · {payment.payment_code}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-slate-800">
-                  Rp {payment.amount.toLocaleString("id-ID")}
-                </p>
-                <p className="text-xs font-semibold text-slate-500">{payment.status}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function formatSocketState(connected: boolean, joined: boolean) {
-  if (!connected) return "DISCONNECTED";
-  return joined ? "CONNECTED / JOINED" : "CONNECTED / NOT JOINED";
-}
-
-function RouteStopLocationModal({
-  isOpen,
-  routeStops,
-  isSubmitting,
-  onClose,
-  onSelect,
-}: {
-  isOpen: boolean;
-  routeStops: RouteStopType[];
-  isSubmitting: boolean;
-  onClose: () => void;
-  onSelect: (stop: RouteStopType) => void;
-}) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">
-              Pilih posisi kendaraan
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Pilih halte untuk mengirim posisi dev kendaraan.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm font-semibold text-slate-500 hover:text-slate-900"
-            disabled={isSubmitting}
-          >
-            Tutup
-          </button>
-        </div>
-
-        <div className="max-h-80 space-y-2 overflow-y-auto">
-          {routeStops.map((stop) => (
-            <button
-              type="button"
-              key={stop.id}
-              onClick={() => onSelect(stop)}
-              disabled={isSubmitting}
-              className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-blue-500 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span>
-                <span className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-teal-700 text-xs font-bold text-white">
-                  {stop.stopOrder}
-                </span>
-                <span className="font-medium text-slate-900">
-                  {stop.stopName}
-                </span>
-              </span>
-              <span className="text-xs text-slate-500">
-                {Number(stop.latitude).toFixed(5)}, {Number(stop.longitude).toFixed(5)}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function DriverSeatControl({
   assignmentDetail,
   onUpdate,
@@ -668,7 +427,9 @@ function DriverSeatControl({
         seats={seats}
         canControl={!isUpdating}
         onToggleSeat={(seatNumber) =>
-          onUpdate(seats[seatNumber - 1].isOccupied ? seatNumber - 1 : seatNumber)
+          onUpdate(
+            seats[seatNumber - 1].isOccupied ? seatNumber - 1 : seatNumber,
+          )
         }
         hasConductor={false}
         isUserConductor={false}
