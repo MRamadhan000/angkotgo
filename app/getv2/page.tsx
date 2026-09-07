@@ -47,9 +47,18 @@ import {
   MapboxSuggestion,
   PointType,
 } from "@/types/mapbox.type";
-import { UpcomingVehiclesResponse } from "@/types/route-search.type";
+import {
+  UpcomingVehicle,
+} from "@/types/route-search.type";
 import { routePathService } from "@/services/routes/route-path.service";
 import { useCreateSinyal } from "@/hooks/sinyal/useSinyal";
+import { useAuth } from "@/context/AuthContext";
+import { usePayments } from "@/hooks/payments/usePayments";
+import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
+import type {
+  CreatePaymentType,
+  PaymentCreateResponse,
+} from "@/types/payments/payment.type";
 import { useVehicleSockets } from "@/hooks/vehicles/useVehicleSocket";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments2";
 import {
@@ -69,6 +78,8 @@ const SHEET_TOP_FULL = 10;
 const SHEET_OVERDRAG_LIMIT = SHEET_TOP_PEEK + 12;
 
 export default function CariRuteAngkot() {
+  const { user } = useAuth();
+  const bookingPayments = usePayments(null);
   const [scenario, setScenario] = useState<1 | 2>(1);
   // Nama lokasi untuk ditampilkan ke user
   const [origin, setOrigin] = useState("");
@@ -99,6 +110,30 @@ export default function CariRuteAngkot() {
   // GPS
   const [showGpsModal, setShowGpsModal] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
+  const [bookingVehicle, setBookingVehicle] = useState<UpcomingVehicle | null>(null);
+  const [bookingAmount, setBookingAmount] = useState("5000");
+  const [bookingType, setBookingType] = useState<CreatePaymentType>("CASH");
+  const [bookingResult, setBookingResult] = useState<PaymentCreateResponse | null>(null);
+  const bookingPaymentRealtime = usePaymentSocket(
+    bookingVehicle?.assignmentId ?? null,
+  );
+
+  useEffect(() => {
+    const realtimePayment = bookingPaymentRealtime.payment;
+    if (!realtimePayment || !bookingResult) return;
+    if (realtimePayment.id !== bookingResult.data.id) return;
+    if (realtimePayment.status === bookingResult.data.status) return;
+
+    const timer = window.setTimeout(() => {
+      setBookingResult((previous) =>
+        previous
+          ? { ...previous, data: { ...previous.data, ...realtimePayment } }
+          : previous,
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [bookingPaymentRealtime.payment, bookingResult]);
 
   const {
     mutateAsync: createSinyal,
@@ -857,6 +892,37 @@ export default function CariRuteAngkot() {
     });
   };
 
+  const handleBookVehicle = (vehicle: UpcomingVehicle) => {
+    setBookingVehicle(vehicle);
+    setBookingResult(null);
+  };
+
+  const handleCreateBookingPayment = async () => {
+    if (!bookingVehicle) return;
+    const userId = Number(user?.id);
+    const amount = Number(bookingAmount.replace(/\D/g, ""));
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      alert("Silakan login sebagai user sebelum melakukan booking.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount < 1) {
+      alert("Nominal pembayaran harus lebih besar dari 0.");
+      return;
+    }
+
+    try {
+      const result = await bookingPayments.create(userId, {
+        vehicleAssignmentId: bookingVehicle.assignmentId,
+        paymentType: bookingType,
+        amount,
+      });
+      setBookingResult(result);
+    } catch {
+      // Error ditampilkan oleh modal dari hook state.
+    }
+  };
+
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-[#faf8ff] text-[#191b23]">
       <GpsPermissionModal
@@ -1065,10 +1131,124 @@ export default function CariRuteAngkot() {
               upcomingVehicles={realtimeUpcomingVehicles}
               onSubmit={handleSendSinyal}
               isSubmitting={isCreatingSinyal}
+              onBook={handleBookVehicle}
+              selectedVehicleId={bookingVehicle?.assignmentId ?? null}
             />
           </div>
         </div>
       )}
+
+      {bookingVehicle && (
+        <BookingPaymentModal
+          vehicle={bookingVehicle}
+          amount={bookingAmount}
+          paymentType={bookingType}
+          result={bookingResult}
+          error={bookingPayments.error}
+          isSubmitting={bookingPayments.creating}
+          onAmountChange={setBookingAmount}
+          onPaymentTypeChange={setBookingType}
+          onSubmit={handleCreateBookingPayment}
+          onClose={() => {
+            setBookingVehicle(null);
+            setBookingResult(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function BookingPaymentModal({
+  vehicle,
+  amount,
+  paymentType,
+  result,
+  error,
+  isSubmitting,
+  onAmountChange,
+  onPaymentTypeChange,
+  onSubmit,
+  onClose,
+}: {
+  vehicle: UpcomingVehicle;
+  amount: string;
+  paymentType: CreatePaymentType;
+  result: PaymentCreateResponse | null;
+  error: string | null;
+  isSubmitting: boolean;
+  onAmountChange: (value: string) => void;
+  onPaymentTypeChange: (value: CreatePaymentType) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Book Now</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Kendaraan ID {vehicle.assignmentId}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="text-sm font-semibold text-slate-500">
+            Tutup
+          </button>
+        </div>
+
+        {!result ? (
+          <div className="mt-5 space-y-4">
+            <label className="block text-sm font-semibold text-slate-700">
+              Nominal
+              <input
+                value={amount}
+                onChange={(event) => onAmountChange(event.target.value)}
+                inputMode="numeric"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-normal outline-none focus:border-blue-500"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["CASH", "ONLINE"] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => onPaymentTypeChange(type)}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold ${paymentType === type ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={isSubmitting}
+              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {isSubmitting ? "Memproses..." : "Konfirmasi booking"}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            <p className="font-semibold text-emerald-600">
+              Payment berhasil dibuat: {result.data.status}
+            </p>
+            <p className="text-sm text-slate-600">{result.data.payment_code}</p>
+            {result.data.xendit?.qrString && (
+              <textarea
+                readOnly
+                value={result.data.xendit.qrString}
+                className="h-28 w-full rounded-xl border border-slate-200 p-3 text-xs"
+              />
+            )}
+            <button type="button" onClick={onClose} className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white">
+              Selesai
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

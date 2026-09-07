@@ -12,6 +12,8 @@ import { UpcomingVehicle } from "@/types/route-search.type";
 
 interface UpcomingVehicleListProps {
   upcomingVehicles: UpcomingVehicle[];
+  onBook: (vehicle: UpcomingVehicle) => void;
+  selectedVehicleId?: number | null;
 
   /**
    * Method yang dipanggil ketika user
@@ -27,6 +29,8 @@ interface UpcomingVehicleListProps {
 
 export default function UpcomingVehicleList({
   upcomingVehicles: vehicles,
+  onBook,
+  selectedVehicleId = null,
   onSubmit,
   isSubmitting = false,
 }: UpcomingVehicleListProps) {
@@ -128,6 +132,8 @@ export default function UpcomingVehicleList({
             <UpcomingVehicleCard
               key={vehicle.assignmentId}
               vehicle={vehicle}
+              onBook={onBook}
+              isSelected={selectedVehicleId === vehicle.assignmentId}
               isBookingEnabled={hasBoarded}
             />
           ))}

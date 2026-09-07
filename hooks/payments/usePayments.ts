@@ -1,0 +1,93 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { paymentService } from "@/services/payments/payment.service";
+import type {
+  CreatePaymentInput,
+  Payment,
+  PaymentCreateResponse,
+  PaymentFinancialResponse,
+} from "@/types/payments/payment.type";
+
+export function usePayments(assignmentId: number | null) {
+  const [data, setData] = useState<PaymentFinancialResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(async () => {
+    if (!assignmentId) return null;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await paymentService.getFinancial(assignmentId);
+      setData(result);
+      return result;
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Gagal mengambil data pembayaran.";
+      setError(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [assignmentId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void refetch();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [refetch]);
+
+  const create = useCallback(
+    async (userId: number, input: CreatePaymentInput): Promise<PaymentCreateResponse> => {
+      setCreating(true);
+      setError(null);
+      try {
+        const result = await paymentService.create(userId, input);
+        setData((previous) => ({
+          summary: previous?.summary ?? null,
+          payments: previous ? [result.data, ...previous.payments] : [result.data],
+        }));
+        return result;
+      } catch (requestError) {
+        const message =
+          requestError instanceof Error
+            ? requestError.message
+            : "Gagal membuat pembayaran.";
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setCreating(false);
+      }
+    },
+    [],
+  );
+
+  const upsertPayment = useCallback((payment: Payment) => {
+    setData((previous) => {
+      const payments = previous?.payments ?? [];
+      const index = payments.findIndex((item) => item.id === payment.id);
+      if (index < 0) return { summary: previous?.summary ?? null, payments: [payment, ...payments] };
+      const next = [...payments];
+      next[index] = payment;
+      return { summary: previous?.summary ?? null, payments: next };
+    });
+  }, []);
+
+  return {
+    payments: data?.payments ?? [],
+    summary: data?.summary ?? null,
+    loading,
+    creating,
+    error,
+    refetch,
+    create,
+    upsertPayment,
+  };
+}

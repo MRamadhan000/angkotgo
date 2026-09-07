@@ -18,12 +18,17 @@ import { useActiveSinyal } from "@/hooks/sinyal/useSinyal";
 import { useSinyalRealtime } from "@/hooks/sinyal/useSinyalSocket";
 import { useRoutePaths } from "@/hooks/routes/useRoutePath";
 import { useRouteStops } from "@/hooks/routes/useRouteStops";
-import { AssignmentStatus } from "@/types/vehicles/vehicle-assignments.type";
+import {
+  AssignmentStatus,
+  VehicleAssignment,
+} from "@/types/vehicles/vehicle-assignments.type";
 import { RouteStopType } from "@/types/routes/route-stop.type";
 import { DetailLoading } from "@/components/common/DetaiLoading";
 import ErrorAlert from "@/components/common/ErrorAlert";
 import { AssignmentStatusCard } from "@/components/common/AssignmentStatusCard";
 import { UpdateStatusModal } from "@/components/now/UpdateStatusModal";
+import { usePayments } from "@/hooks/payments/usePayments";
+import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
 
 import { SeatGridControl } from "@/components/now/SeatGridControl";
 import DriverMap from "../../DriverMap";
@@ -66,6 +71,16 @@ export default function AssignmentDetailPage() {
     hasValidAssignmentId ? assignmentId : undefined,
   );
   const createVehicleLocation = useCreateVehicleLocation();
+  const {
+    payments,
+    summary,
+    loading: paymentsLoading,
+    error: paymentsError,
+    upsertPayment,
+  } = usePayments(hasValidAssignmentId ? assignmentId : null);
+  const paymentRealtime = usePaymentSocket(
+    hasValidAssignmentId ? assignmentId : null,
+  );
   const {
     data: vehicleRealtime,
     connected: vehicleSocketConnected,
@@ -149,6 +164,12 @@ export default function AssignmentDetailPage() {
       : null;
   const displayedVehicleLocation =
     selectedVehicleLocation ?? gpsLocation ?? vehicleLocation;
+
+  useEffect(() => {
+    if (paymentRealtime.payment) {
+      upsertPayment(paymentRealtime.payment);
+    }
+  }, [paymentRealtime.payment, upsertPayment]);
 
   useEffect(() => {
     if (
@@ -262,6 +283,15 @@ export default function AssignmentDetailPage() {
             <AssignmentStatusCard
               status={assignmentDetail.status}
               onOpenModal={() => setIsStatusModalOpen(true)}
+            />
+
+            <PaymentMonitor
+              payments={payments}
+              summary={summary}
+              loading={paymentsLoading}
+              error={paymentsError}
+              connected={paymentRealtime.connected}
+              joined={paymentRealtime.joined}
             />
 
             {/* Seat control for driver (driver is not conductor) */}
@@ -460,6 +490,90 @@ function DebugValue({ label, value }: { label: string; value: string }) {
   );
 }
 
+function PaymentMonitor({
+  payments,
+  summary,
+  loading,
+  error,
+  connected,
+  joined,
+}: {
+  payments: Array<{
+    id: number;
+    payment_code: string;
+    payment_type: string;
+    amount: number;
+    status: string;
+    user?: { name: string } | null;
+  }>;
+  summary: Record<string, number> | null;
+  loading: boolean;
+  error: string | null;
+  connected: boolean;
+  joined: boolean;
+}) {
+  const totalPaid = payments
+    .filter((payment) => payment.status === "PAID")
+    .reduce((total, payment) => total + payment.amount, 0);
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="font-bold text-slate-900">Pembayaran penumpang</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            {connected && joined ? "Realtime aktif" : "Menghubungkan realtime..."}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-slate-500">Total PAID</p>
+          <p className="font-bold text-emerald-600">
+            Rp {totalPaid.toLocaleString("id-ID")}
+          </p>
+        </div>
+      </div>
+
+      {summary && (
+        <p className="mt-2 text-xs text-slate-500">
+          Rekap server: {Object.entries(summary)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(" | ")}
+        </p>
+      )}
+      {loading && <p className="mt-3 text-sm text-slate-500">Memuat pembayaran...</p>}
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {!loading && payments.length === 0 && !error && (
+        <p className="mt-3 text-sm text-slate-500">Belum ada pembayaran.</p>
+      )}
+      {payments.length > 0 && (
+        <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+          {payments.map((payment) => (
+            <div
+              key={payment.id}
+              className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-800">
+                  {payment.user?.name || "Penumpang"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {payment.payment_type} · {payment.payment_code}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-slate-800">
+                  Rp {payment.amount.toLocaleString("id-ID")}
+                </p>
+                <p className="text-xs font-semibold text-slate-500">{payment.status}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function formatSocketState(connected: boolean, joined: boolean) {
   if (!connected) return "DISCONNECTED";
   return joined ? "CONNECTED / JOINED" : "CONNECTED / NOT JOINED";
@@ -535,7 +649,7 @@ function DriverSeatControl({
   onUpdate,
   isUpdating,
 }: {
-  assignmentDetail: any;
+  assignmentDetail: VehicleAssignment;
   onUpdate: (currentPassengers: number) => Promise<unknown>;
   isUpdating: boolean;
 }) {
