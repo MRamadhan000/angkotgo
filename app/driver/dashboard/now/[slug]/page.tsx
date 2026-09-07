@@ -27,6 +27,7 @@ import { UpdateStatusModal } from "@/components/now/UpdateStatusModal";
 
 import { SeatGridControl } from "@/components/now/SeatGridControl";
 import DriverMap from "../../DriverMap";
+import GpsPermissionModal from "@/components/search-routev2/skenario1/GpsPermissionModal";
 import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
 
 export default function AssignmentDetailPage() {
@@ -42,6 +43,9 @@ export default function AssignmentDetailPage() {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>("SCHEDULED");
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [showGpsModal, setShowGpsModal] = useState(true);
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsPermissionGranted, setGpsPermissionGranted] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [gpsLocation, setGpsLocation] = useState<{
     latitude: number;
@@ -147,7 +151,13 @@ export default function AssignmentDetailPage() {
     selectedVehicleLocation ?? gpsLocation ?? vehicleLocation;
 
   useEffect(() => {
-    if (!hasValidAssignmentId || !navigator.geolocation) return;
+    if (
+      !hasValidAssignmentId ||
+      !gpsPermissionGranted ||
+      !navigator.geolocation
+    ) {
+      return;
+    }
 
     let isMounted = true;
     const watchId = navigator.geolocation.watchPosition(
@@ -166,17 +176,31 @@ export default function AssignmentDetailPage() {
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
     );
 
-    getCurrentLocation()
-      .then((location) => {
-        if (isMounted && !selectedVehicleLocation) setGpsLocation(location);
-      })
-      .catch(() => undefined);
-
     return () => {
       isMounted = false;
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [hasValidAssignmentId, selectedVehicleLocation]);
+  }, [gpsPermissionGranted, hasValidAssignmentId, selectedVehicleLocation]);
+
+  const handleEnableGps = async () => {
+    setIsLocating(true);
+    setLocationError(null);
+
+    try {
+      const location = await getCurrentLocation();
+      setGpsLocation(location);
+      setGpsPermissionGranted(true);
+      setShowGpsModal(false);
+    } catch (error) {
+      setLocationError(
+        error instanceof GeolocationPositionError && error.code === 1
+          ? "Akses GPS wajib diizinkan untuk menampilkan posisi awal driver."
+          : "Lokasi GPS belum tersedia. Coba aktifkan GPS lalu ulangi.",
+      );
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   const handleUpdateStatus = async () => {
     if (!assignmentDetail || !hasValidAssignmentId) return;
@@ -217,7 +241,7 @@ export default function AssignmentDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
+    <div className="relative min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
       <div className="mx-auto w-full max-w-300 space-y-3 sm:space-y-6 p-2.5 sm:p-6 lg:p-8">
         <DetailHeader
           user={user}
@@ -323,6 +347,14 @@ export default function AssignmentDetailPage() {
         isSubmitting={createVehicleLocation.isPending}
         onClose={() => setIsLocationModalOpen(false)}
         onSelect={handleCreateVehicleLocation}
+      />
+
+      <GpsPermissionModal
+        open={hasValidAssignmentId && showGpsModal}
+        isLocating={isLocating}
+        onEnable={handleEnableGps}
+        onSkip={() => undefined}
+        hideSkip
       />
 
       <UpdateStatusModal
