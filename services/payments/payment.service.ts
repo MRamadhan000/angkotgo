@@ -4,26 +4,39 @@ import type {
   PaymentCreateResponse,
   PaymentFinancialResponse,
   PaymentApiRecord,
+  PaymentWebhookResponse,
+  UpdatePaymentStatusInput,
 } from "@/types/payments/payment.type";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export function normalizePayment(payment: PaymentApiRecord): Payment {
+  const userId = Number(payment.user_id ?? payment.userId ?? payment.user?.id);
+  const userName =
+    payment.user?.name ??
+    payment.user?.full_name ??
+    payment.user?.fullName ??
+    payment.user?.username ??
+    payment.user_name ??
+    payment.userName ??
+    payment.username ??
+    payment.name;
+
   return {
     id: Number(payment.id ?? payment.paymentId),
     payment_code: String(payment.payment_code ?? payment.paymentCode ?? ""),
     vehicle_assignment_id: Number(
       payment.vehicle_assignment_id ?? payment.vehicleAssignmentId,
     ),
-    user_id: Number(payment.user_id ?? payment.userId),
+    user_id: userId,
     payment_type: String(
       payment.payment_type ?? payment.paymentType ?? "CASH",
     ).toUpperCase() as Payment["payment_type"],
     amount: Number(payment.amount ?? 0),
     status: String(payment.status ?? "PENDING") as Payment["status"],
-    user: payment.user
-      ? { id: Number(payment.user.id), name: payment.user.name }
+    user: userName
+      ? { id: userId, name: userName }
       : null,
     paid_at: payment.paid_at ?? payment.paidAt ?? null,
     created_at: String(payment.created_at ?? payment.createdAt ?? ""),
@@ -100,5 +113,17 @@ export const paymentService = {
         ? rawPayments.map((payment) => normalizePayment(payment as PaymentApiRecord))
         : [],
     };
+  },
+
+  async markAsSucceeded(
+    input: UpdatePaymentStatusInput,
+  ): Promise<PaymentWebhookResponse> {
+    const response = await fetch(`${API_BASE_URL}/payments/webhook/xendit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    return parseResponse<PaymentWebhookResponse>(response);
   },
 };

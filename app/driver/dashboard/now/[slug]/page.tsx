@@ -500,6 +500,7 @@ function PaymentMonitor({
 }: {
   payments: Array<{
     id: number;
+    user_id: number;
     payment_code: string;
     payment_type: string;
     amount: number;
@@ -554,7 +555,7 @@ function PaymentMonitor({
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-800">
-                  {payment.user?.name || "Penumpang"}
+                  {payment.user?.name || `User #${payment.user_id}`}
                 </p>
                 <p className="text-xs text-slate-500">
                   {payment.payment_type} · {payment.payment_code}

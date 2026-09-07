@@ -7,12 +7,14 @@ import type {
   Payment,
   PaymentCreateResponse,
   PaymentFinancialResponse,
+  PaymentWebhookResponse,
 } from "@/types/payments/payment.type";
 
 export function usePayments(assignmentId: number | null) {
   const [data, setData] = useState<PaymentFinancialResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [markingSucceeded, setMarkingSucceeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
@@ -80,14 +82,39 @@ export function usePayments(assignmentId: number | null) {
     });
   }, []);
 
+  const markAsSucceeded = useCallback(
+    async (paymentRequestId: string): Promise<PaymentWebhookResponse> => {
+      setMarkingSucceeded(true);
+      setError(null);
+      try {
+        return await paymentService.markAsSucceeded({
+          payment_request_id: paymentRequestId,
+          status: "SUCCEEDED",
+        });
+      } catch (requestError) {
+        const message =
+          requestError instanceof Error
+            ? requestError.message
+            : "Gagal mengubah status pembayaran.";
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setMarkingSucceeded(false);
+      }
+    },
+    [],
+  );
+
   return {
     payments: data?.payments ?? [],
     summary: data?.summary ?? null,
     loading,
     creating,
+    markingSucceeded,
     error,
     refetch,
     create,
     upsertPayment,
+    markAsSucceeded,
   };
 }

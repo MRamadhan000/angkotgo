@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import mapboxgl from "mapbox-gl";
 import { useQueryClient } from "@tanstack/react-query";
-import { FiArrowLeft, FiMapPin, FiNavigation } from "react-icons/fi";
+import { FiArrowLeft, FiClock, FiMapPin, FiNavigation } from "react-icons/fi";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { DirectionType } from "@/types/vehicles/vehicle.type";
@@ -47,9 +47,7 @@ import {
   MapboxSuggestion,
   PointType,
 } from "@/types/mapbox.type";
-import {
-  UpcomingVehicle,
-} from "@/types/route-search.type";
+import { UpcomingVehicle } from "@/types/route-search.type";
 import { routePathService } from "@/services/routes/route-path.service";
 import { useCreateSinyal } from "@/hooks/sinyal/useSinyal";
 import { useAuth } from "@/context/AuthContext";
@@ -59,6 +57,7 @@ import type {
   CreatePaymentType,
   PaymentCreateResponse,
 } from "@/types/payments/payment.type";
+import { PaymentStatus } from "@/types/payments/payment.type";
 import { useVehicleSockets } from "@/hooks/vehicles/useVehicleSocket";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments2";
 import {
@@ -78,8 +77,10 @@ const SHEET_TOP_FULL = 10;
 const SHEET_OVERDRAG_LIMIT = SHEET_TOP_PEEK + 12;
 
 export default function CariRuteAngkot() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
   const bookingPayments = usePayments(null);
+  const isDevelopment = process.env.NODE_ENV === "development";
   const [scenario, setScenario] = useState<1 | 2>(1);
   // Nama lokasi untuk ditampilkan ke user
   const [origin, setOrigin] = useState("");
@@ -110,10 +111,13 @@ export default function CariRuteAngkot() {
   // GPS
   const [showGpsModal, setShowGpsModal] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
-  const [bookingVehicle, setBookingVehicle] = useState<UpcomingVehicle | null>(null);
+  const [bookingVehicle, setBookingVehicle] = useState<UpcomingVehicle | null>(
+    null,
+  );
   const [bookingAmount, setBookingAmount] = useState("5000");
   const [bookingType, setBookingType] = useState<CreatePaymentType>("CASH");
-  const [bookingResult, setBookingResult] = useState<PaymentCreateResponse | null>(null);
+  const [bookingResult, setBookingResult] =
+    useState<PaymentCreateResponse | null>(null);
   const bookingPaymentRealtime = usePaymentSocket(
     bookingVehicle?.assignmentId ?? null,
   );
@@ -249,7 +253,8 @@ export default function CariRuteAngkot() {
           : {}),
         driverName: vehicle.driverName ?? assignment?.driver?.name,
         vehicleCode: vehicle.vehicleCode ?? assignment?.vehicle?.vehicleCode,
-        vehicleCapacity: vehicle.vehicleCapacity ?? assignment?.vehicle?.capacity,
+        vehicleCapacity:
+          vehicle.vehicleCapacity ?? assignment?.vehicle?.capacity,
         driver: vehicle.driver ?? assignment?.driver,
         vehicle: vehicle.vehicle ?? assignment?.vehicle,
         osrmEstimate: osrmEstimates[vehicle.assignmentId] ?? null,
@@ -935,10 +940,7 @@ export default function CariRuteAngkot() {
       <div className="absolute inset-0 z-0">
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
         <RoutePathLine map={mapInstance} routePaths={routePaths ?? []} />
-        <VehicleMarkers
-          map={mapInstance}
-          vehicles={realtimeUpcomingVehicles}
-        />
+        <VehicleMarkers map={mapInstance} vehicles={realtimeUpcomingVehicles} />
       </div>
 
       {showCenterPicker && (
@@ -1146,6 +1148,24 @@ export default function CariRuteAngkot() {
           result={bookingResult}
           error={bookingPayments.error}
           isSubmitting={bookingPayments.creating}
+          isMarkingSucceeded={bookingPayments.markingSucceeded}
+          isDevelopment={isDevelopment}
+          onMarkAsSucceeded={async () => {
+            const paymentRequestId =
+              bookingResult?.data.xendit?.paymentRequestId ??
+              bookingResult?.data.xendit?.payment_request_id;
+            if (!paymentRequestId || !bookingResult) return;
+
+            await bookingPayments.markAsSucceeded(paymentRequestId);
+            setBookingResult((previous) =>
+              previous
+                ? {
+                    ...previous,
+                    data: { ...previous.data, status: PaymentStatus.SUCCEEDED },
+                  }
+                : previous,
+            );
+          }}
           onAmountChange={setBookingAmount}
           onPaymentTypeChange={setBookingType}
           onSubmit={handleCreateBookingPayment}
@@ -1166,6 +1186,9 @@ function BookingPaymentModal({
   result,
   error,
   isSubmitting,
+  isMarkingSucceeded,
+  isDevelopment,
+  onMarkAsSucceeded,
   onAmountChange,
   onPaymentTypeChange,
   onSubmit,
@@ -1177,6 +1200,9 @@ function BookingPaymentModal({
   result: PaymentCreateResponse | null;
   error: string | null;
   isSubmitting: boolean;
+  isMarkingSucceeded: boolean;
+  isDevelopment: boolean;
+  onMarkAsSucceeded: () => Promise<void>;
   onAmountChange: (value: string) => void;
   onPaymentTypeChange: (value: CreatePaymentType) => void;
   onSubmit: () => void;
@@ -1192,7 +1218,11 @@ function BookingPaymentModal({
               Kendaraan ID {vehicle.assignmentId}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-sm font-semibold text-slate-500">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-semibold text-slate-500"
+          >
             Tutup
           </button>
         </div>
@@ -1232,10 +1262,60 @@ function BookingPaymentModal({
           </div>
         ) : (
           <div className="mt-5 space-y-3">
-            <p className="font-semibold text-emerald-600">
-              Payment berhasil dibuat: {result.data.status}
-            </p>
-            <p className="text-sm text-slate-600">{result.data.payment_code}</p>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                  <FiClock className="text-lg" />
+                </div>
+                <div>
+                  <p className="font-bold text-amber-900">
+                    Pembayaran {result.data.status}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                    Booking tersimpan. Selesaikan pembayaran sesuai instruksi yang tersedia.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">Kode pembayaran: {result.data.payment_code}</p>
+            {isDevelopment && result.data.status === PaymentStatus.PENDING && (
+              <div className="rounded-2xl border border-dashed border-blue-300 bg-blue-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-700">
+                  Mode development
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-blue-900">
+                  Gunakan aksi ini untuk mensimulasikan webhook Xendit berhasil. QR asli belum dibuat.
+                </p>
+                <button
+                  type="button"
+                  onClick={onMarkAsSucceeded}
+                  disabled={
+                    isMarkingSucceeded ||
+                    !(
+                      result.data.xendit?.paymentRequestId ??
+                      result.data.xendit?.payment_request_id
+                    )
+                  }
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isMarkingSucceeded ? "Mengubah status..." : "Tandai sebagai berhasil"}
+                </button>
+                {!(
+                  result.data.xendit?.paymentRequestId ??
+                  result.data.xendit?.payment_request_id
+                ) && (
+                  <p className="mt-2 text-center text-[11px] text-blue-700">
+                    ID payment request belum tersedia dari server.
+                  </p>
+                )}
+              </div>
+            )}
+            {result.data.status === PaymentStatus.SUCCEEDED && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+                <p className="font-bold text-emerald-700">Pembayaran berhasil dikonfirmasi</p>
+                <p className="mt-1 text-xs text-emerald-600">Status webhook: SUCCEEDED</p>
+              </div>
+            )}
             {result.data.xendit?.qrString && (
               <textarea
                 readOnly
@@ -1243,7 +1323,11 @@ function BookingPaymentModal({
                 className="h-28 w-full rounded-xl border border-slate-200 p-3 text-xs"
               />
             )}
-            <button type="button" onClick={onClose} className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white"
+            >
               Selesai
             </button>
           </div>

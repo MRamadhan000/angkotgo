@@ -126,7 +126,7 @@ export function IncomeWidget({ assignmentId }: IncomeWidgetProps) {
                                             </div>
                                             <div>
                                                 <p className="text-sm font-semibold text-slate-800">
-                                                    {payment.user?.name || "Penumpang Umum"}
+                                                    {payment.user?.name || `User #${payment.user_id}`}
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">

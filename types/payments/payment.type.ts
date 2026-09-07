@@ -7,6 +7,7 @@ export enum PaymentType {
 export enum PaymentStatus {
     PENDING = "PENDING",
     PAID = "PAID",
+    SUCCEEDED = "SUCCEEDED",
     FAILED = "FAILED",
     CANCELLED = "CANCELLED",
 }
@@ -56,7 +57,17 @@ export interface PaymentApiRecord {
     created_at?: string;
     createdAt?: string;
     updatedAt?: string;
-    user?: { id: number; name: string } | null;
+    user?: {
+        id?: number;
+        name?: string;
+        username?: string;
+        full_name?: string;
+        fullName?: string;
+    } | null;
+    user_name?: string;
+    userName?: string;
+    username?: string;
+    name?: string;
 }
 
 export interface PaymentCreateResponse {
@@ -64,12 +75,23 @@ export interface PaymentCreateResponse {
     data: Payment & {
         xendit?: {
             paymentRequestId?: string;
+            payment_request_id?: string;
             referenceId?: string;
             status?: string;
             channelCode?: string;
             qrString?: string;
         };
     };
+}
+
+export interface UpdatePaymentStatusInput {
+    payment_request_id: string;
+    status: "SUCCEEDED";
+}
+
+export interface PaymentWebhookResponse {
+    message?: string;
+    data?: PaymentApiRecord;
 }
 
 export interface PaymentFinancialResponse {
