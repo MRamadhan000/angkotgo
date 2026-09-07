@@ -33,6 +33,8 @@ import VehicleMarkers from "@/components/search-routev2/skenario2/VehicleMarkers
 import RoutePathLine from "@/components/search-routev2/skenario2/RoutePathLine";
 import LocationSummary from "@/components/search-routev2/skenario2/LocationSummary";
 
+import { BookingPaymentModal } from "@/components/search-routev2/skenario3/BookingPaymentModal";
+
 // Data
 import { quickDestinations } from "@/components/search-routev2/skenario1/data";
 
@@ -64,6 +66,7 @@ import {
   calculateOsrmEstimates,
   type OsrmVehicleEstimate,
 } from "@/utils/osrm-estimates";
+import { distanceInMeters } from "./getv2.util";
 
 type ActiveInputState = PointType | null;
 type SheetSnap = "peek" | "full";
@@ -1177,182 +1180,4 @@ export default function CariRuteAngkot() {
       )}
     </div>
   );
-}
-
-function BookingPaymentModal({
-  vehicle,
-  amount,
-  paymentType,
-  result,
-  error,
-  isSubmitting,
-  isMarkingSucceeded,
-  isDevelopment,
-  onMarkAsSucceeded,
-  onAmountChange,
-  onPaymentTypeChange,
-  onSubmit,
-  onClose,
-}: {
-  vehicle: UpcomingVehicle;
-  amount: string;
-  paymentType: CreatePaymentType;
-  result: PaymentCreateResponse | null;
-  error: string | null;
-  isSubmitting: boolean;
-  isMarkingSucceeded: boolean;
-  isDevelopment: boolean;
-  onMarkAsSucceeded: () => Promise<void>;
-  onAmountChange: (value: string) => void;
-  onPaymentTypeChange: (value: CreatePaymentType) => void;
-  onSubmit: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Book Now</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Kendaraan ID {vehicle.assignmentId}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm font-semibold text-slate-500"
-          >
-            Tutup
-          </button>
-        </div>
-
-        {!result ? (
-          <div className="mt-5 space-y-4">
-            <label className="block text-sm font-semibold text-slate-700">
-              Nominal
-              <input
-                value={amount}
-                onChange={(event) => onAmountChange(event.target.value)}
-                inputMode="numeric"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-normal outline-none focus:border-blue-500"
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["CASH", "ONLINE"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => onPaymentTypeChange(type)}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold ${paymentType === type ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="button"
-              onClick={onSubmit}
-              disabled={isSubmitting}
-              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
-            >
-              {isSubmitting ? "Memproses..." : "Konfirmasi booking"}
-            </button>
-          </div>
-        ) : (
-          <div className="mt-5 space-y-3">
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-                  <FiClock className="text-lg" />
-                </div>
-                <div>
-                  <p className="font-bold text-amber-900">
-                    Pembayaran {result.data.status}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                    Booking tersimpan. Selesaikan pembayaran sesuai instruksi yang tersedia.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <p className="text-sm text-slate-600">Kode pembayaran: {result.data.payment_code}</p>
-            {isDevelopment && result.data.status === PaymentStatus.PENDING && (
-              <div className="rounded-2xl border border-dashed border-blue-300 bg-blue-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-blue-700">
-                  Mode development
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-blue-900">
-                  Gunakan aksi ini untuk mensimulasikan webhook Xendit berhasil. QR asli belum dibuat.
-                </p>
-                <button
-                  type="button"
-                  onClick={onMarkAsSucceeded}
-                  disabled={
-                    isMarkingSucceeded ||
-                    !(
-                      result.data.xendit?.paymentRequestId ??
-                      result.data.xendit?.payment_request_id
-                    )
-                  }
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isMarkingSucceeded ? "Mengubah status..." : "Tandai sebagai berhasil"}
-                </button>
-                {!(
-                  result.data.xendit?.paymentRequestId ??
-                  result.data.xendit?.payment_request_id
-                ) && (
-                  <p className="mt-2 text-center text-[11px] text-blue-700">
-                    ID payment request belum tersedia dari server.
-                  </p>
-                )}
-              </div>
-            )}
-            {result.data.status === PaymentStatus.SUCCEEDED && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
-                <p className="font-bold text-emerald-700">Pembayaran berhasil dikonfirmasi</p>
-                <p className="mt-1 text-xs text-emerald-600">Status webhook: SUCCEEDED</p>
-              </div>
-            )}
-            {result.data.xendit?.qrString && (
-              <textarea
-                readOnly
-                value={result.data.xendit.qrString}
-                className="h-28 w-full rounded-xl border border-slate-200 p-3 text-xs"
-              />
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white"
-            >
-              Selesai
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function distanceInMeters(
-  firstLatitude: number,
-  firstLongitude: number,
-  secondLatitude: number,
-  secondLongitude: number,
-) {
-  const earthRadius = 6371000;
-  const latitudeDelta = ((secondLatitude - firstLatitude) * Math.PI) / 180;
-  const longitudeDelta = ((secondLongitude - firstLongitude) * Math.PI) / 180;
-  const firstLatitudeRadians = (firstLatitude * Math.PI) / 180;
-  const secondLatitudeRadians = (secondLatitude * Math.PI) / 180;
-  const haversine =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(firstLatitudeRadians) *
-      Math.cos(secondLatitudeRadians) *
-      Math.sin(longitudeDelta / 2) ** 2;
-
-  return 2 * earthRadius * Math.asin(Math.sqrt(haversine));
 }
