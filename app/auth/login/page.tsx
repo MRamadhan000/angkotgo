@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FaEnvelope, FaArrowRight, FaUser } from "react-icons/fa";
+import { useRouter } from "next/navigation";
+import { FaEnvelope, FaArrowRight, FaUserPlus } from "react-icons/fa";
 import { Poppins } from "next/font/google";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,38 +13,38 @@ import InfoNotice from "@/components/common/InfoNotice";
 import TextField from "@/components/ui/TextField";
 import PasswordField from "@/components/ui/PasswordField";
 import PrimaryButton from "@/components/ui/PrimaryButton";
-import { useAuthConductor } from "@/hooks/auth/useAuthConductor";
-import {
-  loginConductorSchema,
-  LoginConductorSchema,
-} from "@/schemas/conductor.schema";
+import { useAuthUser } from "@/hooks/auth/useAuthUser";
+import { loginUserSchema, LoginUserSchema } from "@/schemas/user.schema";
 
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
 
-export default function ConductorLoginPage() {
+export default function UserLoginPage() {
+  const router = useRouter();
   const [formError, setFormError] = useState("");
-  const { loginConductor, isLoading } = useAuthConductor();
+
+  const { loginUser, isLoading, error: authError } = useAuthUser();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginConductorSchema>({
-    resolver: zodResolver(loginConductorSchema),
+  } = useForm<LoginUserSchema>({
+    resolver: zodResolver(loginUserSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  const onSubmit = async (data: LoginConductorSchema) => {
+  const onSubmit = async (data: LoginUserSchema) => {
     setFormError("");
 
     try {
-      await loginConductor(data);
+      await loginUser(data);
+      router.push("/dashboard"); // Redirect ke dashboard user setelah berhasil login
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error
@@ -81,7 +82,7 @@ export default function ConductorLoginPage() {
                 AngkotGo
               </h1>
               <p className="text-xs text-slate-500">
-                Sistem Pemantauan Operasional Kondektur
+                Layanan Angkutan Umum Perkotaan
               </p>
             </div>
 
@@ -90,23 +91,26 @@ export default function ConductorLoginPage() {
               {/* Header */}
               <div className="mb-5 sm:mb-6 text-center lg:text-left">
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
-                  Masuk Kondektur
+                  Masuk Akun User
                 </h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Silakan masuk untuk mulai perjalanan Anda.
+                </p>
               </div>
 
-              {/* Tampilkan error global jika ada */}
-              {formError && (
+              {/* Tampilkan pesan error global/API */}
+              {(formError || authError) && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs sm:text-sm rounded-xl">
-                  {formError}
+                  {formError || authError}
                 </div>
               )}
 
               {/* FORM */}
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <TextField
-                  label="Email Kondektur"
+                  label="Email User"
                   type="email"
-                  placeholder="kondektur@example.com"
+                  placeholder="user@example.com"
                   icon={<FaEnvelope />}
                   error={errors.email?.message}
                   {...register("email")}
@@ -138,15 +142,16 @@ export default function ConductorLoginPage() {
               </div>
 
               <Link
-                href="/conductor/auth/register"
+                href="/auth/register"
                 className="group flex items-center justify-center gap-2 w-full h-11 sm:h-13 rounded-xl sm:rounded-2xl border-2 border-blue-200 hover:border-blue-300 bg-blue-50/50 hover:bg-blue-50 text-blue-600 font-bold text-xs sm:text-sm transition-all duration-200 hover:scale-[1.01]"
               >
-                <FaUser className="text-xs sm:text-sm" />
-                <span>Belum punya akun? Daftar</span>
+                <FaUserPlus className="text-xs sm:text-sm" />
+                <span>Belum punya akun? Daftar Sekarang</span>
               </Link>
 
               <InfoNotice color="blue">
-                Silakan login menggunakan akun kondektur yang telah terdaftar.
+                Gunakan email dan password yang terdaftar sebagai akun
+                penumpang.
               </InfoNotice>
             </div>
           </div>

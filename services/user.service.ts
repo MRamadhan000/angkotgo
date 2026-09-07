@@ -1,5 +1,4 @@
 import {
-  User,
   CreateUserRequest,
   UpdateUserRequest,
   LoginUserRequest,
@@ -12,6 +11,18 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const userService = {
+  async getMe(id: number): Promise<UserResponse> {
+    const response = await fetch(`${API_URL}/users/${id}`);
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Gagal mengambil data profil user");
+    }
+
+    return result;
+  },
+
   async register(data: CreateUserRequest): Promise<UserResponse> {
     const response = await fetch(`${API_URL}/users/register`, {
       method: "POST",

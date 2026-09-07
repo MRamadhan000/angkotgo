@@ -4,12 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { FaEnvelope, FaArrowRight, FaUser } from "react-icons/fa";
 import { Poppins } from "next/font/google";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import AuthHero from "@/components/auth/AuthHero";
 import InfoNotice from "@/components/common/InfoNotice";
 import TextField from "@/components/ui/TextField";
 import PasswordField from "@/components/ui/PasswordField";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { useAuthDriver } from "@/hooks/auth/useAuthDriver";
+import { loginDriverSchema, LoginDriverSchema } from "@/schemas/driver.schema";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -17,27 +21,32 @@ const poppins = Poppins({
 });
 
 export default function DriverLoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
-
   const { loginDriver, isLoading } = useAuthDriver();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginDriverSchema>({
+    resolver: zodResolver(loginDriverSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: LoginDriverSchema) => {
     setFormError("");
 
-    if (!email.trim() || !password.trim()) {
-      setFormError("Email dan password wajib diisi.");
-      return;
-    }
-
     try {
-      await loginDriver({ email, password });
-    } catch (err: any) {
-      setFormError(
-        err.message || "Gagal masuk, periksa kembali email dan password.",
-      );
+      await loginDriver(data);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Gagal masuk, periksa kembali email dan password.";
+      setFormError(errorMessage);
     }
   };
 
@@ -82,7 +91,7 @@ export default function DriverLoginPage() {
                 </h2>
               </div>
 
-              {/* Tampilkan error jika ada */}
+              {/* Tampilkan error global jika ada */}
               {formError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs sm:text-sm rounded-xl">
                   {formError}
@@ -90,20 +99,20 @@ export default function DriverLoginPage() {
               )}
 
               {/* FORM */}
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <TextField
                   label="Email Driver"
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="driver@example.com"
                   icon={<FaEnvelope />}
+                  error={errors.email?.message}
+                  {...register("email")}
                 />
                 <PasswordField
                   label="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password"
+                  error={errors.password?.message}
+                  {...register("password")}
                 />
 
                 <PrimaryButton

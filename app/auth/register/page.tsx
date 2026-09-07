@@ -3,13 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  FaUser,
-  FaIdCard,
-  FaEnvelope,
-  FaPhone,
-  FaArrowRight,
-} from "react-icons/fa";
+import { FaUser, FaEnvelope, FaPhone, FaArrowRight } from "react-icons/fa";
 import { Poppins } from "next/font/google";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,61 +13,46 @@ import InfoNotice from "@/components/common/InfoNotice";
 import TextField from "@/components/ui/TextField";
 import PasswordField from "@/components/ui/PasswordField";
 import PrimaryButton from "@/components/ui/PrimaryButton";
-import { conductorService } from "@/services/conductor.service";
-import {
-  registerConductorSchema,
-  RegisterConductorSchema,
-} from "@/schemas/conductor.schema";
+
+import { useAuthUser } from "@/hooks/auth/useAuthUser";
+import { registerUserSchema, RegisterUserSchema } from "@/schemas/user.schema";
 
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
 
-export default function ConductorRegisterPage() {
+export default function UserRegisterPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { registerUser, isLoading, error } = useAuthUser();
   const [formError, setFormError] = useState("");
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterConductorSchema>({
-    resolver: zodResolver(registerConductorSchema),
+  } = useForm<RegisterUserSchema>({
+    resolver: zodResolver(registerUserSchema),
     defaultValues: {
       name: "",
-      nik: "",
       email: "",
       phone: "",
       password: "",
-      address: "",
     },
   });
 
-  const onSubmit = async (data: RegisterConductorSchema) => {
+  const onSubmit = async (data: RegisterUserSchema) => {
     setFormError("");
-    setIsLoading(true);
 
     try {
-      await conductorService.registerConductor({
-        name: data.name,
-        nik: data.nik,
-        email: data.email,
-        phone: data.phone,
-        password: data.password,
-        address: data.address || undefined,
-      });
-
-      router.push("/conductor/auth/login");
+      await registerUser(data);
+      router.push("/auth/login");
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Gagal mendaftarkan akun. Periksa kembali data Anda.";
+          : error || "Gagal mendaftarkan akun. Periksa kembali data Anda.";
       setFormError(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -93,38 +72,36 @@ export default function ConductorRegisterPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 min-h-screen items-stretch">
-        {/* LEFT SIDE (Desktop Element / Info Banner) */}
+        {/* LEFT SIDE */}
         <AuthHero />
 
-        {/* RIGHT SIDE (Responsive Register Form) */}
+        {/* RIGHT SIDE */}
         <section className="flex flex-col items-center justify-center px-4 py-8 sm:px-6 md:px-12 lg:px-10 xl:px-16 w-full my-auto">
           <div className="w-full max-w-lg mx-auto">
-            {/* Mobile View Header Logo */}
+            {/* Mobile Header */}
             <div className="lg:hidden text-center mb-6 sm:mb-8">
               <h1 className="mt-3 text-2xl font-extrabold text-slate-900 tracking-tight">
                 AngkotGo
               </h1>
-              <p className="text-xs text-slate-500">
-                Pendaftaran Akun Kondektur Baru
-              </p>
+              <p className="text-xs text-slate-500">Pendaftaran Akun Baru</p>
             </div>
 
-            {/* Main Form Container Box */}
+            {/* Form Container */}
             <div className="bg-white/75 backdrop-blur-2xl border border-white/60 rounded-2xl sm:rounded-[28px] p-5 sm:p-7 lg:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.06)]">
               {/* Header */}
               <div className="mb-5 sm:mb-6 text-center lg:text-left">
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
-                  Daftar Kondektur Baru
+                  Daftar Akun Baru
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  Lengkapi data diri Anda untuk mulai bergabung.
+                  Lengkapi data diri Anda untuk membuat akun.
                 </p>
               </div>
 
-              {/* Tampilkan error global jika ada */}
-              {formError && (
+              {/* Error Alert Global / API Error */}
+              {(formError || error) && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs sm:text-sm rounded-xl">
-                  {formError}
+                  {formError || error}
                 </div>
               )}
 
@@ -140,33 +117,22 @@ export default function ConductorRegisterPage() {
                 />
 
                 <TextField
-                  label="NIK (16 Karakter)"
-                  type="text"
-                  placeholder="3507xxxxxxxxxxxx"
-                  maxLength={16}
-                  icon={<FaIdCard />}
-                  error={errors.nik?.message}
-                  {...register("nik")}
+                  label="Email"
+                  type="email"
+                  placeholder="user@example.com"
+                  icon={<FaEnvelope />}
+                  error={errors.email?.message}
+                  {...register("email")}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <TextField
-                    label="Email"
-                    type="email"
-                    placeholder="kondektur@example.com"
-                    icon={<FaEnvelope />}
-                    error={errors.email?.message}
-                    {...register("email")}
-                  />
-                  <TextField
-                    label="Nomor Telepon"
-                    type="text"
-                    placeholder="08123456789"
-                    icon={<FaPhone />}
-                    error={errors.phone?.message}
-                    {...register("phone")}
-                  />
-                </div>
+                <TextField
+                  label="Nomor Telepon"
+                  type="text"
+                  placeholder="08123456789"
+                  icon={<FaPhone />}
+                  error={errors.phone?.message}
+                  {...register("phone")}
+                />
 
                 <PasswordField
                   label="Password (Min. 6 Karakter)"
@@ -174,23 +140,6 @@ export default function ConductorRegisterPage() {
                   error={errors.password?.message}
                   {...register("password")}
                 />
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                    Alamat (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Alamat tempat tinggal saat ini"
-                    className="w-full h-11 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                    {...register("address")}
-                  />
-                  {errors.address?.message && (
-                    <p className="mt-1 text-xs text-red-500 font-medium">
-                      {errors.address.message}
-                    </p>
-                  )}
-                </div>
 
                 <PrimaryButton
                   type="submit"
@@ -202,7 +151,7 @@ export default function ConductorRegisterPage() {
                 </PrimaryButton>
               </form>
 
-              {/* Visual Divider Line */}
+              {/* Divider */}
               <div className="flex items-center gap-3 my-5">
                 <div className="flex-1 h-px bg-slate-100" />
                 <span className="text-[11px] sm:text-xs text-slate-400 font-medium tracking-wide">
@@ -211,8 +160,9 @@ export default function ConductorRegisterPage() {
                 <div className="flex-1 h-px bg-slate-100" />
               </div>
 
+              {/* Login Button */}
               <Link
-                href="/conductor/auth/login"
+                href="/auth/login"
                 className="group flex items-center justify-center gap-2 w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border-2 border-blue-200 hover:border-blue-300 bg-blue-50/50 hover:bg-blue-50 text-blue-600 font-bold text-xs sm:text-sm transition-all duration-200 hover:scale-[1.01]"
               >
                 <FaUser className="text-xs sm:text-sm" />
@@ -220,7 +170,8 @@ export default function ConductorRegisterPage() {
               </Link>
 
               <InfoNotice color="blue">
-                Pastikan data NIK yang Anda masukkan valid sesuai dokumen resmi.
+                Pastikan data yang Anda masukkan sudah benar sebelum membuat
+                akun.
               </InfoNotice>
             </div>
           </div>

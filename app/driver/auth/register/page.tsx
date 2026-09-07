@@ -3,23 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  FaUser, 
-  FaIdCard, 
-  FaEnvelope, 
-  FaPhone, 
-  FaLock, 
-  FaAddressCard, 
-  FaCalendarAlt, 
-  FaArrowRight 
+import {
+  FaUser,
+  FaIdCard,
+  FaEnvelope,
+  FaPhone,
+  FaAddressCard,
+  FaCalendarAlt,
+  FaArrowRight,
 } from "react-icons/fa";
 import { Poppins } from "next/font/google";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import AuthHero from "@/components/auth/AuthHero";
 import InfoNotice from "@/components/common/InfoNotice";
 import TextField from "@/components/ui/TextField";
 import PasswordField from "@/components/ui/PasswordField";
 import PrimaryButton from "@/components/ui/PrimaryButton";
-import { driverService } from "@/services/driver.service"; // Sesuaikan path service register Anda
+import { driverService } from "@/services/driver.service";
+import {
+  registerDriverSchema,
+  RegisterDriverSchema,
+} from "@/schemas/driver.schema";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -31,51 +37,37 @@ export default function DriverRegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // State sesuai dengan field CreateDriverDto
-  const [formData, setFormData] = useState({
-    name: "",
-    nik: "",
-    email: "",
-    phone: "",
-    password: "",
-    licenseNumber: "",
-    licenseExpiryDate: "",
-    address: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterDriverSchema>({
+    resolver: zodResolver(registerDriverSchema),
+    defaultValues: {
+      name: "",
+      nik: "",
+      email: "",
+      phone: "",
+      password: "",
+      licenseNumber: "",
+      licenseExpiryDate: "",
+      address: "",
+    },
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: RegisterDriverSchema) => {
     setFormError("");
-
-    // Validasi sederhana frontend
-    if (!formData.name || !formData.nik || !formData.email || !formData.phone || !formData.password || !formData.licenseNumber || !formData.licenseExpiryDate) {
-      setFormError("Semua field bertanda wajib harus diisi.");
-      return;
-    }
-
-    if (formData.nik.length !== 16) {
-      setFormError("NIK harus tepat 16 karakter.");
-      return;
-    }
-
     setIsLoading(true);
-    try {
-      // Panggil service register
-      await driverService.registerDriver(formData);
 
-      // Jika berhasil, arahkan ke halaman login atau dashboard
+    try {
+      await driverService.registerDriver(data);
       router.push("/driver/auth/login");
-    } catch (err: any) {
-      setFormError(
-        err.message || "Gagal mendaftarkan akun. Periksa kembali data Anda."
-      );
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Gagal mendaftarkan akun. Periksa kembali data Anda.";
+      setFormError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +117,7 @@ export default function DriverRegisterPage() {
                 </p>
               </div>
 
-              {/* Tampilkan error jika ada */}
+              {/* Tampilkan error global jika ada */}
               {formError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs sm:text-sm rounded-xl">
                   {formError}
@@ -133,74 +125,67 @@ export default function DriverRegisterPage() {
               )}
 
               {/* FORM */}
-              <form onSubmit={handleRegister} className="space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <TextField
                   label="Nama Lengkap"
                   type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
                   placeholder="Masukkan nama lengkap"
                   icon={<FaUser />}
+                  error={errors.name?.message}
+                  {...register("name")}
                 />
 
                 <TextField
                   label="NIK (16 Karakter)"
                   type="text"
-                  name="nik"
-                  value={formData.nik}
-                  onChange={handleChange}
                   placeholder="3507xxxxxxxxxxxx"
                   maxLength={16}
                   icon={<FaIdCard />}
+                  error={errors.nik?.message}
+                  {...register("nik")}
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <TextField
                     label="Email"
                     type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
                     placeholder="driver@example.com"
                     icon={<FaEnvelope />}
+                    error={errors.email?.message}
+                    {...register("email")}
                   />
                   <TextField
                     label="Nomor Telepon"
                     type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
                     placeholder="08123456789"
                     icon={<FaPhone />}
+                    error={errors.phone?.message}
+                    {...register("phone")}
                   />
                 </div>
 
                 <PasswordField
                   label="Password (Min. 6 Karakter)"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
                   placeholder="Masukkan password"
+                  error={errors.password?.message}
+                  {...register("password")}
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <TextField
                     label="Nomor SIM"
                     type="text"
-                    name="licenseNumber"
-                    value={formData.licenseNumber}
-                    onChange={handleChange}
                     placeholder="No. SIM / Driver License"
                     icon={<FaAddressCard />}
+                    error={errors.licenseNumber?.message}
+                    {...register("licenseNumber")}
                   />
                   <TextField
                     label="Masa Berlaku SIM"
                     type="date"
-                    name="licenseExpiryDate"
-                    value={formData.licenseExpiryDate}
-                    onChange={handleChange}
                     icon={<FaCalendarAlt />}
+                    error={errors.licenseExpiryDate?.message}
+                    {...register("licenseExpiryDate")}
                   />
                 </div>
 
@@ -210,12 +195,15 @@ export default function DriverRegisterPage() {
                   </label>
                   <input
                     type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
                     placeholder="Alamat tempat tinggal saat ini"
                     className="w-full h-11 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    {...register("address")}
                   />
+                  {errors.address?.message && (
+                    <p className="mt-1 text-xs text-red-500 font-medium">
+                      {errors.address.message}
+                    </p>
+                  )}
                 </div>
 
                 <PrimaryButton
@@ -246,7 +234,8 @@ export default function DriverRegisterPage() {
               </Link>
 
               <InfoNotice color="blue">
-                Pastikan data SIM dan NIK yang Anda masukkan valid sesuai dokumen resmi.
+                Pastikan data SIM dan NIK yang Anda masukkan valid sesuai
+                dokumen resmi.
               </InfoNotice>
             </div>
           </div>
