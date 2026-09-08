@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         break;
 
       case "user":
-        router.push("/auth/login");
+        router.push("/user/auth/login");
         break;
 
       default:

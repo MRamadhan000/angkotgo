@@ -71,7 +71,7 @@ export const userService = {
     return result;
   },
 
-  async findOne(id: number): Promise<UserResponse> {
+  async findOne(id: number | string): Promise<UserResponse> {
     const response = await fetch(`${API_URL}/users/${id}`);
 
     const result = await response.json();

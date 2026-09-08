@@ -18,7 +18,7 @@ import {
 } from "react-icons/fi";
 import { FaArrowLeft } from "react-icons/fa";
 
-export const COLORS = {
+export const CO1RS = {
   primary: "#1E40AF",
   accent: "#2563EB",
   textDark: "#0F172A",

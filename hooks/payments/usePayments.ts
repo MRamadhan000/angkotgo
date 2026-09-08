@@ -7,8 +7,10 @@ import type {
   Payment,
   PaymentCreateResponse,
   PaymentFinancialResponse,
+  PaymentHistoryItem,
   PaymentWebhookResponse,
 } from "@/types/payments/payment.type";
+import { useQuery } from "@tanstack/react-query";
 
 export function usePayments(assignmentId: number | null) {
   const [data, setData] = useState<PaymentFinancialResponse | null>(null);
@@ -47,14 +49,19 @@ export function usePayments(assignmentId: number | null) {
   }, [refetch]);
 
   const create = useCallback(
-    async (userId: number, input: CreatePaymentInput): Promise<PaymentCreateResponse> => {
+    async (
+      userId: number,
+      input: CreatePaymentInput,
+    ): Promise<PaymentCreateResponse> => {
       setCreating(true);
       setError(null);
       try {
         const result = await paymentService.create(userId, input);
         setData((previous) => ({
           summary: previous?.summary ?? null,
-          payments: previous ? [result.data, ...previous.payments] : [result.data],
+          payments: previous
+            ? [result.data, ...previous.payments]
+            : [result.data],
         }));
         return result;
       } catch (requestError) {
@@ -75,7 +82,11 @@ export function usePayments(assignmentId: number | null) {
     setData((previous) => {
       const payments = previous?.payments ?? [];
       const index = payments.findIndex((item) => item.id === payment.id);
-      if (index < 0) return { summary: previous?.summary ?? null, payments: [payment, ...payments] };
+      if (index < 0)
+        return {
+          summary: previous?.summary ?? null,
+          payments: [payment, ...payments],
+        };
       const next = [...payments];
       next[index] = payment;
       return { summary: previous?.summary ?? null, payments: next };
@@ -117,4 +128,15 @@ export function usePayments(assignmentId: number | null) {
     upsertPayment,
     markAsSucceeded,
   };
+}
+
+export function useHistoryPayments(userId: number | string | null) {
+  return useQuery<PaymentHistoryItem[]>({
+    queryKey: ["payments", "user", userId],
+    queryFn: async () => {
+      if (!userId) throw new Error("User ID tidak valid");
+      return paymentService.getHistoryByUserId(userId);
+    },
+    enabled: !!userId, // Hanya jalankan query jika userId ada
+  });
 }

@@ -8,11 +8,12 @@ import {
   UpdateUserRequest,
   LoginUserRequest,
   UpdateStatusUserRequest,
+  User,
 } from "@/types/user.type";
 
 export const userKeys = {
   all: ["users"] as const,
-  detail: (id: number) => ["users", id] as const,
+  detail: (id: number | string) => ["users", id] as const,
   deleted: ["users", "deleted"] as const,
 };
 
@@ -23,10 +24,35 @@ export function useUsers() {
   });
 }
 
-export function useUser(id: number) {
-  return useQuery({
-    queryKey: userKeys.detail(id),
-    queryFn: () => userService.findOne(id),
+// export function useUser(id: number | string | null) {
+//   return useQuery({
+//     queryKey:
+//          id !== null ? userKeys.detail(id) : ["users", "detail", "empty"],
+//      queryFn: () => {
+//           if (id === null || id === undefined || id === "") {
+//             throw new Error("ID user tidak tersedia.");
+//           }
+    
+//           return userService.findOne(id);
+//         },
+//     enabled: !!id,
+//   });
+// }
+
+export function useUser(id: number | string | null) {
+  return useQuery<User>({
+    queryKey: id !== null ? userKeys.detail(id) : ["users", "detail", "empty"],
+    queryFn: async () => {
+      if (id === null || id === undefined || id === "") {
+        throw new Error("ID user tidak tersedia.");
+      }
+
+      // 1. Ekstrak res dari userService
+      const res = await userService.findOne(id);
+
+      // 2. Return properti `data` (objek User) dari UserResponse
+      return res.data;
+    },
     enabled: !!id,
   });
 }

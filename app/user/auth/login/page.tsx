@@ -44,7 +44,7 @@ export default function UserLoginPage() {
 
     try {
       await loginUser(data);
-      router.push("/dashboard"); // Redirect ke dashboard user setelah berhasil login
+      router.push("/user/dashboard"); // Redirect ke dashboard user setelah berhasil login
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error

@@ -6,6 +6,8 @@ import type {
   PaymentApiRecord,
   PaymentWebhookResponse,
   UpdatePaymentStatusInput,
+  PaymentHistoryResponse,
+  PaymentHistoryItem,
 } from "@/types/payments/payment.type";
 
 const API_BASE_URL =
@@ -126,4 +128,18 @@ export const paymentService = {
 
     return parseResponse<PaymentWebhookResponse>(response);
   },
+
+
+  async getHistoryByUserId(userId: number | string): Promise<PaymentHistoryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/payments/user/${userId}`);
+    const result: PaymentHistoryResponse = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "History pembayaran tidak ditemukan");
+    }
+
+    // Mengembalikan array of PaymentHistoryItem
+    return result.data;
+  },
+
 };
