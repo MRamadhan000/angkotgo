@@ -1,1004 +1,156 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { FiArrowLeft, FiMapPin, FiNavigation, FiUser } from "react-icons/fi";
 
 import mapboxgl from "mapbox-gl";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  FiArrowLeft,
-  FiClock,
-  FiMapPin,
-  FiNavigation,
-  FiUser,
-} from "react-icons/fi";
-
 import "mapbox-gl/dist/mapbox-gl.css";
+
 import { DirectionType } from "@/types/vehicles/vehicle.type";
-
-// Hooks
-import {
-  useRouteSearch,
-  useUpcomingVehicles,
-} from "@/hooks/routes/useRouteSearch";
 import { routePathKeys, useRoutePaths } from "@/hooks/routes/useRoutePath";
-import { useMapbox } from "@/hooks/useMapbox";
-
-// Services
+import { useRouteSearch } from "@/hooks/routes/useRouteSearch";
+import { useAuth } from "@/context/AuthContext";
+import { routePathService } from "@/services/routes/route-path.service";
 import { getUpcomingVehicles } from "@/services/routes/route-route.service";
+import { validateRouteSearch } from "@/components/search-routev2/skenario1/outeValidation";
+import { quickDestinations } from "@/components/search-routev2/skenario1/data";
 
-// Components
+// UI Components
 import Button from "@/components/ui/Button";
-
 import GpsPermissionModal from "@/components/search-routev2/skenario1/GpsPermissionModal";
 import QuickDestination from "@/components/search-routev2/skenario1/QuickDestination";
 import LocationInput from "@/components/search-routev2/skenario1/LocationInput";
 import LocationConnector from "@/components/search-routev2/skenario1/LocationConnector";
-
 import UpcomingVehicleList from "@/components/search-routev2/skenario2/UpcomingVehicleList";
 import VehicleMarkers from "@/components/search-routev2/skenario2/VehicleMarkers";
 import RoutePathLine from "@/components/search-routev2/skenario2/RoutePathLine";
 import LocationSummary from "@/components/search-routev2/skenario2/LocationSummary";
-
 import { BookingPaymentModal } from "@/components/search-routev2/skenario3/BookingPaymentModal";
 
-// Data
-import { quickDestinations } from "@/components/search-routev2/skenario1/data";
+// Local hooks
+import { useMapInitialization } from "./hooks/useMapInitialization";
+import { useLocationSearch } from "./hooks/useLocationSearch";
+import { useGps } from "./hooks/useGps";
+import { useUpcomingVehiclesRealtime } from "./hooks/useUpcomingVehiclesRealtime";
+import { useBookingState } from "./hooks/useBookingState";
+import { useJourneyPersistence } from "./hooks/useJourneyPersistence";
+import { useBottomSheet } from "./hooks/useBottomSheet";
 
-// Utils
-import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
-import { validateRouteSearch } from "@/components/search-routev2/skenario1/outeValidation";
-
-// Types
-import {
-  Coordinates,
-  MapboxSearchLoadingState,
-  MapboxSuggestion,
-  PointType,
-} from "@/types/mapbox.type";
-import { UpcomingVehicle } from "@/types/route-search.type";
-import { routePathService } from "@/services/routes/route-path.service";
-import { useCreateSinyal } from "@/hooks/sinyal/useSinyal";
-import { useAuth } from "@/context/AuthContext";
-import { usePayments } from "@/hooks/payments/usePayments";
-import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
-import type {
-  CreatePaymentType,
-  PaymentCreateResponse,
-} from "@/types/payments/payment.type";
-import { PaymentStatus } from "@/types/payments/payment.type";
-import { useVehicleSockets } from "@/hooks/vehicles/useVehicleSocket";
-import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments2";
-import {
-  calculateOsrmEstimates,
-  type OsrmVehicleEstimate,
-} from "@/utils/osrm-estimates";
-import { distanceInMeters } from "./getv2.util";
-
-type ActiveInputState = PointType | null;
-type SheetSnap = "peek" | "full";
-
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-
-mapboxgl.accessToken = MAPBOX_TOKEN || "";
-
-const SHEET_TOP_PEEK = 68;
-const SHEET_TOP_FULL = 10;
-const SHEET_OVERDRAG_LIMIT = SHEET_TOP_PEEK + 12;
-const BOOKING_RETURN_STATE_KEY = "getv2-booking-return-state";
-
-type BookingReturnState = {
-  origin: string;
-  destination: string;
-  originCoords: Coordinates | null;
-  destinationCoords: Coordinates | null;
-  selectedRoute: {
-    routeId: number;
-    direction: DirectionType;
-  } | null;
-  scenario: 1 | 2;
-  pickingMode: PointType;
-  bookingVehicleId: number | null;
-  bookingAmount: string;
-  bookingType: CreatePaymentType;
-};
+import type { SelectedRoute } from "./types";
 
 export default function CariRuteAngkot() {
-  const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-
-  const bookingPayments = usePayments(null);
-  const isDevelopment = process.env.NODE_ENV === "development";
-  const [scenario, setScenario] = useState<1 | 2>(1);
-  // Nama lokasi untuk ditampilkan ke user
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
-
-  // Koordinat sebenarnya
-  const [originCoords, setOriginCoords] = useState<Coordinates | null>(null);
-  const [destinationCoords, setDestinationCoords] =
-    useState<Coordinates | null>(null);
-
-  // MAPBOX SEARCH STATE
-  const [originSuggestions, setOriginSuggestions] = useState<
-    MapboxSuggestion[]
-  >([]);
-
-  const [destinationSuggestions, setDestinationSuggestions] = useState<
-    MapboxSuggestion[]
-  >([]);
-
-  const [activeInput, setActiveInput] = useState<ActiveInputState>(null);
-
-  const [searchLoading, setSearchLoading] =
-    useState<MapboxSearchLoadingState>(null);
-
-  // Menentukan titik mana yang sedang dipilih melalui map
-  const [pickingMode, setPickingMode] = useState<PointType>("origin");
-
-  // GPS
-  const [showGpsModal, setShowGpsModal] = useState(true);
-  const [isLocating, setIsLocating] = useState(false);
-  const [bookingVehicle, setBookingVehicle] = useState<UpcomingVehicle | null>(
-    null,
-  );
-  const [bookingAmount, setBookingAmount] = useState("5000");
-  const [bookingType, setBookingType] = useState<CreatePaymentType>("CASH");
-  const [bookingResult, setBookingResult] =
-    useState<PaymentCreateResponse | null>(null);
-  const [isRestoringBooking, setIsRestoringBooking] = useState(false);
-  const [pendingBookingVehicleId, setPendingBookingVehicleId] = useState<
-    number | null
-  >(null);
-  const restoredBookingStateRef = useRef(false);
-  const journeyHydratedRef = useRef(false);
-  const currentJourneyActivityRef = useRef(false);
-  const bookingPaymentRealtime = usePaymentSocket(
-    bookingVehicle?.assignmentId ?? null,
-  );
-
-  useEffect(() => {
-    const realtimePayment = bookingPaymentRealtime.payment;
-    if (!realtimePayment || !bookingResult) return;
-    if (realtimePayment.id !== bookingResult.data.id) return;
-    if (realtimePayment.status === bookingResult.data.status) return;
-
-    const timer = window.setTimeout(() => {
-      setBookingResult((previous) =>
-        previous
-          ? { ...previous, data: { ...previous.data, ...realtimePayment } }
-          : previous,
-      );
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [bookingPaymentRealtime.payment, bookingResult]);
-
-  const {
-    mutateAsync: createSinyal,
-    isPending: isCreatingSinyal,
-    isError: isCreateSinyalError,
-    error: createSinyalError,
-  } = useCreateSinyal();
-
-  // MAP REFS
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
-
-  // FIXED MARKERS
-  // Marker ini menempel pada koordinat geografis.
-  // Tidak ikut bergerak ketika map di-drag.
-
-  const originMarkerRef = useRef<mapboxgl.Marker | null>(null);
-
-  const destinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
-
-  // SEARCH REFS
-  const suggestionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const selectingOrigin = useRef(false);
-  const selectingDestination = useRef(false);
-
-  // REACT QUERY
   const queryClient = useQueryClient();
+  const isDevelopment = process.env.NODE_ENV === "development";
 
-  // MAPBOX HOOK
-  const { suggest, retrieve, reverse, resetSession } = useMapbox();
+  // ─── Scenario & selected route ───
+  const [scenario, setScenario] = useState<1 | 2>(1);
+  const [selectedRoute, setSelectedRoute] = useState<SelectedRoute | null>(null);
 
-  // SELECTED ROUTE
-  const [selectedRoute, setSelectedRoute] = useState<{
-    routeId: number;
-    direction: DirectionType;
-  } | null>(null);
-  const [osrmEstimates, setOsrmEstimates] = useState<
-    Record<number, OsrmVehicleEstimate>
-  >({});
-  const osrmEstimateKeyRef = useRef<string | null>(null);
+  // ─── mapRef dideklarasikan di sini agar bisa dibagi ke map & location search ───
+  const sharedMapRef = useRef<mapboxgl.Map | null>(null);
 
-  // ROUTE SEARCH
+  // ─── Location search (Skenario 1) ───
+  const location = useLocationSearch(sharedMapRef);
+
+  // ─── Map init — menyuntikkan sharedMapRef ───
+  const map = useMapInitialization(
+    location.originCoords,
+    location.destinationCoords,
+    sharedMapRef,
+  );
+
+  // ─── GPS (Skenario 1) ───
+  const gps = useGps({
+    setOrigin: location.setOrigin,
+    setOriginCoords: location.setOriginCoords,
+    setPickingMode: location.setPickingMode,
+    moveMapToLocation: location.moveMapToLocation,
+    getPlaceName: location.getPlaceName,
+  });
+
+  // ─── Bottom sheet (Skenario 2) ───
+  const bottomSheet = useBottomSheet(scenario);
+
+  // ─── Route search ───
   const routeSearchParams =
-    originCoords && destinationCoords
+    location.originCoords && location.destinationCoords
       ? {
-          userLat: originCoords.lat,
-          userLng: originCoords.lng,
-          destLat: destinationCoords.lat,
-          destLng: destinationCoords.lng,
+          userLat: location.originCoords.lat,
+          userLng: location.originCoords.lng,
+          destLat: location.destinationCoords.lat,
+          destLng: location.destinationCoords.lng,
         }
       : null;
 
-  const {
-    data: routeResults,
-    isFetching: isSearchingRoute,
-    isError: isRouteSearchError,
-    error: routeSearchError,
-    refetch: searchRoute,
-  } = useRouteSearch(routeSearchParams);
+  const { isFetching: isSearchingRoute, refetch: searchRoute } =
+    useRouteSearch(routeSearchParams);
 
-  // UPCOMING VEHICLES
-  const upcomingVehiclesParams =
-    selectedRoute && originCoords
-      ? {
-          routeId: selectedRoute.routeId,
-          direction: selectedRoute.direction,
-          latitude: originCoords.lat,
-          longitude: originCoords.lng,
-        }
-      : null;
-
-  const {
-    data: upcomingVehicles,
-    isFetching: isLoadingUpcomingVehicles,
-    isError: isUpcomingVehiclesError,
-    error: upcomingVehiclesError,
-  } = useUpcomingVehicles(upcomingVehiclesParams);
-
-  const upcomingAssignmentIds = (upcomingVehicles?.vehicles ?? []).map(
-    (vehicle) => vehicle.assignmentId,
-  );
-  const {
-    data: realtimeVehicles,
-    connected: isVehicleSocketConnected,
-    joinedAssignmentIds,
-  } = useVehicleSockets(upcomingAssignmentIds);
-  const { data: vehicleAssignments = [] } = useVehicleAssignments();
-  const realtimeUpcomingVehicles = (upcomingVehicles?.vehicles ?? []).map(
-    (vehicle) => {
-      const realtime = realtimeVehicles[vehicle.assignmentId];
-      const responseVehicle = vehicle as UpcomingVehicle & {
-        current_passengers?: number | null;
-        currentPassenger?: number | null;
-      };
-      const responsePassengers =
-        responseVehicle.currentPassengers ??
-        responseVehicle.current_passengers ??
-        responseVehicle.currentPassenger ??
-        null;
-      const assignment = vehicleAssignments.find(
-        (item) => item.id === vehicle.assignmentId,
-      );
-
-      return {
-        ...vehicle,
-        currentPassengers:
-          realtime?.currentPassengers ??
-          responsePassengers ??
-          assignment?.currentPassengers ??
-          null,
-        ...(realtime
-          ? {
-              vehicleLat: realtime.latitude,
-              vehicleLng: realtime.longitude,
-              hasLocationData: true,
-              lastLocationAt: realtime.createdAt,
-              lastLocationAgeSeconds: 0,
-              distanceToUserMeters: originCoords
-                ? distanceInMeters(
-                    originCoords.lat,
-                    originCoords.lng,
-                    realtime.latitude,
-                    realtime.longitude,
-                  )
-                : vehicle.distanceToUserMeters,
-            }
-          : {}),
-        driverName: vehicle.driverName ?? assignment?.driver?.name,
-        vehicleCode: vehicle.vehicleCode ?? assignment?.vehicle?.vehicleCode,
-        vehicleCapacity:
-          vehicle.vehicleCapacity ?? assignment?.vehicle?.capacity,
-        driver: vehicle.driver ?? assignment?.driver,
-        vehicle: vehicle.vehicle ?? assignment?.vehicle,
-        osrmEstimate: osrmEstimates[vehicle.assignmentId] ?? null,
-      };
-    },
-  );
-
-  useEffect(() => {
-    currentJourneyActivityRef.current =
-      Boolean(origin.trim()) ||
-      Boolean(destination.trim()) ||
-      Boolean(originCoords) ||
-      Boolean(destinationCoords) ||
-      Boolean(selectedRoute) ||
-      Boolean(bookingVehicle) ||
-      pendingBookingVehicleId !== null;
-  }, [
-    origin,
-    destination,
-    originCoords,
-    destinationCoords,
-    selectedRoute,
-    bookingVehicle,
-    pendingBookingVehicleId,
-  ]);
-
-  useEffect(() => {
-    if (isAuthLoading) return;
-
-    if (
-      restoredBookingStateRef.current &&
-      currentJourneyActivityRef.current
-    ) {
-      return;
-    }
-
-    restoredBookingStateRef.current = true;
-    let restoreTimer: number | undefined;
-
-    try {
-      const storedState = localStorage.getItem(BOOKING_RETURN_STATE_KEY);
-      if (!storedState) {
-        journeyHydratedRef.current = true;
-        return;
-      }
-
-      const savedState = JSON.parse(storedState) as BookingReturnState;
-      restoreTimer = window.setTimeout(async () => {
-        setIsRestoringBooking(true);
-        setOrigin(savedState.origin);
-        setDestination(savedState.destination);
-        setOriginCoords(savedState.originCoords);
-        setDestinationCoords(savedState.destinationCoords);
-        setSelectedRoute(savedState.selectedRoute);
-        setBookingAmount(savedState.bookingAmount);
-        setBookingType(savedState.bookingType);
-        setPendingBookingVehicleId(savedState.bookingVehicleId);
-        setScenario(
-          savedState.scenario ?? (savedState.selectedRoute ? 2 : 1),
-        );
-        setPickingMode(savedState.pickingMode ?? "destination");
-        setShowGpsModal(false);
-        journeyHydratedRef.current = true;
-
-        try {
-          if (!savedState.selectedRoute || !savedState.originCoords) return;
-
-          const vehicleParams = {
-            routeId: savedState.selectedRoute.routeId,
-            direction: savedState.selectedRoute.direction,
-            latitude: savedState.originCoords.lat,
-            longitude: savedState.originCoords.lng,
-          };
-
-          await queryClient.fetchQuery({
-            queryKey: ["upcoming-vehicles", vehicleParams],
-            queryFn: () => getUpcomingVehicles(vehicleParams),
-          });
-        } catch (error) {
-          console.error("Gagal memulihkan kendaraan booking:", error);
-        } finally {
-          setIsRestoringBooking(false);
-        }
-      }, 0);
-    } catch {
-      localStorage.removeItem(BOOKING_RETURN_STATE_KEY);
-    }
-
-    return () => {
-      if (restoreTimer !== undefined) window.clearTimeout(restoreTimer);
-    };
-  }, [isAuthLoading, isAuthenticated, queryClient]);
-
-  useEffect(() => {
-    if (isAuthLoading || !journeyHydratedRef.current) return;
-
-    const journeyState: BookingReturnState = {
-      origin,
-      destination,
-      originCoords,
-      destinationCoords,
-      selectedRoute,
-      scenario,
-      pickingMode,
-      bookingVehicleId:
-        bookingVehicle?.assignmentId ?? pendingBookingVehicleId,
-      bookingAmount,
-      bookingType,
-    };
-
-    const hasJourneyActivity =
-      Boolean(origin.trim()) ||
-      Boolean(destination.trim()) ||
-      Boolean(originCoords) ||
-      Boolean(destinationCoords) ||
-      Boolean(selectedRoute) ||
-      Boolean(bookingVehicle) ||
-      pendingBookingVehicleId !== null;
-
-    if (hasJourneyActivity) {
-      localStorage.setItem(
-        BOOKING_RETURN_STATE_KEY,
-        JSON.stringify(journeyState),
-      );
-    }
-  }, [
-    isAuthLoading,
-    origin,
-    destination,
-    originCoords,
-    destinationCoords,
-    selectedRoute,
-    scenario,
-    pickingMode,
-    bookingVehicle,
-    pendingBookingVehicleId,
-    bookingAmount,
-    bookingType,
-  ]);
-
-  useEffect(() => {
-    if (pendingBookingVehicleId === null) return;
-
-    const vehicle = realtimeUpcomingVehicles.find(
-      (item) => item.assignmentId === pendingBookingVehicleId,
-    );
-    if (!vehicle) return;
-
-    const restoreTimer = window.setTimeout(() => {
-      setBookingVehicle(vehicle);
-      setBookingResult(null);
-      setPendingBookingVehicleId(null);
-      setIsRestoringBooking(false);
-    }, 0);
-
-    return () => window.clearTimeout(restoreTimer);
-  }, [pendingBookingVehicleId, realtimeUpcomingVehicles]);
-
-  useEffect(() => {
-    if (
-      !upcomingVehicles?.vehicles.length ||
-      !originCoords ||
-      !destinationCoords
-    ) {
-      return;
-    }
-
-    const estimateKey = [
-      originCoords.lat,
-      originCoords.lng,
-      destinationCoords.lat,
-      destinationCoords.lng,
-      ...upcomingVehicles.vehicles.map(
-        (vehicle) =>
-          `${vehicle.assignmentId}:${vehicle.vehicleLat}:${vehicle.vehicleLng}`,
-      ),
-    ].join("|");
-
-    if (osrmEstimateKeyRef.current === estimateKey) return;
-    osrmEstimateKeyRef.current = estimateKey;
-
-    calculateOsrmEstimates(
-      upcomingVehicles.vehicles,
-      { latitude: originCoords.lat, longitude: originCoords.lng },
-      { latitude: destinationCoords.lat, longitude: destinationCoords.lng },
-    )
-      .then(setOsrmEstimates)
-      .catch((error) => {
-        console.error("Gagal menghitung estimasi OSRM:", error);
-      });
-  }, [upcomingVehicles, originCoords, destinationCoords]);
-
-  // ROUTE PATH
-  const {
-    data: routePaths,
-    isFetching: isLoadingRoutePath,
-    isError: isRoutePathError,
-  } = useRoutePaths(
+  // ─── Route path ───
+  const { data: routePaths } = useRoutePaths(
     selectedRoute?.routeId ?? 0,
     selectedRoute?.direction ?? DirectionType.FORWARD,
   );
 
-  // BOTTOM SHEET
-  const [sheetTop, setSheetTop] = useState(SHEET_TOP_PEEK);
-  const [sheetSnapped, setSheetSnapped] = useState<SheetSnap>("peek");
-  const [isSheetTransitioning, setIsSheetTransitioning] = useState(true);
-  const isDraggingSheetRef = useRef(false);
-  const dragStartYRef = useRef(0);
-  const dragStartTopRef = useRef(SHEET_TOP_PEEK);
-
-  // MAP INITIALIZATION
-  useEffect(() => {
-    if (!mapContainerRef.current) {
-      return;
-    }
-
-    if (!MAPBOX_TOKEN) {
-      console.error("NEXT_PUBLIC_MAPBOX_TOKEN belum dikonfigurasi.");
-      return;
-    }
-
-    if (mapRef.current) {
-      return;
-    }
-
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [112.6214, -7.9839],
-      zoom: 14,
-      attributionControl: true,
-    });
-
-    mapRef.current = map;
-
-    setMapInstance(map);
-
-    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
-
-    const handleMapLoad = () => {
-      map.resize();
-    };
-
-    map.on("load", handleMapLoad);
-
-    return () => {
-      map.off("load", handleMapLoad);
-
-      originMarkerRef.current?.remove();
-      destinationMarkerRef.current?.remove();
-
-      originMarkerRef.current = null;
-      destinationMarkerRef.current = null;
-
-      map.remove();
-
-      mapRef.current = null;
-
-      setMapInstance(null);
-    };
-  }, []);
-
-  // ORIGIN FIXED MARKER
-  // Marker mengikuti originCoords,
-  // bukan mengikuti map center.
-
-  useEffect(() => {
-    if (!mapInstance || !originCoords) {
-      originMarkerRef.current?.remove();
-      originMarkerRef.current = null;
-
-      return;
-    }
-
-    if (!originMarkerRef.current) {
-      originMarkerRef.current = new mapboxgl.Marker({
-        color: "#2563eb",
-      })
-        .setLngLat([originCoords.lng, originCoords.lat])
-        .addTo(mapInstance);
-    } else {
-      originMarkerRef.current.setLngLat([originCoords.lng, originCoords.lat]);
-    }
-  }, [mapInstance, originCoords]);
-
-  // DESTINATION FIXED MARKER
-  // Marker mengikuti destinationCoords,
-  // bukan mengikuti map center.
-  useEffect(() => {
-    if (!mapInstance || !destinationCoords) {
-      destinationMarkerRef.current?.remove();
-      destinationMarkerRef.current = null;
-
-      return;
-    }
-
-    if (!destinationMarkerRef.current) {
-      destinationMarkerRef.current = new mapboxgl.Marker({
-        color: "#e11d48",
-      })
-        .setLngLat([destinationCoords.lng, destinationCoords.lat])
-        .addTo(mapInstance);
-    } else {
-      destinationMarkerRef.current.setLngLat([
-        destinationCoords.lng,
-        destinationCoords.lat,
-      ]);
-    }
-  }, [mapInstance, destinationCoords]);
-
-  // RESET BOTTOM SHEET
-  useEffect(() => {
-    if (scenario !== 2) return;
-
-    const sheetTimer = window.setTimeout(() => {
-      setIsSheetTransitioning(true);
-      setSheetTop(SHEET_TOP_PEEK);
-      setSheetSnapped("peek");
-    }, 0);
-
-    return () => window.clearTimeout(sheetTimer);
-  }, [scenario]);
-
-  // BOTTOM SHEET DRAG
-  const handleSheetPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    isDraggingSheetRef.current = true;
-    dragStartYRef.current = e.clientY;
-    dragStartTopRef.current = sheetTop;
-    setIsSheetTransitioning(false);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handleSheetPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingSheetRef.current) {
-      return;
-    }
-    const deltaYPx = e.clientY - dragStartYRef.current;
-    const deltaVh = (deltaYPx / window.innerHeight) * 100;
-    let newTop = dragStartTopRef.current + deltaVh;
-    newTop = Math.min(Math.max(newTop, SHEET_TOP_FULL), SHEET_OVERDRAG_LIMIT);
-    setSheetTop(newTop);
-  };
-
-  const handleSheetPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingSheetRef.current) {
-      return;
-    }
-
-    isDraggingSheetRef.current = false;
-
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {
-      // Ignore
-    }
-
-    setIsSheetTransitioning(true);
-
-    const midpoint = (SHEET_TOP_PEEK + SHEET_TOP_FULL) / 2;
-
-    if (sheetTop < midpoint) {
-      setSheetTop(SHEET_TOP_FULL);
-      setSheetSnapped("full");
-    } else {
-      setSheetTop(SHEET_TOP_PEEK);
-      setSheetSnapped("peek");
-    }
-  };
-
-  // TOP SECTION PROGRESS
-  const topSectionProgress =
-    scenario === 2
-      ? Math.min(
-          Math.max(
-            (sheetTop - SHEET_TOP_FULL) / (SHEET_TOP_PEEK - SHEET_TOP_FULL),
-            0,
-          ),
-          1,
-        )
-      : 1;
-
-  // CENTER PICKER VISIBILITY
-  // Center picker hanya muncul kalau titik yang sedang
-  // dipilih belum mempunyai koordinat.
-  const showCenterPicker =
-    scenario === 1 &&
-    ((pickingMode === "origin" && !originCoords) ||
-      (pickingMode === "destination" && !destinationCoords));
-
-  const getPlaceName = async (lat: number, lng: number) => {
-    try {
-      const result = await reverse.mutateAsync({
-        lat,
-        lng,
-      });
-
-      return result;
-    } catch (error) {
-      console.error("Reverse geocoding gagal:", error);
-
-      return `Lokasi (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-    }
-  };
-
-  const moveMapToLocation = (lat: number, lng: number) => {
-    mapRef.current?.flyTo({
-      center: [lng, lat],
-      zoom: 15,
-      essential: true,
-    });
-  };
-
-  const handleEnableGps = async () => {
-    setIsLocating(true);
-
-    try {
-      const { latitude, longitude } = await getCurrentLocation();
-
-      const coords: Coordinates = {
-        lat: latitude,
-        lng: longitude,
-      };
-
-      const placeName = await getPlaceName(latitude, longitude);
-
-      setOriginCoords(coords);
-
-      setOrigin(placeName);
-
-      // Setelah origin ditentukan,
-      // lanjut memilih destination.
-      setPickingMode("destination");
-
-      moveMapToLocation(latitude, longitude);
-
-      setShowGpsModal(false);
-    } catch (error) {
-      console.error("Gagal mendapatkan lokasi:", error);
-
-      setOrigin("Stasiun Malang Kota Baru");
-
-      setOriginCoords(null);
-
-      setShowGpsModal(false);
-    } finally {
-      setIsLocating(false);
-    }
-  };
-
-  const handleSkipGps = () => {
-    setShowGpsModal(false);
-
-    setOrigin("");
-
-    setOriginCoords(null);
-
-    setPickingMode("origin");
-  };
-
-  const handleResetToGPS = async () => {
-    setIsLocating(true);
-
-    try {
-      const { latitude, longitude } = await getCurrentLocation();
-
-      const coords: Coordinates = {
-        lat: latitude,
-        lng: longitude,
-      };
-
-      const placeName = await getPlaceName(latitude, longitude);
-
-      setOriginCoords(coords);
-
-      setOrigin(placeName);
-
-      setPickingMode("destination");
-
-      moveMapToLocation(latitude, longitude);
-    } catch (error) {
-      console.error("Gagal mendapatkan GPS:", error);
-    } finally {
-      setIsLocating(false);
-    }
-  };
-
-  const handleConfirmMapLocation = async () => {
-    if (!mapRef.current) {
-      alert("Peta belum siap.");
-      return;
-    }
-
-    const center = mapRef.current.getCenter();
-
-    const lat = center.lat;
-    const lng = center.lng;
-
-    try {
-      setSearchLoading(
-        pickingMode === "origin" ? "retrieve-origin" : "retrieve-destination",
-      );
-
-      const placeName = await getPlaceName(lat, lng);
-
-      const coords: Coordinates = {
-        lat,
-        lng,
-      };
-
-      if (pickingMode === "origin") {
-        setOrigin(placeName);
-
-        setOriginCoords(coords);
-
-        // Setelah origin selesai,
-        // center picker berubah menjadi destination.
-        setPickingMode("destination");
-
-        setActiveInput(null);
-      } else {
-        setDestination(placeName);
-
-        setDestinationCoords(coords);
-
-        setActiveInput(null);
-      }
-    } catch (error) {
-      console.error("Gagal menetapkan lokasi:", error);
-    } finally {
-      setSearchLoading(null);
-    }
-  };
-
-  // SEARCH PLACES
-  const searchPlaces = (query: string, type: PointType) => {
-    if (suggestionTimeoutRef.current) {
-      clearTimeout(suggestionTimeoutRef.current);
-    }
-
-    if (!query.trim() || query.trim().length < 2) {
-      if (type === "origin") {
-        setOriginSuggestions([]);
-      } else {
-        setDestinationSuggestions([]);
-      }
-
-      return;
-    }
-
-    suggestionTimeoutRef.current = setTimeout(async () => {
-      try {
-        setSearchLoading(type);
-
-        const center = mapRef.current?.getCenter();
-
-        const proximity = center ? `${center.lng},${center.lat}` : undefined;
-
-        const result = await suggest.mutateAsync({
-          query: query.trim(),
-          type,
-          proximity,
-        });
-
-        const suggestions = result.suggestions ?? [];
-
-        if (type === "origin") {
-          setOriginSuggestions(suggestions);
-        } else {
-          setDestinationSuggestions(suggestions);
-        }
-      } catch (error) {
-        console.error("Gagal mencari lokasi:", error);
-
-        if (type === "origin") {
-          setOriginSuggestions([]);
-        } else {
-          setDestinationSuggestions([]);
-        }
-      } finally {
-        setSearchLoading(null);
-      }
-    }, 300);
-  };
-
-  const retrieveLocation = async (item: MapboxSuggestion, type: PointType) => {
-    const selecting =
-      type === "origin" ? selectingOrigin : selectingDestination;
-
-    try {
-      selecting.current = true;
-
-      setSearchLoading(
-        type === "origin" ? "retrieve-origin" : "retrieve-destination",
-      );
-
-      const result = await retrieve.mutateAsync({
-        mapboxId: item.mapbox_id,
-        type,
-      });
-
-      const { coords, placeName } = result;
-
-      if (type === "origin") {
-        setOrigin(placeName);
-        setOriginCoords(coords);
-        setOriginSuggestions([]);
-        setPickingMode("destination");
-      } else {
-        setDestination(placeName);
-        setDestinationCoords(coords);
-        setDestinationSuggestions([]);
-      }
-      setActiveInput(null);
-      moveMapToLocation(coords.lat, coords.lng);
-    } catch (error) {
-      console.error("Gagal mengambil detail lokasi:", error);
-    } finally {
-      setSearchLoading(null);
-
-      setTimeout(() => {
-        selecting.current = false;
-      }, 100);
-    }
-  };
-
-  const handleOriginChange = (value: string) => {
-    if (selectingOrigin.current) {
-      return;
-    }
-
-    setOrigin(value);
-
-    // Sangat penting:
-    // ketika user mengetik ulang origin,
-    // koordinat lama tidak valid lagi.
-    setOriginCoords(null);
-    setActiveInput("origin");
-    setPickingMode("origin");
-    searchPlaces(value, "origin");
-  };
-
-  const handleDestinationChange = (value: string) => {
-    if (selectingDestination.current) {
-      return;
-    }
-
-    setDestination(value);
-
-    // Koordinat lama dibuang karena text
-    // destination sudah berubah.
-    setDestinationCoords(null);
-    setActiveInput("destination");
-    setPickingMode("destination");
-    searchPlaces(value, "destination");
-  };
-
-  const handleSelectSuggestion = (item: MapboxSuggestion, type: PointType) => {
-    retrieveLocation(item, type);
-  };
-
-  const handleClearOrigin = () => {
-    selectingOrigin.current = false;
-    setOrigin("");
-    setOriginCoords(null);
-    setOriginSuggestions([]);
-    setActiveInput(null);
-    setPickingMode("origin");
-    resetSession("origin");
-  };
-
-  const handleClearDestination = () => {
-    selectingDestination.current = false;
-    setDestination("");
-    setDestinationCoords(null);
-    setDestinationSuggestions([]);
-    setActiveInput(null);
-    setPickingMode("destination");
-    resetSession("destination");
-  };
-
-  const handleQuickDestination = (label: string) => {
-    handleDestinationChange(label);
-
-    setActiveInput("destination");
-  };
-
+  // ─── Upcoming vehicles + realtime (Skenario 2) ───
+  const vehicles = useUpcomingVehiclesRealtime(
+    selectedRoute,
+    location.originCoords,
+    location.destinationCoords,
+  );
+
+  // ─── Booking & payment (Skenario 3) ───
+  const booking = useBookingState({
+    upcomingVehicles: vehicles.realtimeUpcomingVehicles,
+    originCoords: location.originCoords,
+    origin: location.origin,
+    destination: location.destination,
+    destinationCoords: location.destinationCoords,
+    selectedRoute,
+    scenario,
+    pickingMode: location.pickingMode,
+  });
+
+  // ─── Journey persistence (localStorage save/restore) ───
+  const { isRestoringBooking } = useJourneyPersistence(
+    {
+      origin: location.origin,
+      destination: location.destination,
+      originCoords: location.originCoords,
+      destinationCoords: location.destinationCoords,
+      selectedRoute,
+      scenario,
+      pickingMode: location.pickingMode,
+      bookingVehicle: booking.bookingVehicle,
+      pendingBookingVehicleId: null,
+      bookingAmount: booking.bookingAmount,
+      bookingType: booking.bookingType,
+    },
+    vehicles.realtimeUpcomingVehicles,
+    {
+      setOrigin: location.setOrigin,
+      setDestination: location.setDestination,
+      setOriginCoords: location.setOriginCoords,
+      setDestinationCoords: location.setDestinationCoords,
+      setSelectedRoute,
+      setScenario,
+      setPickingMode: location.setPickingMode,
+      setBookingAmount: booking.setBookingAmount,
+      setBookingType: booking.setBookingType,
+      setBookingVehicle: booking.setBookingVehicle,
+      setBookingResult: booking.setBookingResult,
+      setShowGpsModal: gps.setShowGpsModal,
+    },
+  );
+
+  // ─── Cari Angkot: transisi Skenario 1 → 2 ───
   const handleSearch = async () => {
     const validation = validateRouteSearch({
-      origin,
-      destination,
-      originCoords,
-      destinationCoords,
+      origin: location.origin,
+      destination: location.destination,
+      originCoords: location.originCoords,
+      destinationCoords: location.destinationCoords,
     });
 
     if (!validation.isValid) {
@@ -1007,12 +159,7 @@ export default function CariRuteAngkot() {
     }
 
     try {
-      // =====================================================
-      // 1. Cari route berdasarkan origin + destination
-      // =====================================================
-
       const result = await searchRoute();
-
       const firstRoute = result.data?.[0];
 
       if (!firstRoute) {
@@ -1023,156 +170,53 @@ export default function CariRuteAngkot() {
       const routeId = firstRoute.routeId;
       const direction = firstRoute.direction as DirectionType;
 
-      // =====================================================
-      // 2. Parameter untuk mencari angkot terdekat
-      // =====================================================
-
       const vehicleParams = {
         routeId,
         direction,
-        latitude: originCoords!.lat,
-        longitude: originCoords!.lng,
+        latitude: location.originCoords!.lat,
+        longitude: location.originCoords!.lng,
       };
 
-      // =====================================================
-      // 3. Fetch upcoming vehicles
-      // =====================================================
-
-      const upcomingVehicles = await queryClient.fetchQuery({
+      await queryClient.fetchQuery({
         queryKey: ["upcoming-vehicles", vehicleParams],
         queryFn: () => getUpcomingVehicles(vehicleParams),
       });
 
-      console.log("Upcoming vehicles:", upcomingVehicles);
-
-      // =====================================================
-      // 4. Fetch route path
-      // =====================================================
-
-      const routePaths = await queryClient.fetchQuery({
+      await queryClient.fetchQuery({
         queryKey: routePathKeys.byRouteAndDirection(routeId, direction),
-
         queryFn: () =>
-          routePathService.getRoutePathByRouteIdandDirection(
-            routeId,
-            direction,
-          ),
+          routePathService.getRoutePathByRouteIdandDirection(routeId, direction),
       });
 
-      console.log("Route paths:", routePaths);
-
-      // =====================================================
-      // 5. Simpan route yang dipilih
-      // =====================================================
-
-      setSelectedRoute({
-        routeId,
-        direction,
-      });
-
-      // =====================================================
-      // 6. Masuk scenario 2
-      // =====================================================
-
+      setSelectedRoute({ routeId, direction });
       setScenario(2);
     } catch (error) {
       console.error("Gagal mencari rute:", error);
-
       alert("Gagal terhubung ke server.");
     }
   };
 
-  const handleSendSinyal = async () => {
-    if (!originCoords) {
-      alert("Titik penjemputan belum tersedia.");
-      return;
-    }
+  // ─── Derived UI state ───
+  const showCenterPicker =
+    scenario === 1 &&
+    ((location.pickingMode === "origin" && !location.originCoords) ||
+      (location.pickingMode === "destination" && !location.destinationCoords));
 
-    const vehicleAssignmentId = (upcomingVehicles?.vehicles ?? []).map(
-      (vehicle) => String(vehicle.assignmentId),
-    );
-
-    if (vehicleAssignmentId.length === 0) {
-      alert("Belum ada kendaraan yang tersedia.");
-      return;
-    }
-
-    await createSinyal({
-      latitude: originCoords.lat,
-      longitude: originCoords.lng,
-      vehicleAssignmentId,
-    });
-  };
-
-  const handleBookVehicle = (vehicle: UpcomingVehicle) => {
-    if (!isAuthenticated) {
-      const stateToRestore: BookingReturnState | null =
-        originCoords && destinationCoords && selectedRoute
-          ? {
-              origin,
-              destination,
-              originCoords,
-              destinationCoords,
-              selectedRoute,
-              scenario,
-              pickingMode,
-              bookingVehicleId: vehicle.assignmentId,
-              bookingAmount,
-              bookingType,
-            }
-          : null;
-
-      if (stateToRestore) {
-        localStorage.setItem(
-          BOOKING_RETURN_STATE_KEY,
-          JSON.stringify(stateToRestore),
-        );
-      }
-
-      alert("Silakan login terlebih dahulu untuk melakukan booking.");
-      router.push("/auth/login?redirect=%2Fgetv2");
-      return;
-    }
-
-    setBookingVehicle(vehicle);
-    setBookingResult(null);
-  };
-
-  const handleCreateBookingPayment = async () => {
-    if (!bookingVehicle) return;
-    const userId = Number(user?.id);
-    const amount = Number(bookingAmount.replace(/\D/g, ""));
-
-    if (!Number.isInteger(userId) || userId <= 0) {
-      alert("Silakan login sebagai user sebelum melakukan booking.");
-      return;
-    }
-    if (!Number.isFinite(amount) || amount < 1) {
-      alert("Nominal pembayaran harus lebih besar dari 0.");
-      return;
-    }
-
-    try {
-      const result = await bookingPayments.create(userId, {
-        vehicleAssignmentId: bookingVehicle.assignmentId,
-        paymentType: bookingType,
-        amount,
-      });
-      setBookingResult(result);
-    } catch {
-      // Error ditampilkan oleh modal dari hook state.
-    }
-  };
+  // ─────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-[#faf8ff] text-[#191b23]">
+      {/* GPS Modal */}
       <GpsPermissionModal
-        open={showGpsModal && !isAuthLoading && !isRestoringBooking}
-        isLocating={isLocating}
-        onEnable={handleEnableGps}
-        onSkip={handleSkipGps}
+        open={gps.showGpsModal && !isAuthLoading && !isRestoringBooking}
+        isLocating={gps.isLocating}
+        onEnable={gps.handleEnableGps}
+        onSkip={gps.handleSkipGps}
       />
 
+      {/* Restoring overlay */}
       {isRestoringBooking && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
           <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-xl">
@@ -1182,41 +226,40 @@ export default function CariRuteAngkot() {
         </div>
       )}
 
+      {/* MAP LAYER */}
       <div className="absolute inset-0 z-0">
-        <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
-        <RoutePathLine map={mapInstance} routePaths={routePaths ?? []} />
-        <VehicleMarkers map={mapInstance} vehicles={realtimeUpcomingVehicles} />
+        <div ref={map.mapContainerRef} className="absolute inset-0 h-full w-full" />
+        <RoutePathLine map={map.mapInstance} routePaths={routePaths ?? []} />
+        <VehicleMarkers map={map.mapInstance} vehicles={vehicles.realtimeUpcomingVehicles} />
       </div>
 
+      {/* CENTER PICKER */}
       {showCenterPicker && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full border-4 border-white shadow-xl ${
-              pickingMode === "origin" ? "bg-blue-600" : "bg-rose-600"
+              location.pickingMode === "origin" ? "bg-blue-600" : "bg-rose-600"
             }`}
           >
             <FiMapPin className="text-xl text-white" />
           </div>
-
           <div className="mx-auto -mt-0.5 h-2 w-2 rounded-full bg-black/30 blur-[2px]" />
         </div>
       )}
 
+      {/* TOP SECTION */}
       <div
         className="pointer-events-auto absolute inset-x-0 top-0 z-20 mx-auto flex w-full max-w-md flex-col gap-3 px-4 pt-4 sm:px-5 sm:pt-6"
         style={{
-          opacity: topSectionProgress,
-
-          transform: `translateY(${(1 - topSectionProgress) * -16}px)`,
-
-          pointerEvents: topSectionProgress < 0.4 ? "none" : "auto",
-
-          transition: isSheetTransitioning
+          opacity: bottomSheet.topSectionProgress,
+          transform: `translateY(${(1 - bottomSheet.topSectionProgress) * -16}px)`,
+          pointerEvents: bottomSheet.topSectionProgress < 0.4 ? "none" : "auto",
+          transition: bottomSheet.isSheetTransitioning
             ? "opacity 300ms ease-out, transform 300ms ease-out"
             : "none",
         }}
       >
-        {/* HEADER */}
+        {/* Header */}
         <div className="flex items-center justify-between">
           <Button
             variant="icon"
@@ -1240,29 +283,28 @@ export default function CariRuteAngkot() {
           )}
         </div>
 
-        {/* SEARCH CARD */}
-
+        {/* Search Card */}
         <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-3xl sm:p-4">
           {scenario === 1 ? (
+            // ─── Skenario 1: Input lokasi ───
             <>
               <LocationInput
                 type="origin"
-                value={origin}
-                suggestions={originSuggestions}
-                isActive={activeInput === "origin"}
+                value={location.origin}
+                suggestions={location.originSuggestions}
+                isActive={location.activeInput === "origin"}
                 isLoading={
-                  searchLoading === "origin" ||
-                  searchLoading === "retrieve-origin"
+                  location.searchLoading === "origin" ||
+                  location.searchLoading === "retrieve-origin"
                 }
-                onChange={handleOriginChange}
+                onChange={location.handleOriginChange}
                 onFocus={() => {
-                  setActiveInput("origin");
-
-                  setPickingMode("origin");
+                  location.setActiveInput("origin");
+                  location.setPickingMode("origin");
                 }}
-                onClear={handleClearOrigin}
+                onClear={location.handleClearOrigin}
                 onSelectSuggestion={(item) =>
-                  handleSelectSuggestion(item, "origin")
+                  location.handleSelectSuggestion(item, "origin")
                 }
               />
 
@@ -1270,48 +312,49 @@ export default function CariRuteAngkot() {
 
               <LocationInput
                 type="destination"
-                value={destination}
-                suggestions={destinationSuggestions}
-                isActive={activeInput === "destination"}
+                value={location.destination}
+                suggestions={location.destinationSuggestions}
+                isActive={location.activeInput === "destination"}
                 isLoading={
-                  searchLoading === "destination" ||
-                  searchLoading === "retrieve-destination"
+                  location.searchLoading === "destination" ||
+                  location.searchLoading === "retrieve-destination"
                 }
-                onChange={handleDestinationChange}
+                onChange={location.handleDestinationChange}
                 onFocus={() => {
-                  setActiveInput("destination");
-
-                  setPickingMode("destination");
+                  location.setActiveInput("destination");
+                  location.setPickingMode("destination");
                 }}
-                onClear={handleClearDestination}
+                onClear={location.handleClearDestination}
                 onSelectSuggestion={(item) =>
-                  handleSelectSuggestion(item, "destination")
+                  location.handleSelectSuggestion(item, "destination")
                 }
               />
+
               <QuickDestination
                 items={quickDestinations}
-                onSelect={handleQuickDestination}
+                onSelect={location.handleQuickDestination}
               />
+
               <Button
                 variant="textAction"
                 size="sm"
-                onClick={handleResetToGPS}
-                isLoading={isLocating}
+                onClick={gps.handleResetToGPS}
+                isLoading={gps.isLocating}
                 loadingText="Mendeteksi lokasi..."
                 icon={
-                  <FiNavigation className={isLocating ? "animate-pulse" : ""} />
+                  <FiNavigation className={gps.isLocating ? "animate-pulse" : ""} />
                 }
               >
                 Gunakan lokasi saya saat ini
               </Button>
             </>
           ) : (
+            // ─── Skenario 2: Ringkasan lokasi ───
             <LocationSummary
-              origin={origin}
-              destination={destination}
+              origin={location.origin}
+              destination={location.destination}
               onEdit={() => {
                 setScenario(1);
-
                 setSelectedRoute(null);
               }}
             />
@@ -1321,28 +364,32 @@ export default function CariRuteAngkot() {
 
       {/* BOTTOM AREA */}
       {scenario === 1 ? (
+        // ─── Skenario 1: Map action buttons ───
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md space-y-2 px-4 pb-4 sm:px-5">
           <Button
             variant="mapAction"
             size="md"
             icon={<FiMapPin />}
-            onClick={handleConfirmMapLocation}
+            onClick={() =>
+              location.handleConfirmMapLocation(location.pickingMode, sharedMapRef)
+            }
             disabled={
               !showCenterPicker ||
-              searchLoading === "retrieve-origin" ||
-              searchLoading === "retrieve-destination"
+              location.searchLoading === "retrieve-origin" ||
+              location.searchLoading === "retrieve-destination"
             }
             isLoading={
-              searchLoading === "retrieve-origin" ||
-              searchLoading === "retrieve-destination"
+              location.searchLoading === "retrieve-origin" ||
+              location.searchLoading === "retrieve-destination"
             }
             loadingText="Mengambil lokasi..."
           >
-            {pickingMode === "origin"
+            {location.pickingMode === "origin"
               ? "Tetapkan Titik Penjemputan"
               : "Tetapkan Titik Tujuan"}
           </Button>
-          {originCoords && destinationCoords && (
+
+          {location.originCoords && location.destinationCoords && (
             <Button
               variant="primary"
               size="lg"
@@ -1356,92 +403,85 @@ export default function CariRuteAngkot() {
           )}
         </div>
       ) : (
+        // ─── Skenario 2: Bottom sheet ───
         <div
           className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-[#faf8ff]/95 shadow-[0_-8px_30px_rgba(0,0,0,0.15)] backdrop-blur-md"
           style={{
-            top: `${sheetTop}vh`,
-
-            transition: isSheetTransitioning ? "top 300ms ease-out" : "none",
+            top: `${bottomSheet.sheetTop}vh`,
+            transition: bottomSheet.isSheetTransitioning
+              ? "top 300ms ease-out"
+              : "none",
           }}
         >
+          {/* Drag handle */}
           <div
             className="flex shrink-0 cursor-grab touch-none items-center justify-center py-2.5 active:cursor-grabbing"
-            onPointerDown={handleSheetPointerDown}
-            onPointerMove={handleSheetPointerMove}
-            onPointerUp={handleSheetPointerUp}
-            onPointerCancel={handleSheetPointerUp}
+            onPointerDown={bottomSheet.handleSheetPointerDown}
+            onPointerMove={bottomSheet.handleSheetPointerMove}
+            onPointerUp={bottomSheet.handleSheetPointerUp}
+            onPointerCancel={bottomSheet.handleSheetPointerUp}
           >
             <div className="h-1.5 w-10 rounded-full bg-[#c3c6d6]" />
           </div>
 
-          {/* CONTENT */}
+          {/* Sheet content */}
           <div className="min-h-0 flex-1">
-            {upcomingAssignmentIds.length > 0 && (
+            {vehicles.upcomingAssignmentIds.length > 0 && (
               <div className="flex items-center justify-between px-4 pb-2 text-[11px] font-medium">
                 <span className="text-slate-500">Status kendaraan realtime</span>
                 <span
                   className={
-                    isVehicleSocketConnected &&
-                    joinedAssignmentIds.length >= upcomingAssignmentIds.length
+                    vehicles.isVehicleSocketConnected &&
+                    vehicles.joinedAssignmentIds.length >=
+                      vehicles.upcomingAssignmentIds.length
                       ? "text-emerald-600"
                       : "text-amber-600"
                   }
                 >
-                  {isVehicleSocketConnected &&
-                  joinedAssignmentIds.length >= upcomingAssignmentIds.length
+                  {vehicles.isVehicleSocketConnected &&
+                  vehicles.joinedAssignmentIds.length >=
+                    vehicles.upcomingAssignmentIds.length
                     ? "Terhubung"
                     : "Menghubungkan..."}
                 </span>
               </div>
             )}
-            {isCreateSinyalError && (
+
+            {booking.isCreateSinyalError && (
               <p className="px-4 pb-3 text-sm text-red-600" role="alert">
-                {createSinyalError.message || "Gagal mengirim sinyal."}
+                {booking.createSinyalError?.message || "Gagal mengirim sinyal."}
               </p>
             )}
+
             <UpcomingVehicleList
-              upcomingVehicles={realtimeUpcomingVehicles}
-              onSubmit={handleSendSinyal}
-              isSubmitting={isCreatingSinyal}
-              onBook={handleBookVehicle}
-              selectedVehicleId={bookingVehicle?.assignmentId ?? null}
+              upcomingVehicles={vehicles.realtimeUpcomingVehicles}
+              onSubmit={booking.handleSendSinyal}
+              isSubmitting={booking.isCreatingSinyal}
+              onBook={booking.handleBookVehicle}
+              selectedVehicleId={booking.bookingVehicle?.assignmentId ?? null}
             />
           </div>
         </div>
       )}
 
-      {bookingVehicle && (
+      {/* ─── Skenario 3: Booking Modal ─── */}
+      {booking.bookingVehicle && (
         <BookingPaymentModal
-          vehicle={bookingVehicle}
-          amount={bookingAmount}
-          paymentType={bookingType}
-          result={bookingResult}
-          error={bookingPayments.error}
-          isSubmitting={bookingPayments.creating}
-          isMarkingSucceeded={bookingPayments.markingSucceeded}
+          vehicle={booking.bookingVehicle}
+          amount={booking.bookingAmount}
+          paymentType={booking.bookingType}
+          result={booking.bookingResult}
+          error={booking.bookingPayments.error}
+          isSubmitting={booking.bookingPayments.creating}
+          isMarkingSucceeded={booking.bookingPayments.markingSucceeded}
           isDevelopment={isDevelopment}
-          onMarkAsSucceeded={async () => {
-            const paymentRequestId =
-              bookingResult?.data.xendit?.paymentRequestId ??
-              bookingResult?.data.xendit?.payment_request_id;
-            if (!paymentRequestId || !bookingResult) return;
-
-            await bookingPayments.markAsSucceeded(paymentRequestId);
-            setBookingResult((previous) =>
-              previous
-                ? {
-                    ...previous,
-                    data: { ...previous.data, status: PaymentStatus.SUCCEEDED },
-                  }
-                : previous,
-            );
-          }}
-          onAmountChange={setBookingAmount}
-          onPaymentTypeChange={setBookingType}
-          onSubmit={handleCreateBookingPayment}
+          onMarkAsSucceeded={booking.handleMarkAsSucceeded}
+          onAmountChange={booking.setBookingAmount}
+          onPaymentTypeChange={booking.setBookingType}
+          onSubmit={booking.handleCreateBookingPayment}
           onClose={() => {
-            setBookingVehicle(null);
-            setBookingResult(null);
+            booking.setBookingVehicle(null);
+            booking.setBookingResult(null);
           }}
         />
       )}
