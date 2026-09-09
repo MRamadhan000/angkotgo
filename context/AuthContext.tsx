@@ -44,13 +44,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Restore Session
    */
   useEffect(() => {
+    let restoreTimer: number | undefined;
+
     try {
       const storage = localStorage.getItem(STORAGE_KEY);
 
       if (storage) {
         const parsed: AuthUser = JSON.parse(storage);
 
-        setUser(parsed);
+        restoreTimer = window.setTimeout(() => setUser(parsed), 0);
       }
     } catch (err) {
       console.error(err);
@@ -59,6 +61,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+
+    return () => {
+      if (restoreTimer !== undefined) window.clearTimeout(restoreTimer);
+    };
   }, []);
 
   const login = (authUser: AuthUser) => {
@@ -80,7 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         break;
 
       default:
-        router.push("/");
+        // User login menentukan redirect dari halaman login, termasuk resume booking.
+        break;
     }
   };
 

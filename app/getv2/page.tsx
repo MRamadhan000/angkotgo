@@ -90,13 +90,15 @@ const BOOKING_RETURN_STATE_KEY = "getv2-booking-return-state";
 type BookingReturnState = {
   origin: string;
   destination: string;
-  originCoords: Coordinates;
-  destinationCoords: Coordinates;
+  originCoords: Coordinates | null;
+  destinationCoords: Coordinates | null;
   selectedRoute: {
     routeId: number;
     direction: DirectionType;
-  };
-  bookingVehicleId: number;
+  } | null;
+  scenario: 1 | 2;
+  pickingMode: PointType;
+  bookingVehicleId: number | null;
   bookingAmount: string;
   bookingType: CreatePaymentType;
 };
@@ -149,6 +151,7 @@ export default function CariRuteAngkot() {
     number | null
   >(null);
   const restoredBookingStateRef = useRef(false);
+  const journeyHydratedRef = useRef(false);
   const bookingPaymentRealtime = usePaymentSocket(
     bookingVehicle?.assignmentId ?? null,
   );
@@ -294,14 +297,28 @@ export default function CariRuteAngkot() {
   );
 
   useEffect(() => {
-    if (isAuthLoading || restoredBookingStateRef.current) return;
+    if (isAuthLoading) return;
+
+    const hasCurrentJourneyActivity =
+      Boolean(origin.trim()) ||
+      Boolean(destination.trim()) ||
+      Boolean(originCoords) ||
+      Boolean(destinationCoords) ||
+      Boolean(selectedRoute) ||
+      Boolean(bookingVehicle) ||
+      pendingBookingVehicleId !== null;
+
+    if (restoredBookingStateRef.current && hasCurrentJourneyActivity) return;
 
     restoredBookingStateRef.current = true;
     let restoreTimer: number | undefined;
 
     try {
       const storedState = localStorage.getItem(BOOKING_RETURN_STATE_KEY);
-      if (!storedState) return;
+      if (!storedState) {
+        journeyHydratedRef.current = true;
+        return;
+      }
 
       const savedState = JSON.parse(storedState) as BookingReturnState;
       restoreTimer = window.setTimeout(async () => {
@@ -314,10 +331,16 @@ export default function CariRuteAngkot() {
         setBookingAmount(savedState.bookingAmount);
         setBookingType(savedState.bookingType);
         setPendingBookingVehicleId(savedState.bookingVehicleId);
-        setScenario(2);
+        setScenario(
+          savedState.scenario ?? (savedState.selectedRoute ? 2 : 1),
+        );
+        setPickingMode(savedState.pickingMode ?? "destination");
         setShowGpsModal(false);
+        journeyHydratedRef.current = true;
 
         try {
+          if (!savedState.selectedRoute || !savedState.originCoords) return;
+
           const vehicleParams = {
             routeId: savedState.selectedRoute.routeId,
             direction: savedState.selectedRoute.direction,
@@ -342,7 +365,54 @@ export default function CariRuteAngkot() {
     return () => {
       if (restoreTimer !== undefined) window.clearTimeout(restoreTimer);
     };
-  }, [isAuthLoading, queryClient]);
+  }, [isAuthLoading, isAuthenticated, queryClient]);
+
+  useEffect(() => {
+    if (isAuthLoading || !journeyHydratedRef.current) return;
+
+    const journeyState: BookingReturnState = {
+      origin,
+      destination,
+      originCoords,
+      destinationCoords,
+      selectedRoute,
+      scenario,
+      pickingMode,
+      bookingVehicleId:
+        bookingVehicle?.assignmentId ?? pendingBookingVehicleId,
+      bookingAmount,
+      bookingType,
+    };
+
+    const hasJourneyActivity =
+      Boolean(origin.trim()) ||
+      Boolean(destination.trim()) ||
+      Boolean(originCoords) ||
+      Boolean(destinationCoords) ||
+      Boolean(selectedRoute) ||
+      Boolean(bookingVehicle) ||
+      pendingBookingVehicleId !== null;
+
+    if (hasJourneyActivity) {
+      localStorage.setItem(
+        BOOKING_RETURN_STATE_KEY,
+        JSON.stringify(journeyState),
+      );
+    }
+  }, [
+    isAuthLoading,
+    origin,
+    destination,
+    originCoords,
+    destinationCoords,
+    selectedRoute,
+    scenario,
+    pickingMode,
+    bookingVehicle,
+    pendingBookingVehicleId,
+    bookingAmount,
+    bookingType,
+  ]);
 
   useEffect(() => {
     if (pendingBookingVehicleId === null) return;
@@ -357,7 +427,6 @@ export default function CariRuteAngkot() {
       setBookingResult(null);
       setPendingBookingVehicleId(null);
       setIsRestoringBooking(false);
-      localStorage.removeItem(BOOKING_RETURN_STATE_KEY);
     }, 0);
 
     return () => window.clearTimeout(restoreTimer);
@@ -1012,6 +1081,8 @@ export default function CariRuteAngkot() {
               originCoords,
               destinationCoords,
               selectedRoute,
+              scenario,
+              pickingMode,
               bookingVehicleId: vehicle.assignmentId,
               bookingAmount,
               bookingType,
