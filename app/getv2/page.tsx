@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FiArrowLeft, FiMapPin, FiNavigation, FiUser } from "react-icons/fi";
+import { FiMapPin, FiNavigation } from "react-icons/fi";
 
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -38,6 +38,8 @@ import { useJourneyPersistence } from "./hooks/useJourneyPersistence";
 import { useBottomSheet } from "./hooks/useBottomSheet";
 
 import type { SelectedRoute } from "./types";
+import RestoringOverlay from "@/components/search-routev2/RestoringOverlay";
+import TopBar from "@/components/search-routev2/TopBar";
 
 export default function CariRuteAngkot() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -217,14 +219,7 @@ export default function CariRuteAngkot() {
       />
 
       {/* Restoring overlay */}
-      {isRestoringBooking && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
-          <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-xl">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-            Menghubungkan kembali perjalanan Anda...
-          </div>
-        </div>
-      )}
+      <RestoringOverlay show={isRestoringBooking} />
 
       {/* MAP LAYER */}
       <div className="absolute inset-0 z-0">
@@ -259,44 +254,12 @@ export default function CariRuteAngkot() {
             : "none",
         }}
       >
-        {/* Top Bar (Gojek Dark Floating Bar) */}
-        <div className="flex items-center justify-between rounded-2xl bg-slate-900/90 px-3.5 py-2.5 shadow-lg shadow-slate-900/20 backdrop-blur-md">
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              aria-label="Kembali"
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20 active:scale-95"
-            >
-              <FiArrowLeft className="text-sm" />
-            </button>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black tracking-tight text-white sm:text-sm">
-                  Angkot<span className="text-blue-400">Go</span>
-                </span>
-                <span className="rounded-full bg-blue-500/20 px-1.5 py-0.2 text-[9px] font-bold text-blue-300">
-                  Rute
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-300">
-                Pesan & lacak angkot realtime
-              </p>
-            </div>
-          </div>
-
-          {isAuthenticated && user ? (
-            <div className="flex max-w-32 items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm sm:max-w-40 sm:px-3">
-              <FiUser className="shrink-0 text-blue-400" aria-hidden="true" />
-              <span className="truncate">{user.name}</span>
-            </div>
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-slate-300">
-              <FiUser className="text-xs" />
-            </div>
-          )}
-        </div>
+        {/* Top Bar Component */}
+        <TopBar
+          user={user}
+          isAuthenticated={isAuthenticated}
+          onBack={() => window.history.back()}
+        />
 
         {/* Floating Search Card */}
         <div className="flex flex-col gap-2 rounded-3xl border border-slate-100 bg-white/95 p-3.5 shadow-xl shadow-slate-900/10 backdrop-blur-xl sm:p-4">

@@ -2,13 +2,11 @@
 
 import {
   FiCheckCircle,
-  FiClock,
   FiMapPin,
   FiNavigation,
   FiUser,
   FiUsers,
-  FiArrowRight,
-  FiCheck,
+  FiFlag,
 } from "react-icons/fi";
 
 import { UpcomingVehicle } from "@/types/route-search.type";
@@ -73,6 +71,24 @@ export default function UpcomingVehicleCard({
     vehicle.vehicle?.vehicleCode ||
     `AG-${String(vehicle.vehicleId).padStart(3, "0")}`;
 
+  // Same underlying values/conditions as before — only where & how they're displayed has changed.
+  const vehicleToUserEstimate = hasLocation
+    ? formatEstimateRange(
+        vehicle.osrmEstimate?.vehicleToUser?.durationMinSeconds,
+        vehicle.osrmEstimate?.vehicleToUser?.durationMaxSeconds,
+      )
+    : "-";
+
+  const userToDestinationEstimate = formatEstimateRange(
+    vehicle.osrmEstimate?.userToDestination?.durationMinSeconds,
+    vehicle.osrmEstimate?.userToDestination?.durationMaxSeconds,
+  );
+
+  const totalEstimate = formatEstimateRange(
+    vehicle.osrmEstimate?.total?.durationMinSeconds,
+    vehicle.osrmEstimate?.total?.durationMaxSeconds,
+  );
+
   return (
     <div
       className={`
@@ -84,7 +100,7 @@ export default function UpcomingVehicleCard({
         }
       `}
     >
-      {/* TOP HEADER: Vehicle Code, Status, Seat Badge */}
+      {/* TOP HEADER: Vehicle Code, Driver, Fare */}
       <div className="flex items-start justify-between gap-1.5 sm:gap-2">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           {/* Angkot Icon / Pill */}
@@ -111,7 +127,7 @@ export default function UpcomingVehicleCard({
           </div>
         </div>
 
-        {/* Fare & Seats Pill */}
+        {/* Fare Pill */}
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="whitespace-nowrap rounded-lg bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#003d9b] sm:px-2 sm:text-xs">
             Rp 5.000<span className="text-[9px] font-normal text-blue-600 sm:text-[10px]">/org</span>
@@ -119,12 +135,11 @@ export default function UpcomingVehicleCard({
         </div>
       </div>
 
-      {/* METRICS ROW (Distance, Arrival Time, Passengers) */}
-      <div className="mt-2.5 grid grid-cols-3 gap-1.5 rounded-lg border border-slate-100 bg-slate-50/80 p-2 sm:mt-3 sm:gap-2 sm:rounded-xl sm:p-2.5">
-        {/* DISTANCE */}
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate text-[8px] font-medium uppercase tracking-wider text-slate-400 sm:text-[9px]">
-            Jarak
+      {/* JARAK & PENUMPANG */}
+      <div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:mt-3 sm:gap-2">
+        <div className="flex min-w-0 flex-col rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-1.5 sm:rounded-xl sm:px-2.5 sm:py-2">
+          <span className="truncate text-[8px] font-medium text-slate-400 sm:text-[9px]">
+            Jarak angkot
           </span>
           <span className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-slate-800 sm:text-xs">
             <FiMapPin className="shrink-0 text-[10px] text-blue-600 sm:text-[11px]" />
@@ -132,27 +147,8 @@ export default function UpcomingVehicleCard({
           </span>
         </div>
 
-        {/* TIME TO ARRIVAL */}
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate text-[8px] font-medium uppercase tracking-wider text-slate-400 sm:text-[9px]">
-            Estimasi Tiba
-          </span>
-          <span className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-slate-800 sm:text-xs">
-            <FiClock className="shrink-0 text-[10px] text-blue-600 sm:text-[11px]" />
-            <span className="truncate">
-              {hasLocation
-                ? formatEstimateRange(
-                    vehicle.osrmEstimate?.vehicleToUser?.durationMinSeconds,
-                    vehicle.osrmEstimate?.vehicleToUser?.durationMaxSeconds,
-                  )
-                : "-"} menit
-            </span>
-          </span>
-        </div>
-
-        {/* PASSENGERS */}
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate text-[8px] font-medium uppercase tracking-wider text-slate-400 sm:text-[9px]">
+        <div className="flex min-w-0 flex-col rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-1.5 sm:rounded-xl sm:px-2.5 sm:py-2">
+          <span className="truncate text-[8px] font-medium text-slate-400 sm:text-[9px]">
             Penumpang
           </span>
           <span
@@ -168,29 +164,50 @@ export default function UpcomingVehicleCard({
         </div>
       </div>
 
-      {/* ESTIMATE DETAIL CHIPS */}
-      <div className="mt-1.5 grid grid-cols-3 gap-1 sm:mt-2 sm:gap-1.5">
-        <EstimateItem
-          label="Total Rute"
-          value={formatEstimateRange(
-            vehicle.osrmEstimate?.total?.durationMinSeconds,
-            vehicle.osrmEstimate?.total?.durationMaxSeconds,
-          )}
-        />
-        <EstimateItem
-          label="Ke Lokasimu"
-          value={formatEstimateRange(
-            vehicle.osrmEstimate?.vehicleToUser?.durationMinSeconds,
-            vehicle.osrmEstimate?.vehicleToUser?.durationMaxSeconds,
-          )}
-        />
-        <EstimateItem
-          label="Ke Tujuan"
-          value={formatEstimateRange(
-            vehicle.osrmEstimate?.userToDestination?.durationMinSeconds,
-            vehicle.osrmEstimate?.userToDestination?.durationMaxSeconds,
-          )}
-        />
+      {/* PERJALANAN: hierarki jelas — angkot ke kamu (utama), kamu ke tujuan, lalu total */}
+      <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 sm:mt-2.5 sm:rounded-xl sm:p-3">
+        {/* Primary: vehicle -> user */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 sm:h-6 sm:w-6">
+              <FiNavigation className="rotate-45 text-[9px] text-white sm:text-[10px]" />
+            </span>
+            <span className="truncate text-[11px] font-semibold text-slate-800 sm:text-xs">
+              Angkot ke kamu
+            </span>
+          </div>
+          <span className="shrink-0 whitespace-nowrap text-sm font-bold text-blue-700 sm:text-base">
+            {vehicleToUserEstimate} <span className="text-[10px] font-medium sm:text-[11px]">mnt</span>
+          </span>
+        </div>
+
+        {/* connector */}
+        <div className="ml-[9px] h-3 w-px bg-slate-300 sm:ml-[11px] sm:h-3.5" />
+
+        {/* Secondary: user -> destination */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-300 sm:h-6 sm:w-6">
+              <FiFlag className="text-[9px] text-slate-600 sm:text-[10px]" />
+            </span>
+            <span className="truncate text-[11px] font-medium text-slate-600 sm:text-xs">
+              Kamu ke tujuan
+            </span>
+          </div>
+          <span className="shrink-0 whitespace-nowrap text-[11px] font-semibold text-slate-600 sm:text-xs">
+            {userToDestinationEstimate} <span className="text-[9px] font-normal sm:text-[10px]">mnt</span>
+          </span>
+        </div>
+
+        {/* Total */}
+        <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
+          <span className="text-[10px] font-medium text-slate-500 sm:text-[11px]">
+            Total estimasi perjalanan
+          </span>
+          <span className="whitespace-nowrap text-[11px] font-bold text-slate-900 sm:text-xs">
+            {totalEstimate} <span className="text-[9px] font-normal text-slate-500 sm:text-[10px]">mnt</span>
+          </span>
+        </div>
       </div>
 
       {/* ACTION CTA: BLUE GRADIENT BUTTON */}
@@ -220,19 +237,6 @@ export default function UpcomingVehicleCard({
           </>
         )}
       </button>
-    </div>
-  );
-}
-
-function EstimateItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 px-1.5 py-1 sm:px-2 sm:py-1.5">
-      <p className="truncate text-[7px] font-semibold uppercase tracking-wider text-slate-400 sm:text-[8px]">
-        {label}
-      </p>
-      <p className="truncate text-[9px] font-bold text-slate-700 sm:text-[10px]">
-        {value} menit
-      </p>
     </div>
   );
 }
