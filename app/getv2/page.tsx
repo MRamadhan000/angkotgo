@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FiMapPin, FiNavigation } from "react-icons/fi";
 
-import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { DirectionType } from "@/types/vehicles/vehicle.type";

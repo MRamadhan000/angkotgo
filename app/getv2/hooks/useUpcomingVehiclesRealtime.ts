@@ -160,6 +160,7 @@ export function useUpcomingVehiclesRealtime(
 
   return {
     upcomingVehicles,
+    realtimeVehicles,
     realtimeUpcomingVehicles,
     isLoadingUpcomingVehicles,
     isUpcomingVehiclesError,

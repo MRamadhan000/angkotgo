@@ -23,6 +23,10 @@ import {
   PaymentStatus,
 } from "@/types/payments/payment.type";
 import { UpcomingVehicle } from "@/types/route-search.type";
+import { DummyQrCode } from "./DummyQrCode";
+import { SuccessOverlay } from "./SuccessOverlay";
+import { StepIndicator } from "./StepIndicator";
+import { formatRupiah } from "./util";
 
 const FARE_PER_PASSENGER = 5000;
 
@@ -35,248 +39,13 @@ interface BookingPaymentModalProps {
   isSubmitting: boolean;
   isMarkingSucceeded: boolean;
   isDevelopment: boolean;
-  onMarkAsSucceeded: () => Promise<void>;
+  onMarkAsSucceeded: () => Promise<boolean>;
   onAmountChange: (value: string) => void;
   onPaymentTypeChange: (value: CreatePaymentType) => void;
-  onSubmit: () => void;
+  onSubmit: () => Promise<boolean>;
   onClose: () => void;
 }
 
-// ─── Dummy QR Code SVG ────────────────────────────────────────────────────────
-function DummyQrCode() {
-  return (
-    <svg
-      width="180"
-      height="180"
-      viewBox="0 0 180 180"
-      xmlns="http://www.w3.org/2000/svg"
-      className="rounded-xl"
-    >
-      <rect width="180" height="180" fill="white" />
-      {/* Top-left finder */}
-      <rect x="10" y="10" width="50" height="50" fill="#1e293b" rx="4" />
-      <rect x="18" y="18" width="34" height="34" fill="white" rx="2" />
-      <rect x="24" y="24" width="22" height="22" fill="#1e293b" rx="2" />
-      {/* Top-right finder */}
-      <rect x="120" y="10" width="50" height="50" fill="#1e293b" rx="4" />
-      <rect x="128" y="18" width="34" height="34" fill="white" rx="2" />
-      <rect x="134" y="24" width="22" height="22" fill="#1e293b" rx="2" />
-      {/* Bottom-left finder */}
-      <rect x="10" y="120" width="50" height="50" fill="#1e293b" rx="4" />
-      <rect x="18" y="128" width="34" height="34" fill="white" rx="2" />
-      <rect x="24" y="134" width="22" height="22" fill="#1e293b" rx="2" />
-      {/* Data modules */}
-      <rect x="70" y="10" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="82" y="10" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="94" y="10" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="106" y="10" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="22" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="94" y="22" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="34" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="82" y="34" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="106" y="34" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="46" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="94" y="46" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="10" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="22" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="34" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="46" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="58" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="82" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="106" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="118" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="142" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="154" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="166" y="70" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="10" y="82" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="34" y="82" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="58" y="82" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="82" y="82" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="118" y="82" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="142" y="82" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="10" y="94" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="22" y="94" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="46" y="94" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="94" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="94" y="94" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="118" y="94" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="130" y="94" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="154" y="94" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="10" y="106" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="34" y="106" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="58" y="106" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="82" y="106" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="106" y="106" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="130" y="106" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="166" y="106" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="120" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="82" y="120" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="94" y="120" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="118" y="120" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="142" y="120" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="166" y="120" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="132" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="94" y="132" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="106" y="132" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="130" y="132" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="154" y="132" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="144" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="82" y="144" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="106" y="144" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="118" y="144" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="142" y="144" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="166" y="144" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="70" y="156" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="94" y="156" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="118" y="156" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="130" y="156" width="8" height="8" fill="#1e293b" rx="1" />
-      <rect x="154" y="156" width="8" height="8" fill="#1e293b" rx="1" />
-      {/* Center logo */}
-      <rect x="78" y="78" width="24" height="24" fill="white" rx="4" />
-      <rect x="80" y="80" width="20" height="20" fill="#3b82f6" rx="3" />
-      <text x="90" y="94" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">A</text>
-    </svg>
-  );
-}
-
-// ─── Success Animation Overlay ────────────────────────────────────────────────
-function SuccessOverlay({ onDone }: { onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3000);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 10,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(255,255,255,0.97)",
-        borderRadius: "1.5rem",
-      }}
-    >
-      <style>{`
-        @keyframes bpmPop {
-          0%   { transform: scale(0); opacity: 0; }
-          60%  { transform: scale(1.2); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes bpmRipple {
-          0%   { transform: scale(1); opacity: 0.6; }
-          100% { transform: scale(2.4); opacity: 0; }
-        }
-        @keyframes bpmSlideUp {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes bpmFadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        .bpm-overlay { animation: bpmFadeIn 0.3s ease; }
-        .bpm-icon    { animation: bpmPop 0.5s 0.1s cubic-bezier(.4,0,.2,1) both; }
-        .bpm-ripple-1 { animation: bpmRipple 1.4s 0s ease-out infinite; }
-        .bpm-ripple-2 { animation: bpmRipple 1.4s 0.2s ease-out infinite; }
-        .bpm-ripple-3 { animation: bpmRipple 1.4s 0.4s ease-out infinite; }
-        .bpm-title   { animation: bpmSlideUp 0.4s 0.3s both; }
-        .bpm-sub     { animation: bpmSlideUp 0.4s 0.45s both; }
-      `}</style>
-
-      <div className="bpm-overlay flex flex-col items-center">
-        <div style={{ position: "relative", marginBottom: "1.25rem" }}>
-          {["bpm-ripple-1", "bpm-ripple-2", "bpm-ripple-3"].map((cls) => (
-            <span
-              key={cls}
-              className={cls}
-              style={{
-                position: "absolute",
-                inset: "-12px",
-                borderRadius: "50%",
-                border: "2px solid #22c55e",
-                display: "block",
-              }}
-            />
-          ))}
-          <div
-            className="bpm-icon"
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #22c55e, #16a34a)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 8px 32px 0 rgba(34,197,94,0.35)",
-            }}
-          >
-            <FiCheckCircle size={36} color="white" />
-          </div>
-        </div>
-        <p className="bpm-title" style={{ fontSize: "1.1rem", fontWeight: 800, color: "#15803d", letterSpacing: "-0.02em" }}>
-          Pembayaran Berhasil!
-        </p>
-        <p className="bpm-sub" style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "0.35rem" }}>
-          Booking kamu sudah terkonfirmasi ✓
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Step Indicator ───────────────────────────────────────────────────────────
-function StepIndicator({ step }: { step: 1 | 2 }) {
-  return (
-    <div className="flex items-center justify-center gap-2 py-1">
-      {[1, 2].map((s) => (
-        <div key={s} className="flex items-center gap-2">
-          <div
-            className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-extrabold transition-all duration-300 ${
-              step === s
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-110"
-                : step > s
-                ? "bg-emerald-500 text-white"
-                : "bg-slate-100 text-slate-400"
-            }`}
-          >
-            {step > s ? <FiCheckCircle className="text-sm" /> : s}
-          </div>
-          <span
-            className={`text-[11px] font-bold transition-colors ${
-              step === s ? "text-blue-600" : step > s ? "text-emerald-600" : "text-slate-400"
-            }`}
-          >
-            {s === 1 ? "Detail" : "Bayar"}
-          </span>
-          {s < 2 && (
-            <div
-              className={`h-0.5 w-8 rounded-full transition-all duration-500 ${
-                step > 1 ? "bg-emerald-500" : "bg-slate-200"
-              }`}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Format Rupiah ────────────────────────────────────────────────────────────
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(value);
-}
-
-// ─── Main Modal ───────────────────────────────────────────────────────────────
 export function BookingPaymentModal({
   vehicle,
   paymentType,
@@ -304,18 +73,24 @@ export function BookingPaymentModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalAmount]);
 
-  // Move to step 2 when result arrives
-  useEffect(() => {
-    if (result) setStep(2);
-  }, [result]);
-
-  // Trigger success overlay
-  useEffect(() => {
-    if (isSucceeded) setShowSuccess(true);
-  }, [isSucceeded]);
-
   const changePassengers = (delta: number) => {
     setPassengers((prev) => Math.min(10, Math.max(1, prev + delta)));
+  };
+
+  const handleSubmit = async () => {
+    const succeeded = await onSubmit();
+    if (!succeeded) return;
+
+    if (paymentType === "CASH") {
+      setShowSuccess(true);
+    } else {
+      setStep(2);
+    }
+  };
+
+  const handleMarkAsSucceeded = async () => {
+    const succeeded = await onMarkAsSucceeded();
+    if (succeeded) setShowSuccess(true);
   };
 
   return (
@@ -560,7 +335,7 @@ export function BookingPaymentModal({
               {/* CTA Button */}
               <button
                 type="button"
-                onClick={onSubmit}
+                onClick={handleSubmit}
                 disabled={isSubmitting}
                 className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 text-sm font-extrabold text-white shadow-lg transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                 style={{
@@ -665,7 +440,7 @@ export function BookingPaymentModal({
                   </p>
                   <button
                     type="button"
-                    onClick={onMarkAsSucceeded}
+                    onClick={handleMarkAsSucceeded}
                     disabled={isMarkingSucceeded}
                     className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-extrabold text-white transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                     style={{

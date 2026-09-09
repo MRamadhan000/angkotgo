@@ -122,19 +122,19 @@ export function useBookingState({
     setBookingResult(null);
   };
 
-  const handleCreateBookingPayment = async () => {
-    if (!bookingVehicle) return;
+  const handleCreateBookingPayment = async (): Promise<boolean> => {
+    if (!bookingVehicle) return false;
 
     const userId = Number(user?.id);
     const amount = Number(bookingAmount.replace(/\D/g, ""));
 
     if (!Number.isInteger(userId) || userId <= 0) {
       alert("Silakan login sebagai user sebelum melakukan booking.");
-      return;
+      return false;
     }
     if (!Number.isFinite(amount) || amount < 1) {
       alert("Nominal pembayaran harus lebih besar dari 0.");
-      return;
+      return false;
     }
 
     try {
@@ -144,8 +144,10 @@ export function useBookingState({
         amount,
       });
       setBookingResult(result);
+      return true;
     } catch {
       // Error ditampilkan oleh modal dari hook state.
+      return false;
     }
   };
 
@@ -171,18 +173,23 @@ export function useBookingState({
     });
   };
 
-  const handleMarkAsSucceeded = async () => {
-    if (!bookingResult) return;
+  const handleMarkAsSucceeded = async (): Promise<boolean> => {
+    if (!bookingResult) return false;
 
     const paymentRequestId =
       bookingResult.data.xendit?.paymentRequestId ??
       bookingResult.data.xendit?.payment_request_id;
 
-    if (!paymentRequestId) return;
+    if (!paymentRequestId) return false;
 
     try {
       // Panggil webhook — parseResponse di service akan throw jika bukan 200/201
-      await bookingPayments.markAsSucceeded(paymentRequestId);
+      const response = await bookingPayments.markAsSucceeded(paymentRequestId);
+      const responseStatus = response.data?.status?.toUpperCase();
+
+      if (responseStatus && responseStatus !== PaymentStatus.SUCCEEDED) {
+        throw new Error("Status pembayaran belum berhasil dikonfirmasi.");
+      }
 
       // Hanya sampai sini jika response 200/201 → update state → animasi sukses
       setBookingResult((previous) =>
@@ -193,9 +200,11 @@ export function useBookingState({
             }
           : previous,
       );
+      return true;
     } catch {
       // Webhook gagal (4xx/5xx) — error sudah di-set oleh usePayments.
       // Animasi sukses TIDAK ditampilkan.
+      return false;
     }
   };
 
