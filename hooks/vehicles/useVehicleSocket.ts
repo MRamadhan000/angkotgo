@@ -94,8 +94,25 @@ export function useVehicleSocket(
      */
 
     const handleUpdated = (payload: VehicleRealtimePayload) => {
-      console.log("[VehicleRealtime] Updated:", payload);
+      const payloadWithAliases = payload as VehicleRealtimePayload & {
+        assignmentId?: number | string;
+        id?: number | string;
+      };
+      const payloadAssignmentId = Number(
+        payloadWithAliases.vehicleAssignmentId ??
+        payloadWithAliases.assignmentId ??
+        payloadWithAliases.id,
+      );
 
+      if (
+        payloadAssignmentId &&
+        Number(vehicleAssignmentId) &&
+        payloadAssignmentId !== Number(vehicleAssignmentId)
+      ) {
+        return;
+      }
+
+      console.log("[VehicleRealtime] Updated:", payload);
       setData(payload);
     };
 
@@ -200,7 +217,13 @@ export function useVehicleSockets(
   const [joinedAssignmentIds, setJoinedAssignmentIds] = useState<number[]>([]);
 
   useEffect(() => {
-    const assignmentIds = [...new Set(vehicleAssignmentIds)].filter(Number.isFinite);
+    const assignmentIds = [
+      ...new Set(
+        vehicleAssignmentIds
+          .map((assignmentId) => Number(assignmentId))
+          .filter((assignmentId) => Number.isFinite(assignmentId) && assignmentId > 0),
+      ),
+    ];
     if (assignmentIds.length === 0) {
       const resetTimer = window.setTimeout(() => {
         setData({});
@@ -216,18 +239,63 @@ export function useVehicleSockets(
       setConnected(true);
       assignmentIds.forEach((assignmentId) => vehicleSocket.join(assignmentId));
     };
-    const handleJoined = ({ vehicleAssignmentId }: { vehicleAssignmentId: number }) => {
+    const handleJoined = ({ vehicleAssignmentId }: { vehicleAssignmentId: number | string }) => {
+      const joinedAssignmentId = Number(vehicleAssignmentId);
+      if (!assignmentIds.includes(joinedAssignmentId)) return;
+
       setJoinedAssignmentIds((current) =>
-        current.includes(vehicleAssignmentId)
+        current.includes(joinedAssignmentId)
           ? current
-          : [...current, vehicleAssignmentId],
+          : [...current, joinedAssignmentId],
       );
     };
     const handleUpdated = (payload: VehicleRealtimePayload) => {
-      if (!assignmentIds.includes(Number(payload.vehicleAssignmentId))) return;
+      const rawPayload = payload as VehicleRealtimePayload & {
+        data?: Partial<VehicleRealtimePayload> & {
+          assignmentId?: number | string;
+          current_passengers?: number | null;
+          currentPassenger?: number | null;
+          passengers?: number | null;
+          passengerCount?: number | null;
+        };
+      };
+      const payloadData = (
+        rawPayload.data && typeof rawPayload.data === "object"
+          ? rawPayload.data
+          : rawPayload
+      ) as Partial<VehicleRealtimePayload> & {
+        vehicleAssignmentId?: number | string;
+        assignmentId?: number | string;
+        id?: number | string;
+        current_passengers?: number | null;
+        currentPassenger?: number | null;
+        passengers?: number | null;
+        passengerCount?: number | null;
+      };
+      const payloadAssignmentId = Number(
+        payloadData.vehicleAssignmentId ??
+        payloadData.assignmentId ??
+        payloadData.id,
+      );
+
+      if (!payloadAssignmentId || !assignmentIds.includes(payloadAssignmentId)) return;
+      const currentPassengers =
+        payloadData.currentPassengers ??
+        payloadData.current_passengers ??
+        payloadData.currentPassenger ??
+        payloadData.passengers ??
+        payloadData.passengerCount;
+
       setData((current) => ({
         ...current,
-        [Number(payload.vehicleAssignmentId)]: payload,
+        [payloadAssignmentId]: {
+          ...(payload as VehicleRealtimePayload),
+          ...(payloadData as VehicleRealtimePayload),
+          vehicleAssignmentId: payloadAssignmentId,
+          ...(currentPassengers !== undefined
+            ? { currentPassengers: Number(currentPassengers) }
+            : {}),
+        },
       }));
     };
     const handleDisconnect = () => {

@@ -10,6 +10,7 @@ import {
 
 import UpcomingVehicleCard from "./UpcomingVehicleCard";
 import { UpcomingVehicle } from "@/types/route-search.type";
+import type { VehicleRealtimePayload } from "@/services/vehicles/vehicleSocket.service";
 
 interface UpcomingVehicleListProps {
   upcomingVehicles: UpcomingVehicle[];
@@ -26,6 +27,9 @@ interface UpcomingVehicleListProps {
    * Status loading dari parent jika diperlukan.
    */
   isSubmitting?: boolean;
+  realtimeVehicles?: Record<number, VehicleRealtimePayload>;
+  isSocketConnected?: boolean;
+  joinedAssignmentIds?: number[];
 }
 
 export default function UpcomingVehicleList({
@@ -34,6 +38,9 @@ export default function UpcomingVehicleList({
   selectedVehicleId = null,
   onSubmit,
   isSubmitting = false,
+  realtimeVehicles = {},
+  isSocketConnected = false,
+  joinedAssignmentIds = [],
 }: UpcomingVehicleListProps) {
   const [submitted, setSubmitted] = useState(false);
   const [hasBoarded, setHasBoarded] = useState(false);
@@ -161,6 +168,9 @@ export default function UpcomingVehicleList({
               onBook={onBook}
               isSelected={selectedVehicleId === vehicle.assignmentId}
               isBookingEnabled={hasBoarded}
+              realtimeData={realtimeVehicles[vehicle.assignmentId] ?? null}
+              isSocketConnected={isSocketConnected}
+              isRoomJoined={joinedAssignmentIds.includes(Number(vehicle.assignmentId))}
             />
           ))}
         </div>
@@ -181,4 +191,4 @@ export default function UpcomingVehicleList({
       )}
     </div>
   );
-}
+}

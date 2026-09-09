@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import {
   FiCheckCircle,
+  FiCode,
+  FiX,
   FiMapPin,
   FiNavigation,
   FiUser,
@@ -10,12 +13,16 @@ import {
 } from "react-icons/fi";
 
 import { UpcomingVehicle } from "@/types/route-search.type";
+import type { VehicleRealtimePayload } from "@/services/vehicles/vehicleSocket.service";
 
 interface UpcomingVehicleCardProps {
   vehicle: UpcomingVehicle;
   onBook?: (vehicle: UpcomingVehicle) => void;
   isSelected?: boolean;
   isBookingEnabled?: boolean;
+  realtimeData?: VehicleRealtimePayload | null;
+  isSocketConnected?: boolean;
+  isRoomJoined?: boolean;
 }
 
 const formatDistance = (meters: number | null | undefined) => {
@@ -50,7 +57,13 @@ export default function UpcomingVehicleCard({
   onBook,
   isSelected = false,
   isBookingEnabled = false,
+  realtimeData = null,
+  isSocketConnected = false,
+  isRoomJoined = false,
 }: UpcomingVehicleCardProps) {
+  const [isDebugOpen, setIsDebugOpen] = useState(false);
+  const passengers = vehicle.currentPassengers ?? null;
+
   const hasLocation =
     vehicle.hasLocationData &&
     vehicle.vehicleLat !== null &&
@@ -58,7 +71,6 @@ export default function UpcomingVehicleCard({
 
   const canBook = vehicle.status === "ONGOING" && isBookingEnabled;
   const capacity = vehicle.vehicleCapacity ?? vehicle.vehicle?.capacity ?? 8;
-  const passengers = vehicle.currentPassengers;
   const hasPassengerData = passengers !== null && passengers !== undefined;
   const isFull = hasPassengerData && passengers >= capacity;
   const remainingSeats = hasPassengerData ? Math.max(0, capacity - passengers) : null;
@@ -237,6 +249,92 @@ export default function UpcomingVehicleCard({
           </>
         )}
       </button>
+
+      <button
+        type="button"
+        onClick={() => setIsDebugOpen(true)}
+        className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-2 py-1.5 text-[10px] font-semibold text-slate-500 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+      >
+        <FiCode className="text-xs" />
+        <span>Debug WebSocket</span>
+      </button>
+
+      {isDebugOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`debug-title-${vehicle.assignmentId}`}
+            className="max-h-[85vh] w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
+              <div>
+                <h3
+                  id={`debug-title-${vehicle.assignmentId}`}
+                  className="text-sm font-bold text-slate-900"
+                >
+                  Debug WebSocket · {vehicleLabel}
+                </h3>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Assignment ID: {vehicle.assignmentId}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDebugOpen(false)}
+                aria-label="Tutup debug WebSocket"
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(85vh-4.5rem)] space-y-3 overflow-y-auto p-4 text-xs">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                  <p className="text-[10px] text-slate-500">Koneksi socket</p>
+                  <p className={`mt-1 font-bold ${isSocketConnected ? "text-emerald-600" : "text-rose-600"}`}>
+                    {isSocketConnected ? "Terhubung" : "Tidak terhubung"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                  <p className="text-[10px] text-slate-500">Data assignment</p>
+                  <p className={`mt-1 font-bold ${realtimeData ? "text-emerald-600" : "text-amber-600"}`}>
+                    {realtimeData ? "Ada di WebSocket" : "Belum ada"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                  <p className="text-[10px] text-slate-500">Room</p>
+                  <p className={`mt-1 font-bold ${isRoomJoined ? "text-emerald-600" : "text-amber-600"}`}>
+                    {isRoomJoined ? "Joined" : "Belum joined"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
+                  Perbandingan current passenger
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-slate-700">
+                  <span>WebSocket: <strong>{realtimeData?.currentPassengers ?? "-"}</strong></span>
+                  <span>Dipakai kartu: <strong>{passengers ?? "-"}</strong></span>
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Payload terakhir
+                </p>
+                <pre className="overflow-x-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-emerald-300">
+                  {realtimeData
+                    ? JSON.stringify(realtimeData, null, 2)
+                    : "Belum menerima vehicle:updated untuk assignment ini."}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

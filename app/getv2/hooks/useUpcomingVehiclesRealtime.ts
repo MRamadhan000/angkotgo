@@ -77,13 +77,24 @@ export function useUpcomingVehiclesRealtime(
         (item) => item.id === vehicle.assignmentId,
       );
 
+      const realtimePassengers =
+        realtime?.currentPassengers ??
+        (realtime as any)?.current_passengers ??
+        (realtime as any)?.passengers ??
+        (realtime as any)?.passengerCount;
+
+      const currentPassengers =
+        realtimePassengers !== undefined && realtimePassengers !== null
+          ? Number(realtimePassengers)
+          : responsePassengers !== null && responsePassengers !== undefined
+          ? Number(responsePassengers)
+          : assignment?.currentPassengers !== undefined && assignment?.currentPassengers !== null
+          ? Number(assignment.currentPassengers)
+          : null;
+
       return {
         ...vehicle,
-        currentPassengers:
-          realtime?.currentPassengers ??
-          responsePassengers ??
-          assignment?.currentPassengers ??
-          null,
+        currentPassengers,
         ...(realtime
           ? {
               vehicleLat: realtime.latitude,

@@ -26,19 +26,17 @@ class VehicleSocketService {
    * =====================================================
    */
   connect(): Socket {
-    // Jangan membuat connection baru kalau
-    // socket sudah ada dan masih connected
-    if (this.socket?.connected) {
+    if (this.socket) {
+      if (!this.socket.connected) {
+        this.socket.connect();
+      }
       return this.socket;
     }
 
     this.socket = io(SOCKET_URL, {
       transports: ["polling", "websocket"],
-
       reconnection: true,
-
       reconnectionAttempts: 10,
-
       reconnectionDelay: 1000,
     });
 
@@ -56,7 +54,6 @@ class VehicleSocketService {
     }
 
     this.socket.disconnect();
-
     this.socket = null;
   }
 
@@ -66,15 +63,24 @@ class VehicleSocketService {
    * =====================================================
    */
   join(vehicleAssignmentId: number): void {
-    if (!this.socket) {
-      console.warn("[VehicleSocket] Socket belum connect");
+    const id = Number(vehicleAssignmentId);
+    if (!id || isNaN(id)) return;
 
-      return;
+    if (!this.socket) {
+      this.connect();
     }
 
-    this.socket.emit("vehicle:join", {
-      vehicleAssignmentId,
-    });
+    const emitJoin = () => {
+      this.socket?.emit("vehicle:join", {
+        vehicleAssignmentId: id,
+      });
+    };
+
+    if (this.socket?.connected) {
+      emitJoin();
+    } else {
+      this.socket?.once("connect", emitJoin);
+    }
   }
 
   /**

@@ -451,6 +451,9 @@ export default function CariRuteAngkot() {
               isSubmitting={booking.isCreatingSinyal}
               onBook={booking.handleBookVehicle}
               selectedVehicleId={booking.bookingVehicle?.assignmentId ?? null}
+              realtimeVehicles={vehicles.realtimeVehicles}
+              isSocketConnected={vehicles.isVehicleSocketConnected}
+              joinedAssignmentIds={vehicles.joinedAssignmentIds}
             />
           </div>
         </div>
