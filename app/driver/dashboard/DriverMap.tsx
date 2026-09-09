@@ -37,6 +37,7 @@ interface DriverMapProps {
     longitude: number;
     status: "ACTIVE";
   }>;
+  recenterTrigger?: number;
 }
 
 export default function DriverMap({
@@ -48,6 +49,7 @@ export default function DriverMap({
   routeName = "Rute angkot",
   locationSource = "last-known",
   userLocations = [],
+  recenterTrigger = 0,
 }: DriverMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -226,6 +228,22 @@ export default function DriverMap({
         ),
       );
   }, [mapReady, currentLocation, locationSource, routeName, currentPassengers, capacity]);
+
+  useEffect(() => {
+    if (!recenterTrigger || !mapRef.current) return;
+    const coordinate = toCoordinate(
+      currentLocation?.longitude,
+      currentLocation?.latitude,
+    );
+    if (coordinate) {
+      mapRef.current.flyTo({
+        center: coordinate,
+        zoom: 16,
+        duration: 800,
+        essential: true,
+      });
+    }
+  }, [recenterTrigger]);
 
   if (!MAPBOX_TOKEN) {
     return <div className="flex h-full items-center justify-center bg-slate-100 p-4 text-center text-sm text-slate-600">NEXT_PUBLIC_MAPBOX_TOKEN belum dikonfigurasi.</div>;

@@ -76,17 +76,17 @@ export function PaymentMonitor({
   const successfulTxCount = paidPayments.length;
 
   return (
-    <section className="rounded-2xl border border-slate-100 bg-white p-3.5 sm:p-5 shadow-sm transition-all">
+    <section className="rounded-xl sm:rounded-2xl border border-slate-100 bg-white p-2.5 sm:p-4 shadow-xs transition-all">
       {/* HEADER SECTION */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-slate-100">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-bold text-slate-900 text-sm sm:text-base">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 pb-2 sm:pb-3 border-b border-slate-100">
+        <div className="space-y-0.5">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <h3 className="font-bold text-slate-900 text-xs sm:text-sm">
               Pembayaran Penumpang
             </h3>
             {/* Status Realtime Badge */}
             <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-medium transition-colors ${
+              className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[9px] sm:text-[10px] font-medium transition-colors ${
                 isRealtimeActive
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
                   : "bg-amber-50 text-amber-700 border border-amber-200/60"
@@ -102,53 +102,40 @@ export function PaymentMonitor({
               {isRealtimeActive ? "Realtime" : "Menghubungkan..."}
             </span>
           </div>
-          <p className="text-[11px] sm:text-xs text-slate-500">
+          <p className="text-[10px] sm:text-xs text-slate-400">
             Daftar transaksi penumpang yang telah terverifikasi Lunas
           </p>
         </div>
-
-        {/* METODE BAYAR QUICK BADGES */}
-        {/* <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
-          {paymentMethodStats.map((stat) => (
-            <span
-              key={stat.type}
-              className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-lg border border-slate-200/50"
-            >
-              <FaUserCheck className="text-slate-400 text-[10px]" />
-              {stat.type}: <span className="font-extrabold text-slate-800">{stat.count}</span> orang
-            </span>
-          ))}
-        </div> */}
       </div>
 
-      {/* SUMMARY STATS (Simpel, Modern & Ringkas) */}
-      <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* SUMMARY STATS (Simpel, Modern & Ringkas - 2 kolom berdampingan di HP) */}
+      <div className="mt-2.5 grid grid-cols-2 gap-2 sm:gap-3">
         {/* Total Pendapatan */}
-        <div className="flex items-center gap-3.5 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-3.5 text-white shadow-xs">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md">
-            <FaWallet className="text-lg text-white" />
+        <div className="flex items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 sm:p-3 text-white shadow-xs min-w-0">
+          <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md">
+            <FaWallet className="text-sm sm:text-base text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-emerald-100 uppercase tracking-wide">
-              Total Pendapatan
+            <p className="text-[9px] sm:text-[10px] font-medium text-emerald-100 uppercase tracking-wide truncate">
+              Pendapatan
             </p>
-            <p className="text-lg sm:text-xl font-black tracking-tight break-words">
+            <p className="text-xs sm:text-base font-black tracking-tight truncate">
               Rp {totalAmount.toLocaleString("id-ID")}
             </p>
           </div>
         </div>
 
         {/* Transaksi Berhasil */}
-        <div className="flex items-center gap-3.5 rounded-2xl bg-slate-900 p-3.5 text-white shadow-xs">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-md">
-            <FaCheckCircle className="text-lg text-emerald-400" />
+        <div className="flex items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-slate-900 p-2.5 sm:p-3 text-white shadow-xs min-w-0">
+          <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-white/10 backdrop-blur-md">
+            <FaCheckCircle className="text-sm sm:text-base text-emerald-400" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">
-              Transaksi Berhasil
+            <p className="text-[9px] sm:text-[10px] font-medium text-slate-400 uppercase tracking-wide truncate">
+              Berhasil
             </p>
-            <p className="text-lg sm:text-xl font-black tracking-tight">
-              {successfulTxCount} <span className="text-xs font-normal text-slate-400">Transaksi</span>
+            <p className="text-xs sm:text-base font-black tracking-tight truncate">
+              {successfulTxCount} <span className="text-[9px] sm:text-xs font-normal text-slate-400">Trx</span>
             </p>
           </div>
         </div>

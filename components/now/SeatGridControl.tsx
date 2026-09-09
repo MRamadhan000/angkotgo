@@ -23,45 +23,44 @@ export const SeatGridControl: React.FC<SeatGridControlProps> = ({
   const availableCount = seats.length - occupiedCount;
 
   return (
-    <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 transition-all">
+    <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-xs border border-slate-100 transition-all">
       {/* HEADER & RINGKASAN */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4 pb-3 border-b border-slate-100">
+      <div className="flex items-center justify-between gap-2 mb-2.5 pb-2 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-1.5">
             <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight">
               Ketersediaan Kursi
             </h3>
             {!canControl && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-200/60">
-                <FaLock className="text-[9px]" />
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-amber-50 text-amber-600 border border-amber-200/60">
+                <FaLock className="text-[8px]" />
                 Hanya Lihat
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+          <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
             <FaInfoCircle className="text-slate-300 shrink-0" />
             {canControl
-              ? "Tap kursi untuk mengubah status terisi/kosong."
-              : "Status dipantau secara langsung."}
+              ? "Tap kursi untuk ubah status."
+              : "Status dipantau langsung."}
           </p>
         </div>
 
         {/* COUNTER BADGES */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 text-[11px] font-bold">
-            <FaUserCheck className="text-[10px]" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md sm:rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] sm:text-[11px] font-bold">
+            <FaUserCheck className="text-[9px]" />
             <span>Kosong: {availableCount}</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 text-[11px] font-bold">
-            <FaChair className="text-[10px]" />
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md sm:rounded-lg bg-rose-50 border border-rose-100 text-rose-700 text-[10px] sm:text-[11px] font-bold">
+            <FaChair className="text-[9px]" />
             <span>Terisi: {occupiedCount}</span>
           </div>
         </div>
       </div>
 
       {/* SEAT GRID RESPONSIVE MOBILE */}
-      {/* Grid: 4 kolom di layar kecil (HP), 6/8 kolom di tablet & desktop */}
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 mb-4">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 sm:gap-2 mb-1">
         {seats.map((seat) => {
           const isOccupied = seat.isOccupied;
           return (
@@ -70,7 +69,7 @@ export const SeatGridControl: React.FC<SeatGridControlProps> = ({
               type="button"
               disabled={!canControl}
               onClick={() => onToggleSeat(seat.seatNumber)}
-              className={`relative group flex h-11 sm:h-12 w-full flex-col items-center justify-center rounded-xl border text-xs sm:text-sm font-bold transition-all duration-150 select-none ${
+              className={`relative group flex h-9 sm:h-11 w-full flex-col items-center justify-center rounded-lg sm:rounded-xl border text-[11px] sm:text-xs font-bold transition-all duration-150 select-none ${
                 isOccupied
                   ? "bg-rose-500 border-rose-500 text-white shadow-xs hover:bg-rose-600"
                   : "bg-white border-emerald-200 text-slate-700 hover:bg-emerald-50/60 hover:border-emerald-300"
@@ -81,7 +80,7 @@ export const SeatGridControl: React.FC<SeatGridControlProps> = ({
               }`}
             >
               <FaChair
-                className={`text-[10px] sm:text-xs mb-0.5 transition-colors ${
+                className={`text-[9px] sm:text-[11px] mb-0.5 transition-colors ${
                   isOccupied ? "text-rose-100" : "text-emerald-500/70"
                 }`}
               />

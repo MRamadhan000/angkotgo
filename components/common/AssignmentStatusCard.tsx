@@ -106,7 +106,7 @@ export function AssignmentStatusCard({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${config.containerClass}`}
+      className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex flex-row items-center justify-between gap-2 transition-all ${config.containerClass}`}
     >
       {/* Background Ambient Glow untuk status gradient */}
       {(currentStatus === AssignmentStatus.ONGOING ||
@@ -115,27 +115,27 @@ export function AssignmentStatusCard({
       )}
 
       {/* Detail Status & Icon */}
-      <div className="flex items-center gap-3.5 z-10">
+      <div className="flex items-center gap-2 sm:gap-3.5 z-10 min-w-0">
         <div
-          className={`relative h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${config.iconBgClass}`}
+          className={`relative h-8 w-8 sm:h-11 sm:w-11 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${config.iconBgClass}`}
         >
-          {config.icon}
+          <div className="text-sm sm:text-lg">{config.icon}</div>
           {config.isLivePing && (
-            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-white" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-white" />
             </span>
           )}
         </div>
 
-        <div>
+        <div className="min-w-0">
           <div
-            className={`flex items-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider ${config.textColorClass}`}
+            className={`flex items-center gap-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider truncate ${config.textColorClass}`}
           >
             {config.subIcon}
-            <span>{config.badgeText}</span>
+            <span className="truncate">{config.badgeText}</span>
           </div>
-          <div className="text-base sm:text-lg font-black tracking-wide mt-0.5">
+          <div className="text-xs sm:text-base font-black tracking-tight truncate mt-0.5">
             {config.label}
           </div>
         </div>
@@ -145,10 +145,10 @@ export function AssignmentStatusCard({
       <button
         type="button"
         onClick={onOpenModal}
-        className={`z-10 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-extrabold rounded-xl transition-all active:scale-95 cursor-pointer ${config.buttonClass}`}
+        className={`z-10 shrink-0 flex items-center justify-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-[10px] sm:text-xs font-extrabold rounded-lg sm:rounded-xl transition-all active:scale-95 cursor-pointer ${config.buttonClass}`}
       >
-        <FaEdit className="text-xs" />
-        <span>Ubah Status</span>
+        <FaEdit className="text-[10px] sm:text-xs" />
+        <span>Ubah</span>
       </button>
     </div>
   );

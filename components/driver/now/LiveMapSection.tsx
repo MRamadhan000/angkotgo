@@ -28,6 +28,11 @@ interface LiveMapSectionProps {
   assignmentId: number;
   vehicleSocketStatus: { connected: boolean; joined: boolean };
   userSocketStatus: { connected: boolean; joined: boolean };
+
+  // New cockpit features
+  isFullscreen?: boolean;
+  recenterTrigger?: number;
+  showDebugPanel?: boolean;
 }
 
 const SOURCE_DISPLAY_MAP: Record<LocationSource, string> = {
@@ -50,7 +55,55 @@ export function LiveMapSection({
   assignmentId,
   vehicleSocketStatus,
   userSocketStatus,
+  isFullscreen = false,
+  recenterTrigger = 0,
+  showDebugPanel = false,
 }: LiveMapSectionProps) {
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 h-full w-full z-0 bg-slate-100 overflow-hidden">
+        {/* Floating Source Overlay (Top right, below top bar) */}
+        <div className="absolute top-20 right-4 z-10 hidden sm:flex items-center gap-1.5 rounded-xl bg-white/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-slate-200/60 shadow-2xs pointer-events-none">
+          <FaLocationCrosshairs className="text-blue-500 text-xs" />
+          <span>
+            Sumber:{" "}
+            <span className="text-slate-900 capitalize">
+              {SOURCE_DISPLAY_MAP[locationSource]}
+            </span>
+          </span>
+        </div>
+
+        <DriverMap
+          routePaths={routePaths}
+          routeStops={routeStops}
+          currentLocation={displayedVehicleLocation}
+          locationSource={locationSource}
+          userLocations={activeUserLocations}
+          currentPassengers={currentPassengers}
+          capacity={capacity}
+          routeName={routeName}
+          recenterTrigger={recenterTrigger}
+        />
+
+        {showDebugPanel && (
+          <div className="absolute bottom-[240px] left-3 right-3 z-20 max-w-sm sm:left-4">
+            <DebugLocationPanel
+              assignmentId={assignmentId}
+              vehicleLocation={displayedVehicleLocation}
+              vehicleLocationSource={locationSourceLabel}
+              vehicleSocketConnected={vehicleSocketStatus.connected}
+              vehicleSocketJoined={vehicleSocketStatus.joined}
+              userSocketConnected={userSocketStatus.connected}
+              userSocketJoined={userSocketStatus.joined}
+              userLocations={activeUserLocations}
+              routePathCount={routePaths.length}
+              routeStopCount={routeStops.length}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="mt-3 sm:mt-4 space-y-3">
       {/* MAP SECTION HEADER */}
