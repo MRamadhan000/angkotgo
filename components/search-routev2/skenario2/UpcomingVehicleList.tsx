@@ -56,7 +56,7 @@ export default function UpcomingVehicleList({
             <h2 className="text-sm font-bold text-slate-900 sm:text-base">
               Pilih Angkot
             </h2>
-            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-600/20">
+            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-[#003d9b] ring-1 ring-blue-600/20">
               {vehicles.length} tersedia
             </span>
           </div>
@@ -67,7 +67,7 @@ export default function UpcomingVehicleList({
         </div>
       </div>
 
-      {/* SIGNAL BUTTON (Gojek Gradient) */}
+      {/* SIGNAL BUTTON (Blue Gradient) */}
       <div className="shrink-0 px-4 pb-3">
         <button
           type="button"
@@ -75,15 +75,15 @@ export default function UpcomingVehicleList({
           disabled={isSubmitting || submitted}
           className={`relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl px-4 py-3 text-xs font-bold transition-all sm:text-sm ${
             submitted
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm"
-              : "bg-gradient-to-r from-emerald-600 via-emerald-600 to-green-500 text-white shadow-lg shadow-emerald-600/20 hover:from-emerald-500 hover:to-green-500 active:scale-[0.99]"
+              ? "border border-blue-200 bg-blue-50 text-blue-700 shadow-sm"
+              : "bg-gradient-to-r from-[#003d9b] via-blue-600 to-blue-500 text-white shadow-lg shadow-blue-600/25 hover:from-blue-700 hover:to-blue-600 active:scale-[0.99]"
           } ${
             isSubmitting || submitted ? "cursor-not-allowed opacity-90" : ""
           }`}
         >
           {submitted ? (
             <>
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
                 <FiCheck className="text-xs" />
               </div>
               <span>Sinyal Berhasil Dikirim ke Driver</span>
@@ -130,8 +130,8 @@ export default function UpcomingVehicleList({
               disabled={hasBoarded}
               className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
                 hasBoarded
-                  ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/30"
-                  : "bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-500 active:scale-[0.98]"
+                  ? "bg-[#003d9b] text-white shadow-sm ring-2 ring-blue-600/30"
+                  : "bg-[#003d9b] text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98]"
               } disabled:cursor-default`}
             >
               {hasBoarded ? "✓ Sudah Naik" : "Ya, Saya Sudah Naik"}
@@ -166,7 +166,7 @@ export default function UpcomingVehicleList({
         </div>
       ) : (
         <div className="mx-4 mb-4 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-8 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-[#003d9b]">
             <FiNavigation className="text-xl rotate-45" />
           </div>
 

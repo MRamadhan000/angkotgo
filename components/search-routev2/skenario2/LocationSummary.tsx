@@ -18,14 +18,14 @@ export default function LocationSummary({
       type="button"
       onClick={onEdit}
       disabled={!onEdit}
-      className="group relative flex w-full items-stretch gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 text-left shadow-sm transition-all hover:border-emerald-500 hover:shadow-md active:scale-[0.99] disabled:cursor-default"
+      className="group relative flex w-full items-stretch gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 text-left shadow-sm transition-all hover:border-[#003d9b] hover:shadow-md active:scale-[0.99] disabled:cursor-default"
     >
       {/* Visual Route Indicator (Dots + Line) */}
       <div className="my-0.5 flex shrink-0 flex-col items-center justify-between py-1">
-        <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-100 ring-2 ring-emerald-500/20">
-          <div className="h-2 w-2 rounded-full bg-emerald-600" />
+        <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-100 ring-2 ring-blue-500/20">
+          <div className="h-2 w-2 rounded-full bg-[#003d9b]" />
         </div>
-        <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-emerald-500 via-slate-300 to-rose-500" />
+        <div className="h-5 w-0.5 rounded-full bg-gradient-to-b from-[#003d9b] via-slate-300 to-rose-500" />
         <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-100 ring-2 ring-rose-500/20">
           <FiMapPin className="text-[11px] text-rose-600" />
         </div>
@@ -56,7 +56,7 @@ export default function LocationSummary({
 
       {/* Edit Pill Button */}
       {onEdit && (
-        <div className="absolute right-3 top-3.5 flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 transition group-hover:bg-emerald-50 group-hover:text-emerald-700">
+        <div className="absolute right-3 top-3.5 flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 transition group-hover:bg-blue-50 group-hover:text-[#003d9b]">
           <FiEdit2 className="text-[10px]" />
           <span>Ubah</span>
         </div>

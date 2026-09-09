@@ -274,9 +274,9 @@ export default function CariRuteAngkot() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black tracking-tight text-white sm:text-sm">
-                  Angkot<span className="text-emerald-400">Go</span>
+                  Angkot<span className="text-blue-400">Go</span>
                 </span>
-                <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[9px] font-bold text-emerald-300">
+                <span className="rounded-full bg-blue-500/20 px-1.5 py-0.2 text-[9px] font-bold text-blue-300">
                   Rute
                 </span>
               </div>
@@ -288,7 +288,7 @@ export default function CariRuteAngkot() {
 
           {isAuthenticated && user ? (
             <div className="flex max-w-32 items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm sm:max-w-40 sm:px-3">
-              <FiUser className="shrink-0 text-emerald-400" aria-hidden="true" />
+              <FiUser className="shrink-0 text-blue-400" aria-hidden="true" />
               <span className="truncate">{user.name}</span>
             </div>
           ) : (
@@ -354,7 +354,7 @@ export default function CariRuteAngkot() {
                 type="button"
                 onClick={gps.handleResetToGPS}
                 disabled={gps.isLocating}
-                className="mt-1 flex items-center justify-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50/70 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-1 flex items-center justify-center gap-1.5 rounded-xl border border-blue-100 bg-blue-50/70 py-2 text-xs font-semibold text-[#003d9b] transition hover:bg-blue-100 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FiNavigation
                   className={`text-xs ${gps.isLocating ? "animate-pulse" : ""}`}
@@ -412,7 +412,7 @@ export default function CariRuteAngkot() {
               type="button"
               onClick={handleSearch}
               disabled={isSearchingRoute}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-green-500 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-600/25 transition-all hover:from-emerald-500 hover:to-green-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#003d9b] via-blue-600 to-blue-500 py-3.5 text-sm font-bold text-white shadow-xl shadow-blue-600/25 transition-all hover:from-blue-700 hover:to-blue-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <FiNavigation className="text-base rotate-45" />
               <span>{isSearchingRoute ? "Mencari Rute..." : "Cari Angkot"}</span>
