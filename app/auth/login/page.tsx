@@ -44,7 +44,16 @@ export default function UserLoginPage() {
 
     try {
       await loginUser(data);
-      router.push("/dashboard"); // Redirect ke dashboard user setelah berhasil login
+      const redirectPath = new URLSearchParams(window.location.search).get(
+        "redirect",
+      );
+      const safeRedirectPath =
+        redirectPath &&
+        redirectPath.startsWith("/") &&
+        !redirectPath.startsWith("//")
+          ? redirectPath
+          : "/";
+      router.replace(safeRedirectPath);
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error

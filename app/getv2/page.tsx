@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import mapboxgl from "mapbox-gl";
 import { useQueryClient } from "@tanstack/react-query";
-import { FiArrowLeft, FiClock, FiMapPin, FiNavigation } from "react-icons/fi";
+import {
+  FiArrowLeft,
+  FiClock,
+  FiMapPin,
+  FiNavigation,
+  FiUser,
+} from "react-icons/fi";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { DirectionType } from "@/types/vehicles/vehicle.type";
@@ -78,9 +85,25 @@ mapboxgl.accessToken = MAPBOX_TOKEN || "";
 const SHEET_TOP_PEEK = 68;
 const SHEET_TOP_FULL = 10;
 const SHEET_OVERDRAG_LIMIT = SHEET_TOP_PEEK + 12;
+const BOOKING_RETURN_STATE_KEY = "getv2-booking-return-state";
+
+type BookingReturnState = {
+  origin: string;
+  destination: string;
+  originCoords: Coordinates;
+  destinationCoords: Coordinates;
+  selectedRoute: {
+    routeId: number;
+    direction: DirectionType;
+  };
+  bookingVehicleId: number;
+  bookingAmount: string;
+  bookingType: CreatePaymentType;
+};
 
 export default function CariRuteAngkot() {
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const bookingPayments = usePayments(null);
   const isDevelopment = process.env.NODE_ENV === "development";
@@ -121,6 +144,11 @@ export default function CariRuteAngkot() {
   const [bookingType, setBookingType] = useState<CreatePaymentType>("CASH");
   const [bookingResult, setBookingResult] =
     useState<PaymentCreateResponse | null>(null);
+  const [isRestoringBooking, setIsRestoringBooking] = useState(false);
+  const [pendingBookingVehicleId, setPendingBookingVehicleId] = useState<
+    number | null
+  >(null);
+  const restoredBookingStateRef = useRef(false);
   const bookingPaymentRealtime = usePaymentSocket(
     bookingVehicle?.assignmentId ?? null,
   );
@@ -264,6 +292,76 @@ export default function CariRuteAngkot() {
       };
     },
   );
+
+  useEffect(() => {
+    if (isAuthLoading || restoredBookingStateRef.current) return;
+
+    restoredBookingStateRef.current = true;
+    let restoreTimer: number | undefined;
+
+    try {
+      const storedState = localStorage.getItem(BOOKING_RETURN_STATE_KEY);
+      if (!storedState) return;
+
+      const savedState = JSON.parse(storedState) as BookingReturnState;
+      restoreTimer = window.setTimeout(async () => {
+        setIsRestoringBooking(true);
+        setOrigin(savedState.origin);
+        setDestination(savedState.destination);
+        setOriginCoords(savedState.originCoords);
+        setDestinationCoords(savedState.destinationCoords);
+        setSelectedRoute(savedState.selectedRoute);
+        setBookingAmount(savedState.bookingAmount);
+        setBookingType(savedState.bookingType);
+        setPendingBookingVehicleId(savedState.bookingVehicleId);
+        setScenario(2);
+        setShowGpsModal(false);
+
+        try {
+          const vehicleParams = {
+            routeId: savedState.selectedRoute.routeId,
+            direction: savedState.selectedRoute.direction,
+            latitude: savedState.originCoords.lat,
+            longitude: savedState.originCoords.lng,
+          };
+
+          await queryClient.fetchQuery({
+            queryKey: ["upcoming-vehicles", vehicleParams],
+            queryFn: () => getUpcomingVehicles(vehicleParams),
+          });
+        } catch (error) {
+          console.error("Gagal memulihkan kendaraan booking:", error);
+        } finally {
+          setIsRestoringBooking(false);
+        }
+      }, 0);
+    } catch {
+      localStorage.removeItem(BOOKING_RETURN_STATE_KEY);
+    }
+
+    return () => {
+      if (restoreTimer !== undefined) window.clearTimeout(restoreTimer);
+    };
+  }, [isAuthLoading, queryClient]);
+
+  useEffect(() => {
+    if (pendingBookingVehicleId === null) return;
+
+    const vehicle = realtimeUpcomingVehicles.find(
+      (item) => item.assignmentId === pendingBookingVehicleId,
+    );
+    if (!vehicle) return;
+
+    const restoreTimer = window.setTimeout(() => {
+      setBookingVehicle(vehicle);
+      setBookingResult(null);
+      setPendingBookingVehicleId(null);
+      setIsRestoringBooking(false);
+      localStorage.removeItem(BOOKING_RETURN_STATE_KEY);
+    }, 0);
+
+    return () => window.clearTimeout(restoreTimer);
+  }, [pendingBookingVehicleId, realtimeUpcomingVehicles]);
 
   useEffect(() => {
     if (
@@ -419,11 +517,15 @@ export default function CariRuteAngkot() {
 
   // RESET BOTTOM SHEET
   useEffect(() => {
-    if (scenario === 2) {
+    if (scenario !== 2) return;
+
+    const sheetTimer = window.setTimeout(() => {
       setIsSheetTransitioning(true);
       setSheetTop(SHEET_TOP_PEEK);
       setSheetSnapped("peek");
-    }
+    }, 0);
+
+    return () => window.clearTimeout(sheetTimer);
   }, [scenario]);
 
   // BOTTOM SHEET DRAG
@@ -901,6 +1003,33 @@ export default function CariRuteAngkot() {
   };
 
   const handleBookVehicle = (vehicle: UpcomingVehicle) => {
+    if (!isAuthenticated) {
+      const stateToRestore: BookingReturnState | null =
+        originCoords && destinationCoords && selectedRoute
+          ? {
+              origin,
+              destination,
+              originCoords,
+              destinationCoords,
+              selectedRoute,
+              bookingVehicleId: vehicle.assignmentId,
+              bookingAmount,
+              bookingType,
+            }
+          : null;
+
+      if (stateToRestore) {
+        localStorage.setItem(
+          BOOKING_RETURN_STATE_KEY,
+          JSON.stringify(stateToRestore),
+        );
+      }
+
+      alert("Silakan login terlebih dahulu untuk melakukan booking.");
+      router.push("/auth/login?redirect=%2Fgetv2");
+      return;
+    }
+
     setBookingVehicle(vehicle);
     setBookingResult(null);
   };
@@ -934,11 +1063,20 @@ export default function CariRuteAngkot() {
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-[#faf8ff] text-[#191b23]">
       <GpsPermissionModal
-        open={showGpsModal}
+        open={showGpsModal && !isAuthLoading && !isRestoringBooking}
         isLocating={isLocating}
         onEnable={handleEnableGps}
         onSkip={handleSkipGps}
       />
+
+      {isRestoringBooking && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
+          <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-xl">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            Menghubungkan kembali perjalanan Anda...
+          </div>
+        </div>
+      )}
 
       <div className="absolute inset-0 z-0">
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
@@ -988,7 +1126,14 @@ export default function CariRuteAngkot() {
             Cari Rute Angkot
           </h1>
 
-          <div className="w-9 sm:w-10" />
+          {isAuthenticated && user ? (
+            <div className="flex max-w-32 items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 sm:max-w-40 sm:px-3 sm:text-sm">
+              <FiUser className="shrink-0" aria-hidden="true" />
+              <span className="truncate">{user.name}</span>
+            </div>
+          ) : (
+            <div className="w-9 sm:w-10" />
+          )}
         </div>
 
         {/* SEARCH CARD */}

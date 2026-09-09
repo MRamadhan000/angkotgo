@@ -73,12 +73,18 @@ export default function RoutePathLine({ map, routePaths }: RoutePathLineProps) {
     }
 
     return () => {
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId);
-      }
+      try {
+        if (!map.getStyle()) return;
 
-      if (map.getSource(sourceId)) {
-        map.removeSource(sourceId);
+        if (map.getLayer(layerId)) {
+          map.removeLayer(layerId);
+        }
+
+        if (map.getSource(sourceId)) {
+          map.removeSource(sourceId);
+        }
+      } catch {
+        // Mapbox may already be removed while React cleans up the effect.
       }
     };
   }, [map, routePaths]);
