@@ -172,20 +172,31 @@ export function useBookingState({
   };
 
   const handleMarkAsSucceeded = async () => {
-    const paymentRequestId =
-      bookingResult?.data.xendit?.paymentRequestId ??
-      bookingResult?.data.xendit?.payment_request_id;
-    if (!paymentRequestId || !bookingResult) return;
+    if (!bookingResult) return;
 
-    await bookingPayments.markAsSucceeded(paymentRequestId);
-    setBookingResult((previous) =>
-      previous
-        ? {
-            ...previous,
-            data: { ...previous.data, status: PaymentStatus.SUCCEEDED },
-          }
-        : previous,
-    );
+    const paymentRequestId =
+      bookingResult.data.xendit?.paymentRequestId ??
+      bookingResult.data.xendit?.payment_request_id;
+
+    if (!paymentRequestId) return;
+
+    try {
+      // Panggil webhook — parseResponse di service akan throw jika bukan 200/201
+      await bookingPayments.markAsSucceeded(paymentRequestId);
+
+      // Hanya sampai sini jika response 200/201 → update state → animasi sukses
+      setBookingResult((previous) =>
+        previous
+          ? {
+              ...previous,
+              data: { ...previous.data, status: PaymentStatus.SUCCEEDED },
+            }
+          : previous,
+      );
+    } catch {
+      // Webhook gagal (4xx/5xx) — error sudah di-set oleh usePayments.
+      // Animasi sukses TIDAK ditampilkan.
+    }
   };
 
   return {

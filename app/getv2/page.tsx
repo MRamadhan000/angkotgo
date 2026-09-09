@@ -42,7 +42,7 @@ import type { SelectedRoute } from "./types";
 export default function CariRuteAngkot() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
-  const isDevelopment = process.env.NODE_ENV === "development";
+  const isDevelopment = true;
 
   // ─── Scenario & selected route ───
   const [scenario, setScenario] = useState<1 | 2>(1);
