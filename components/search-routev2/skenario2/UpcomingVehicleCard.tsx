@@ -7,6 +7,8 @@ import {
   FiNavigation,
   FiUser,
   FiUsers,
+  FiArrowRight,
+  FiCheck,
 } from "react-icons/fi";
 
 import { UpcomingVehicle } from "@/types/route-search.type";
@@ -61,6 +63,9 @@ export default function UpcomingVehicleCard({
   const passengers = vehicle.currentPassengers;
   const hasPassengerData = passengers !== null && passengers !== undefined;
   const isFull = hasPassengerData && passengers >= capacity;
+  const remainingSeats = hasPassengerData ? Math.max(0, capacity - passengers) : null;
+  const isOngoing = vehicle.status === "ONGOING";
+
   const driverLabel =
     vehicle.driverName || vehicle.driver?.name || `Driver #${vehicle.driverId}`;
   const vehicleLabel =
@@ -71,122 +76,114 @@ export default function UpcomingVehicleCard({
   return (
     <div
       className={`
-        overflow-hidden rounded-2xl bg-white
-        p-3
-        transition-all duration-200
-        sm:p-4
+        relative overflow-hidden rounded-2xl bg-white p-3.5 transition-all duration-200 sm:p-4
         ${
           isSelected
-            ? "border-2 border-blue-600 shadow-[0_8px_30px_rgb(37,99,235,0.12)]"
-            : "border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md"
+            ? "border-2 border-emerald-500 shadow-[0_8px_25px_rgba(16,185,129,0.18)]"
+            : "border border-slate-200/90 shadow-sm hover:border-emerald-300 hover:shadow-md"
         }
       `}
     >
-      {/* HEADER */}
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {/* Vehicle Icon */}
+      {/* TOP HEADER: Vehicle Code, Status, Seat Badge */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {/* Angkot Icon / Pill */}
           <div
-            className={`
-              flex h-9 w-9 shrink-0 items-center justify-center
-              rounded-full
-              sm:h-10 sm:w-10
-              ${
-                isSelected
-                  ? "bg-blue-100 text-blue-600"
-                  : "bg-blue-50 text-blue-600"
-              }
-            `}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-bold transition ${
+              isSelected
+                ? "bg-emerald-600 text-white"
+                : "bg-emerald-50 text-emerald-700"
+            }`}
           >
-            <FiNavigation className="text-sm sm:text-base" />
+            <FiNavigation className="text-sm rotate-45" />
           </div>
 
-          {/* Vehicle Info */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h3 className="truncate text-xs font-bold text-slate-900 sm:text-sm">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-900">
                 {vehicleLabel}
-              </h3>
-
-              <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[8px] font-semibold text-slate-500 sm:text-[9px]">
-                ID {vehicle.assignmentId}
               </span>
+              
             </div>
-
-            <p className="mt-0.5 flex items-center gap-1 text-[9px] text-slate-500 sm:text-[10px]">
-              <FiUser className="shrink-0 text-[9px]" />
-
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+              <FiUser className="text-[10px] text-slate-400" />
               <span className="truncate">{driverLabel}</span>
             </p>
           </div>
         </div>
+
+        {/* Fare & Seats Pill */}
+        <div className="flex flex-col items-end gap-1">
+          <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+            Rp 5.000<span className="text-[10px] font-normal text-emerald-600">/org</span>
+          </span>
+      
+        </div>
       </div>
 
-      {/* INFORMATION */}
-      <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-slate-100 bg-slate-50 p-2 sm:gap-2 sm:p-2.5">
+      {/* METRICS ROW (Distance, Arrival Time, Passengers) */}
+      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl border border-slate-100 bg-slate-50/80 p-2.5">
         {/* DISTANCE */}
-        <div className="min-w-0">
-          <p className="mb-1 text-[8px] font-semibold uppercase tracking-wider text-slate-400 sm:text-[9px]">
+        <div className="flex flex-col">
+          <span className="text-[9px] font-medium uppercase tracking-wider text-slate-400">
             Jarak
-          </p>
-
-          <p className="flex items-center gap-1 text-[10px] font-bold text-blue-600 sm:text-xs">
-            <FiMapPin className="shrink-0 text-[10px] sm:text-xs" />
-
-            <span className="truncate">
-              {formatDistance(vehicle.distanceToUserMeters)}
-            </span>
-          </p>
+          </span>
+          <span className="mt-0.5 flex items-center gap-1 text-xs font-bold text-slate-800">
+            <FiMapPin className="text-[11px] text-emerald-600" />
+            {formatDistance(vehicle.distanceToUserMeters)}
+          </span>
         </div>
 
-        {/* SEATS */}
-        <div className="min-w-0">
-          <p className="mb-1 text-[8px] font-semibold uppercase tracking-wider text-slate-400 sm:text-[9px]">
-            Kursi
-          </p>
-          <p className={`flex items-center gap-1 text-[10px] font-bold sm:text-xs ${!hasPassengerData ? "text-slate-500" : isFull ? "text-red-600" : "text-emerald-600"}`}>
-            <FiUsers className="shrink-0 text-[10px] sm:text-xs" />
-            {hasPassengerData
-              ? `${passengers}/${capacity} ${isFull ? "Penuh" : "Tersedia"}`
-              : `-/${capacity}`}
-          </p>
-        </div>
-
-        {/* ARRIVAL */}
-        <div className="min-w-0">
-          <p className="mb-1 text-[8px] font-semibold uppercase tracking-wider text-slate-400 sm:text-[9px]">
-            Tiba
-          </p>
-
-          <p className="flex items-center gap-1 text-[10px] font-bold text-slate-700 sm:text-xs">
-            <FiClock className="shrink-0 text-[10px] text-blue-500 sm:text-xs" />
+        {/* TIME TO ARRIVAL */}
+        <div className="flex flex-col">
+          <span className="text-[9px] font-medium uppercase tracking-wider text-slate-400">
+            Estimasi Tiba
+          </span>
+          <span className="mt-0.5 flex items-center gap-1 text-xs font-bold text-slate-800">
+            <FiClock className="text-[11px] text-emerald-600" />
             {hasLocation
               ? formatEstimateRange(
                   vehicle.osrmEstimate?.vehicleToUser?.durationMinSeconds,
                   vehicle.osrmEstimate?.vehicleToUser?.durationMaxSeconds,
                 )
               : "-"}
-          </p>
+          </span>
+        </div>
+
+        {/* PASSENGERS */}
+        <div className="flex flex-col">
+          <span className="text-[9px] font-medium uppercase tracking-wider text-slate-400">
+            Penumpang
+          </span>
+          <span
+            className={`mt-0.5 flex items-center gap-1 text-xs font-bold ${
+              isFull ? "text-rose-600" : "text-slate-800"
+            }`}
+          >
+            <FiUsers className="text-[11px] text-slate-500" />
+            {hasPassengerData ? `${passengers}/${capacity}` : `-/${capacity}`}
+          </span>
         </div>
       </div>
 
-      <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-xl border border-blue-100 bg-blue-50/60 p-2 sm:gap-2 sm:p-2.5">
+      {/* ESTIMATE DETAIL CHIPS */}
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
         <EstimateItem
-          label="Total"
+          label="Total Rute"
           value={formatEstimateRange(
             vehicle.osrmEstimate?.total?.durationMinSeconds,
             vehicle.osrmEstimate?.total?.durationMaxSeconds,
           )}
         />
         <EstimateItem
-          label="Angkot → kamu"
+          label="Ke Lokasimu"
           value={formatEstimateRange(
             vehicle.osrmEstimate?.vehicleToUser?.durationMinSeconds,
             vehicle.osrmEstimate?.vehicleToUser?.durationMaxSeconds,
           )}
         />
         <EstimateItem
-          label="Kamu → tujuan"
+          label="Ke Tujuan"
           value={formatEstimateRange(
             vehicle.osrmEstimate?.userToDestination?.durationMinSeconds,
             vehicle.osrmEstimate?.userToDestination?.durationMaxSeconds,
@@ -194,53 +191,34 @@ export default function UpcomingVehicleCard({
         />
       </div>
 
-      {/* TRACKING INFO */}
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
-        <div className="min-w-0">
-          <p className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 sm:text-[9px]">
-            Perjalanan
-          </p>
+    
 
-          <p className="mt-0.5 truncate text-[9px] font-medium text-slate-600 sm:text-[10px]">
-            {vehicle.hasPassedUser
-              ? "Sudah melewati lokasi kamu"
-              : "Menuju lokasi kamu"}
-          </p>
-        </div>
-
-        <span className="text-[8px] font-semibold text-slate-500 sm:text-[9px]">
-          {!hasPassengerData
-            ? "Menunggu data realtime"
-            : isFull
-              ? "Kapasitas penuh"
-              : `${capacity - passengers} kursi tersisa`}
-        </span>
-      </div>
-
-      {/* BOOK BUTTON */}
+      {/* ACTION CTA: GOJEK GREEN GRADIENT BUTTON */}
       <button
         type="button"
         disabled={!canBook}
         onClick={() => onBook?.(vehicle)}
         className={`
-          mt-3 flex w-full items-center justify-center gap-1.5
-          rounded-xl py-2
-          text-[10px] font-bold
-          transition-all
-          active:scale-[0.98]
-          sm:py-2.5 sm:text-xs
+          mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all duration-150
           ${
             !canBook
               ? "cursor-not-allowed bg-slate-100 text-slate-400"
               : isSelected
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                : "bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+              ? "bg-emerald-700 text-white shadow-md shadow-emerald-700/20"
+              : "bg-gradient-to-r from-emerald-600 via-emerald-600 to-green-500 text-white shadow-md shadow-green-600/20 hover:from-emerald-500 hover:to-green-500 hover:shadow-lg active:scale-[0.98]"
           }
         `}
       >
-        {isSelected && <FiCheckCircle className="text-xs" />}
-
-        {isSelected ? "Angkot Terpilih" : "Book Now"}
+        {isSelected ? (
+          <>
+            <FiCheckCircle className="text-sm text-white" />
+            <span>Angkot Terpilih</span>
+          </>
+        ) : (
+          <>
+            <span>Book Now</span>
+          </>
+        )}
       </button>
     </div>
   );
@@ -248,13 +226,14 @@ export default function UpcomingVehicleCard({
 
 function EstimateItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-lg border border-blue-100 bg-white px-2 py-2">
-      <p className="mb-1 wrap-break-word text-[8px] font-semibold uppercase tracking-wider text-blue-500">
+    <div className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 px-2 py-1.5">
+      <p className="truncate text-[8px] font-semibold uppercase tracking-wider text-slate-400">
         {label}
       </p>
-      <p className="wrap-break-word text-[10px] font-bold text-slate-700 sm:text-xs">
+      <p className="truncate text-[10px] font-bold text-slate-700">
         {value}
       </p>
     </div>
   );
 }
+

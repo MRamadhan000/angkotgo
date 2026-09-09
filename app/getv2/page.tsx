@@ -249,7 +249,7 @@ export default function CariRuteAngkot() {
 
       {/* TOP SECTION */}
       <div
-        className="pointer-events-auto absolute inset-x-0 top-0 z-20 mx-auto flex w-full max-w-md flex-col gap-3 px-4 pt-4 sm:px-5 sm:pt-6"
+        className="pointer-events-auto absolute inset-x-0 top-0 z-20 mx-auto flex w-full max-w-md flex-col gap-2.5 px-4 pt-3 sm:px-5 sm:pt-4"
         style={{
           opacity: bottomSheet.topSectionProgress,
           transform: `translateY(${(1 - bottomSheet.topSectionProgress) * -16}px)`,
@@ -259,32 +259,47 @@ export default function CariRuteAngkot() {
             : "none",
         }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="icon"
-            size="lg"
-            icon={<FiArrowLeft />}
-            onClick={() => window.history.back()}
-            aria-label="Kembali"
-          />
+        {/* Top Bar (Gojek Dark Floating Bar) */}
+        <div className="flex items-center justify-between rounded-2xl bg-slate-900/90 px-3.5 py-2.5 shadow-lg shadow-slate-900/20 backdrop-blur-md">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              aria-label="Kembali"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20 active:scale-95"
+            >
+              <FiArrowLeft className="text-sm" />
+            </button>
 
-          <h1 className="text-base font-bold tracking-tight text-[#003d9b] sm:text-lg">
-            Cari Rute Angkot
-          </h1>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black tracking-tight text-white sm:text-sm">
+                  Angkot<span className="text-emerald-400">Go</span>
+                </span>
+                <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[9px] font-bold text-emerald-300">
+                  Rute
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-300">
+                Pesan & lacak angkot realtime
+              </p>
+            </div>
+          </div>
 
           {isAuthenticated && user ? (
-            <div className="flex max-w-32 items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 sm:max-w-40 sm:px-3 sm:text-sm">
-              <FiUser className="shrink-0" aria-hidden="true" />
+            <div className="flex max-w-32 items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm sm:max-w-40 sm:px-3">
+              <FiUser className="shrink-0 text-emerald-400" aria-hidden="true" />
               <span className="truncate">{user.name}</span>
             </div>
           ) : (
-            <div className="w-9 sm:w-10" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-slate-300">
+              <FiUser className="text-xs" />
+            </div>
           )}
         </div>
 
-        {/* Search Card */}
-        <div className="flex flex-col gap-2 rounded-[20px] border border-[#c3c6d6]/30 bg-[#faf8ff]/95 p-3.5 shadow-lg backdrop-blur-md sm:rounded-3xl sm:p-4">
+        {/* Floating Search Card */}
+        <div className="flex flex-col gap-2 rounded-3xl border border-slate-100 bg-white/95 p-3.5 shadow-xl shadow-slate-900/10 backdrop-blur-xl sm:p-4">
           {scenario === 1 ? (
             // ─── Skenario 1: Input lokasi ───
             <>
@@ -335,18 +350,21 @@ export default function CariRuteAngkot() {
                 onSelect={location.handleQuickDestination}
               />
 
-              <Button
-                variant="textAction"
-                size="sm"
+              <button
+                type="button"
                 onClick={gps.handleResetToGPS}
-                isLoading={gps.isLocating}
-                loadingText="Mendeteksi lokasi..."
-                icon={
-                  <FiNavigation className={gps.isLocating ? "animate-pulse" : ""} />
-                }
+                disabled={gps.isLocating}
+                className="mt-1 flex items-center justify-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50/70 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Gunakan lokasi saya saat ini
-              </Button>
+                <FiNavigation
+                  className={`text-xs ${gps.isLocating ? "animate-pulse" : ""}`}
+                />
+                <span>
+                  {gps.isLocating
+                    ? "Mendeteksi lokasi..."
+                    : "Gunakan lokasi saya saat ini"}
+                </span>
+              </button>
             </>
           ) : (
             // ─── Skenario 2: Ringkasan lokasi ───
@@ -390,22 +408,21 @@ export default function CariRuteAngkot() {
           </Button>
 
           {location.originCoords && location.destinationCoords && (
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<FiNavigation className="rotate-90" />}
-              className="w-full"
+            <button
+              type="button"
               onClick={handleSearch}
               disabled={isSearchingRoute}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-green-500 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-600/25 transition-all hover:from-emerald-500 hover:to-green-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSearchingRoute ? "Mencari rute..." : "Cari Angkot"}
-            </Button>
+              <FiNavigation className="text-base rotate-45" />
+              <span>{isSearchingRoute ? "Mencari Rute..." : "Cari Angkot"}</span>
+            </button>
           )}
         </div>
       ) : (
         // ─── Skenario 2: Bottom sheet ───
         <div
-          className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-[#faf8ff]/95 shadow-[0_-8px_30px_rgba(0,0,0,0.15)] backdrop-blur-md"
+          className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-t-[28px] border-t border-slate-100 bg-white shadow-[0_-12px_40px_rgba(0,0,0,0.12)] backdrop-blur-xl"
           style={{
             top: `${bottomSheet.sheetTop}vh`,
             transition: bottomSheet.isSheetTransitioning
@@ -415,38 +432,50 @@ export default function CariRuteAngkot() {
         >
           {/* Drag handle */}
           <div
-            className="flex shrink-0 cursor-grab touch-none items-center justify-center py-2.5 active:cursor-grabbing"
+            className="flex shrink-0 cursor-grab touch-none items-center justify-center pb-2 pt-3 active:cursor-grabbing"
             onPointerDown={bottomSheet.handleSheetPointerDown}
             onPointerMove={bottomSheet.handleSheetPointerMove}
             onPointerUp={bottomSheet.handleSheetPointerUp}
             onPointerCancel={bottomSheet.handleSheetPointerUp}
           >
-            <div className="h-1.5 w-10 rounded-full bg-[#c3c6d6]" />
+            <div className="h-1.5 w-12 rounded-full bg-slate-300 transition hover:bg-slate-400" />
           </div>
 
-          {/* Sheet content */}
-          <div className="min-h-0 flex-1">
-            {vehicles.upcomingAssignmentIds.length > 0 && (
-              <div className="flex items-center justify-between px-4 pb-2 text-[11px] font-medium">
-                <span className="text-slate-500">Status kendaraan realtime</span>
+          {/* Realtime Socket Status Bar */}
+          {vehicles.upcomingAssignmentIds.length > 0 && (
+            <div className="mx-4 mb-2 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-100">
+              <span className="flex items-center gap-1.5">
                 <span
-                  className={
+                  className={`h-2 w-2 rounded-full ${
                     vehicles.isVehicleSocketConnected &&
                     vehicles.joinedAssignmentIds.length >=
                       vehicles.upcomingAssignmentIds.length
-                      ? "text-emerald-600"
-                      : "text-amber-600"
-                  }
-                >
-                  {vehicles.isVehicleSocketConnected &&
+                      ? "animate-pulse bg-emerald-500"
+                      : "bg-amber-500"
+                  }`}
+                />
+                Pelacakan Realtime
+              </span>
+              <span
+                className={`font-semibold ${
+                  vehicles.isVehicleSocketConnected &&
                   vehicles.joinedAssignmentIds.length >=
                     vehicles.upcomingAssignmentIds.length
-                    ? "Terhubung"
-                    : "Menghubungkan..."}
-                </span>
-              </div>
-            )}
+                    ? "text-emerald-600"
+                    : "text-amber-600"
+                }`}
+              >
+                {vehicles.isVehicleSocketConnected &&
+                vehicles.joinedAssignmentIds.length >=
+                  vehicles.upcomingAssignmentIds.length
+                  ? "Terhubung"
+                  : "Menghubungkan..."}
+              </span>
+            </div>
+          )}
 
+          {/* Sheet content */}
+          <div className="min-h-0 flex-1">
             {booking.isCreateSinyalError && (
               <p className="px-4 pb-3 text-sm text-red-600" role="alert">
                 {booking.createSinyalError?.message || "Gagal mengirim sinyal."}
