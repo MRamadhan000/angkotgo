@@ -20,6 +20,7 @@ export default function AssignmentDetailPage() {
     hasValidAssignmentId,
     routePaths,
     routeStops,
+    stopIntervals,
     detailLoading,
     detailError,
     payments,
@@ -121,6 +122,7 @@ export default function AssignmentDetailPage() {
           onOpenLocationModal={actions.openLocationModal}
           isUpdatingLocation={isUpdatingLocation}
           routeStops={routeStops}
+          stopIntervals={stopIntervals}
           payments={payments}
           paymentSummary={paymentSummary}
           paymentsLoading={paymentsLoading}

@@ -33,7 +33,13 @@ export const stopIntervalService = {
       throw new Error("Gagal mengambil data interval halte.");
     }
 
-    return response.json();
+    const payload = await response.json();
+
+    return Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
   },
 
   async getById(id: number): Promise<StopInterval> {

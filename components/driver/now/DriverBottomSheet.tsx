@@ -10,8 +10,12 @@ import {
   FaCircleDot,
   FaPenToSquare,
 } from "react-icons/fa6";
-import { AssignmentStatus, VehicleAssignment } from "@/types/vehicles/vehicle-assignments.type";
+import {
+  AssignmentStatus,
+  VehicleAssignment,
+} from "@/types/vehicles/vehicle-assignments.type";
 import { RouteStopType } from "@/types/routes/route-stop.type";
+import { StopInterval } from "@/types/routes/stop-interval.type";
 import { DriverSeatControl } from "./DriverSeatControl";
 import { DriverQuickActions } from "./DriverQuickActions";
 import { RouteStopInfoBar } from "./RouteStopInfoBar";
@@ -28,6 +32,7 @@ interface DriverBottomSheetProps {
   onOpenLocationModal: () => void;
   isUpdatingLocation: boolean;
   routeStops: RouteStopType[];
+  stopIntervals: StopInterval[];
   // Payments
   payments: any[];
   paymentSummary: Record<string, number> | null;
@@ -44,6 +49,7 @@ export function DriverBottomSheet({
   onOpenLocationModal,
   isUpdatingLocation,
   routeStops,
+  stopIntervals,
   payments,
   paymentSummary,
   paymentsLoading,
@@ -163,7 +169,9 @@ export function DriverBottomSheet({
             className={`flex items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs font-bold transition hover:opacity-90 active:scale-95 ${statusBadge.badgeBg}`}
             title="Klik untuk ubah status perjalanan"
           >
-            <span className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${statusBadge.bg} ${assignmentDetail?.status === AssignmentStatus.ONGOING ? "animate-pulse" : ""}`} />
+            <span
+              className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${statusBadge.bg} ${assignmentDetail?.status === AssignmentStatus.ONGOING ? "animate-pulse" : ""}`}
+            />
             <span>{statusBadge.label}</span>
             <FaPenToSquare className="ml-0.5 text-[9px] sm:text-[10px] opacity-70" />
           </button>
@@ -174,7 +182,9 @@ export function DriverBottomSheet({
             onClick={() => handleTabClick("kursi")}
             className="flex items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl bg-slate-100/80 px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-slate-700 hover:bg-slate-200/80 transition"
           >
-            <FaChair className={`text-[10px] ${availableSeats > 0 ? "text-emerald-500" : "text-rose-500"}`} />
+            <FaChair
+              className={`text-[10px] ${availableSeats > 0 ? "text-emerald-500" : "text-rose-500"}`}
+            />
             <span>
               {currentPassengers}/{capacity} Kursi
             </span>
@@ -296,35 +306,11 @@ export function DriverBottomSheet({
             />
 
             <RouteStopInfoBar
+              routeStops={routeStops}
+              stopIntervals={stopIntervals}
               stopCount={routeStops.length}
               direction={assignmentDetail.direction}
             />
-
-            {/* Quick stop cards list */}
-            {routeStops.length > 0 && (
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs space-y-2">
-                <h4 className="text-xs font-extrabold text-slate-800">
-                  Daftar Halte Rute
-                </h4>
-                <div className="max-h-56 space-y-1.5 overflow-y-auto pr-1">
-                  {routeStops.map((stop, idx) => (
-                    <div
-                      key={stop.id ?? idx}
-                      className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs border border-slate-100"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">
-                          {stop.stopOrder}
-                        </span>
-                        <span className="truncate font-semibold text-slate-800">
-                          {stop.stopName}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

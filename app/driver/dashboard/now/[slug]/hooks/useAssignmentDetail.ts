@@ -17,6 +17,7 @@ import { useActiveSinyal } from "@/hooks/sinyal/useSinyal";
 import { useSinyalRealtime } from "@/hooks/sinyal/useSinyalSocket";
 import { useRoutePaths } from "@/hooks/routes/useRoutePath";
 import { useRouteStops } from "@/hooks/routes/useRouteStops";
+import { useStopIntervals } from "@/hooks/routes/useStopIntervals";
 import { usePayments } from "@/hooks/payments/usePayments";
 import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
 
@@ -112,6 +113,7 @@ export function useAssignmentDetail() {
 
   const { data: routePaths = [] } = useRoutePaths(routeId, direction!);
   const { data: routeStops = [] } = useRouteStops(routeId, direction!);
+  const { data: stopIntervals = [] } = useStopIntervals(routeId, direction);
 
   // ── Computed values ──────────────────────────────────────
   const detailError = assignmentError?.message ?? null;
@@ -328,6 +330,7 @@ export function useAssignmentDetail() {
     hasValidAssignmentId,
     routePaths,
     routeStops,
+    stopIntervals,
 
     // Loading & error
     detailLoading,
