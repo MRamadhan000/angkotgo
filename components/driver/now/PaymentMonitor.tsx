@@ -70,9 +70,10 @@ export function PaymentMonitor({
 
   const isRealtimeActive = connected && joined;
 
-  // Nilai yang digunakan untuk Summary
-  const totalAmount = summary?.totalPaid ?? totalPaidCalculated;
-  const successfulTxCount = summary?.totalPaidTransactions ?? paidPayments.length;
+  // Selalu hitung dari payments array lokal agar realtime via websocket
+  // (summary dari server hanya snapshot awal, tidak update saat ada payment baru)
+  const totalAmount = totalPaidCalculated;
+  const successfulTxCount = paidPayments.length;
 
   return (
     <section className="rounded-2xl border border-slate-100 bg-white p-3.5 sm:p-5 shadow-sm transition-all">

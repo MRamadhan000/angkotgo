@@ -1,277 +1,62 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-
-import { useAuth } from "@/context/AuthContext";
-import {
-  useUpdateVehicleAssignmentv2,
-  useVehicleAssignmentv2,
-} from "@/hooks/vehicles/useVehicleAssignments2";
-import {
-  useCreateVehicleLocation,
-  useVehicleLocations,
-} from "@/hooks/vehicles/useVehicleLocation";
-import { useVehicleSocket } from "@/hooks/vehicles/useVehicleSocket";
-import { useActiveSinyal } from "@/hooks/sinyal/useSinyal";
-import { useSinyalRealtime } from "@/hooks/sinyal/useSinyalSocket";
-import { useRoutePaths } from "@/hooks/routes/useRoutePath";
-import { useRouteStops } from "@/hooks/routes/useRouteStops";
-import { usePayments } from "@/hooks/payments/usePayments";
-import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
-
-import {
-  AssignmentStatus,
-  VehicleAssignment,
-} from "@/types/vehicles/vehicle-assignments.type";
-import { RouteStopType } from "@/types/routes/route-stop.type";
-
-import { getCurrentLocation } from "@/components/search-routev2/skenario1/geolocation";
+import { useAssignmentDetail } from "./hooks/useAssignmentDetail";
+import { AssignmentStatus } from "@/types/vehicles/vehicle-assignments.type";
 
 import { DetailHeader } from "@/components/common/DetailHeader";
 import { DetailLoading } from "@/components/common/DetaiLoading";
 import ErrorAlert from "@/components/common/ErrorAlert";
 import { AssignmentStatusCard } from "@/components/common/AssignmentStatusCard";
 import { UpdateStatusModal } from "@/components/now/UpdateStatusModal";
-import { SeatGridControl } from "@/components/now/SeatGridControl";
 import { PaymentMonitor } from "@/components/driver/now/PaymentMonitor";
-import { DebugLocationPanel } from "@/components/driver/now/DebugLocationPanel";
+import { DriverSeatControl } from "@/components/driver/now/DriverSeatControl";
+import { DriverQuickActions } from "@/components/driver/now/DriverQuickActions";
+import { LiveMapSection } from "@/components/driver/now/LiveMapSection";
+import { RouteStopInfoBar } from "@/components/driver/now/RouteStopInfoBar";
+import { LocationErrorToast } from "@/components/driver/now/LocationErrorToast";
 import { RouteStopLocationModal } from "@/components/driver/now/RouteStopLocationModal";
 import GpsPermissionModal from "@/components/search-routev2/skenario1/GpsPermissionModal";
-import DriverMap from "../../DriverMap";
-import { FaCompass, FaLocationCrosshairs } from "react-icons/fa6";
 
 export default function AssignmentDetailPage() {
-  const params = useParams();
-  const rawSlug = params?.slug;
-  const assignmentId = Number(Array.isArray(rawSlug) ? rawSlug[0] : rawSlug);
-  const hasValidAssignmentId =
-    Number.isInteger(assignmentId) && assignmentId > 0;
-
-  const { user } = useAuth();
-
-  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<string>("SCHEDULED");
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [showGpsModal, setShowGpsModal] = useState(true);
-  const [isLocating, setIsLocating] = useState(false);
-  const [gpsPermissionGranted, setGpsPermissionGranted] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [gpsLocation, setGpsLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [selectedVehicleLocation, setSelectedVehicleLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-
   const {
-    data: assignmentDetail,
-    isLoading: detailLoading,
-    error: assignmentError,
-  } = useVehicleAssignmentv2(assignmentId);
-  const updateAssignment = useUpdateVehicleAssignmentv2();
-  const { data: vehicleLocations = [] } = useVehicleLocations(
-    hasValidAssignmentId ? assignmentId : undefined,
-  );
-  const createVehicleLocation = useCreateVehicleLocation();
-  const {
+    user,
+    assignmentId,
+    assignmentDetail,
+    hasValidAssignmentId,
+    routePaths,
+    routeStops,
+    detailLoading,
+    detailError,
     payments,
-    summary,
-    loading: paymentsLoading,
-    error: paymentsError,
-    upsertPayment,
-  } = usePayments(hasValidAssignmentId ? assignmentId : null);
-  const paymentRealtime = usePaymentSocket(
-    hasValidAssignmentId ? assignmentId : null,
-  );
-  const {
-    data: vehicleRealtime,
-    connected: vehicleSocketConnected,
-    joined: vehicleSocketJoined,
-  } = useVehicleSocket(hasValidAssignmentId ? assignmentId : null);
-  const assignmentKey = hasValidAssignmentId ? String(assignmentId) : "";
-  const { data: activeUserSignals = [] } = useActiveSinyal(assignmentKey);
-  const {
-    data: userRealtime,
-    connected: userSocketConnected,
-    joined: userSocketJoined,
-  } = useSinyalRealtime(hasValidAssignmentId ? assignmentKey : null);
-  const direction = assignmentDetail?.direction;
-  const routeId = assignmentDetail?.routeId ?? 0;
-  const { data: routePaths = [] } = useRoutePaths(routeId, direction!);
-  const { data: routeStops = [] } = useRouteStops(routeId, direction!);
-  const detailError = assignmentError?.message ?? null;
-  const latestVehicleLocation = useMemo(
-    () =>
-      [...vehicleLocations].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )[0] ?? null,
-    [vehicleLocations],
-  );
-  const activeUserLocations = useMemo(() => {
-    const locations = activeUserSignals
-      .filter(
-        (signal) =>
-          signal.status === "ACTIVE" &&
-          (String(signal.vehicleAssignmentId) === assignmentKey ||
-            signal.details.some(
-              (detail) => String(detail.vehicleAssignmentId) === assignmentKey,
-            )),
-      )
-      .map((signal) => ({
-        id: signal.id,
-        latitude: Number(signal.latitude),
-        longitude: Number(signal.longitude),
-        status: "ACTIVE" as const,
-      }));
-
-    if (
-      userRealtime?.status === "ACTIVE" &&
-      String(userRealtime.vehicleAssignmentId) === assignmentKey
-    ) {
-      const realtimeLocation = {
-        id: userRealtime.sinyalId,
-        latitude: Number(userRealtime.latitude),
-        longitude: Number(userRealtime.longitude),
-        status: "ACTIVE" as const,
-      };
-      const existingIndex = locations.findIndex(
-        (location) => location.id === realtimeLocation.id,
-      );
-
-      if (existingIndex >= 0) locations[existingIndex] = realtimeLocation;
-      else locations.push(realtimeLocation);
-    }
-
-    return locations.filter(
-      (location) =>
-        Number.isFinite(location.latitude) &&
-        Number.isFinite(location.longitude),
-    );
-  }, [activeUserSignals, assignmentKey, userRealtime]);
-  const vehicleLocation = vehicleRealtime
-    ? {
-        latitude: Number(vehicleRealtime.latitude),
-        longitude: Number(vehicleRealtime.longitude),
-      }
-    : latestVehicleLocation
-      ? {
-          latitude: Number(latestVehicleLocation.latitude),
-          longitude: Number(latestVehicleLocation.longitude),
-        }
-      : null;
-  const displayedVehicleLocation =
-    selectedVehicleLocation ?? gpsLocation ?? vehicleLocation;
-
-  useEffect(() => {
-    if (paymentRealtime.payment) {
-      upsertPayment(paymentRealtime.payment);
-    }
-  }, [paymentRealtime.payment, upsertPayment]);
-
-  useEffect(() => {
-    if (
-      !hasValidAssignmentId ||
-      !gpsPermissionGranted ||
-      !navigator.geolocation
-    ) {
-      return;
-    }
-
-    let isMounted = true;
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        if (!isMounted || selectedVehicleLocation) return;
-        setGpsLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => {
-        if (isMounted && error.code !== 1) {
-          setLocationError(
-            "Lokasi GPS belum tersedia. Posisi socket/manual tetap dapat digunakan.",
-          );
-        }
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
-    );
-
-    return () => {
-      isMounted = false;
-      navigator.geolocation.clearWatch(watchId);
-    };
-  }, [gpsPermissionGranted, hasValidAssignmentId, selectedVehicleLocation]);
-
-  const handleEnableGps = async () => {
-    setIsLocating(true);
-    setLocationError(null);
-
-    try {
-      const location = await getCurrentLocation();
-      setGpsLocation(location);
-      setGpsPermissionGranted(true);
-      setShowGpsModal(false);
-    } catch (error) {
-      setLocationError(
-        error instanceof GeolocationPositionError && error.code === 1
-          ? "Akses GPS wajib diizinkan untuk menampilkan posisi awal driver."
-          : "Lokasi GPS belum tersedia. Coba aktifkan GPS lalu ulangi.",
-      );
-    } finally {
-      setIsLocating(false);
-    }
-  };
-
-  const handleUpdateStatus = async () => {
-    if (!assignmentDetail || !hasValidAssignmentId) return;
-    try {
-      await updateAssignment.mutateAsync({
-        id: assignmentId,
-        data: { status: selectedStatus as AssignmentStatus },
-      });
-      setIsStatusModalOpen(false);
-    } catch (error) {
-      console.error("Gagal mengubah status:", error);
-    }
-  };
-
-  const handleCreateVehicleLocation = async (stop: RouteStopType) => {
-    if (!hasValidAssignmentId) return;
-
-    setLocationError(null);
-    try {
-      await createVehicleLocation.mutateAsync({
-        vehicleAssignmentId: assignmentId,
-        latitude: Number(stop.latitude),
-        longitude: Number(stop.longitude),
-        currentStopId: stop.id,
-      });
-      setSelectedVehicleLocation({
-        latitude: Number(stop.latitude),
-        longitude: Number(stop.longitude),
-      });
-      setIsLocationModalOpen(false);
-    } catch (error) {
-      setLocationError(
-        error instanceof Error
-          ? error.message
-          : "Gagal menyimpan posisi kendaraan.",
-      );
-    }
-  };
+    paymentSummary,
+    paymentsLoading,
+    paymentsError,
+    paymentRealtimeStatus,
+    displayedVehicleLocation,
+    locationSource,
+    locationSourceLabel,
+    activeUserLocations,
+    locationError,
+    gpsState,
+    vehicleSocketStatus,
+    userSocketStatus,
+    isStatusModalOpen,
+    selectedStatus,
+    isLocationModalOpen,
+    isUpdatingStatus,
+    isUpdatingLocation,
+    actions,
+  } = useAssignmentDetail();
 
   return (
     <div className="relative min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
-      <div className="mx-auto w-full max-w-300 space-y-3 sm:space-y-6 p-2.5 sm:p-6 lg:p-8">
+      <div className="mx-auto w-full max-w-300 space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8">
         <DetailHeader
           user={user}
           title="Detail Penugasan Kendaraan"
           description="Informasi lengkap rute perjalanan, armada, personel, dan estimasi waktu halte."
         />
+
         {detailLoading && <DetailLoading />}
 
         {detailError && !detailLoading && <ErrorAlert message={detailError} />}
@@ -281,211 +66,85 @@ export default function AssignmentDetailPage() {
         )}
 
         {!detailLoading && !detailError && assignmentDetail && (
-          <div className="space-y-3 sm:space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Card Status Mencolok */}
             <AssignmentStatusCard
               status={assignmentDetail.status}
-              onOpenModal={() => setIsStatusModalOpen(true)}
+              onOpenModal={actions.openStatusModal}
             />
 
             <PaymentMonitor
               payments={payments}
-              summary={summary}
+              summary={paymentSummary}
               loading={paymentsLoading}
               error={paymentsError}
-              connected={paymentRealtime.connected}
-              joined={paymentRealtime.joined}
+              connected={paymentRealtimeStatus.connected}
+              joined={paymentRealtimeStatus.joined}
             />
 
             {/* Seat control for driver (driver is not conductor) */}
-            <div>
-              <DriverSeatControl
-                assignmentDetail={assignmentDetail}
-                onUpdate={(currentPassengers) =>
-                  updateAssignment.mutateAsync({
-                    id: assignmentId,
-                    data: { currentPassengers },
-                  })
-                }
-                isUpdating={updateAssignment.isPending}
-              />
-            </div>
+            <DriverSeatControl
+              assignmentDetail={assignmentDetail}
+              onUpdate={actions.updatePassengers}
+              isUpdating={isUpdatingStatus}
+            />
 
-            <button
-              type="button"
-              onClick={() => setIsLocationModalOpen(true)}
-              className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={
-                createVehicleLocation.isPending || routeStops.length === 0
-              }
-            >
-              {createVehicleLocation.isPending
-                ? "Menyimpan posisi..."
-                : "Pilih posisi kendaraan"}
-            </button>
+            <DriverQuickActions
+              onSelectLocation={actions.openLocationModal}
+              isSubmitting={isUpdatingLocation}
+              hasRouteStops={routeStops.length > 0}
+            />
 
             {assignmentDetail.status === AssignmentStatus.ONGOING && (
-              <div className="mt-3 sm:mt-4 space-y-3">
-                {/* MAP SECTION HEADER */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/60">
-                      <FaCompass className="text-xs animate-spin-slow" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 tracking-tight">
-                        Live Map Tracking
-                      </h4>
-                      <p className="text-[11px] text-slate-400">
-                        Pemantauan lokasi kendaraan & titik penumpang realtime
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* LIVE BADGE */}
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[10px] font-extrabold tracking-wider uppercase">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                    </span>
-                    LIVE
-                  </span>
-                </div>
-
-                {/* MAP CONTAINER */}
-                <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 shadow-xs transition-all z-0">
-                  {/* Floating Info Overlay (Pojok Atas Peta) */}
-                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-xl bg-white/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-slate-200/60 shadow-2xs pointer-events-none">
-                    <FaLocationCrosshairs className="text-blue-500 text-xs" />
-                    <span>
-                      Sumber:{" "}
-                      <span className="text-slate-900 capitalize">
-                        {selectedVehicleLocation
-                          ? "Manual / Halte"
-                          : gpsLocation
-                            ? "GPS Browser"
-                            : vehicleRealtime
-                              ? "Socket"
-                              : "Terakhir"}
-                      </span>
-                    </span>
-                  </div>
-
-                  <DriverMap
-                    routePaths={routePaths}
-                    routeStops={routeStops}
-                    currentLocation={displayedVehicleLocation}
-                    locationSource={
-                      selectedVehicleLocation
-                        ? "manual"
-                        : gpsLocation
-                          ? "gps"
-                          : vehicleRealtime
-                            ? "socket"
-                            : "last-known"
-                    }
-                    userLocations={activeUserLocations}
-                    currentPassengers={assignmentDetail.currentPassengers}
-                    capacity={assignmentDetail.vehicle?.capacity ?? 8}
-                    routeName={assignmentDetail.route?.routeName}
-                  />
-                </div>
-
-                {/* DEBUG PANEL */}
-                <DebugLocationPanel
-                  assignmentId={assignmentId}
-                  vehicleLocation={displayedVehicleLocation}
-                  vehicleLocationSource={
-                    selectedVehicleLocation
-                      ? "manual / route stop"
-                      : gpsLocation
-                        ? "GPS browser"
-                        : vehicleRealtime
-                          ? "socket"
-                          : "POST terakhir"
-                  }
-                  vehicleSocketConnected={vehicleSocketConnected}
-                  vehicleSocketJoined={vehicleSocketJoined}
-                  userSocketConnected={userSocketConnected}
-                  userSocketJoined={userSocketJoined}
-                  userLocations={activeUserLocations}
-                  routePathCount={routePaths.length}
-                  routeStopCount={routeStops.length}
-                />
-              </div>
+              <LiveMapSection
+                routePaths={routePaths}
+                routeStops={routeStops}
+                displayedVehicleLocation={displayedVehicleLocation}
+                locationSource={locationSource}
+                locationSourceLabel={locationSourceLabel}
+                activeUserLocations={activeUserLocations}
+                currentPassengers={assignmentDetail.currentPassengers}
+                capacity={assignmentDetail.vehicle?.capacity ?? 8}
+                routeName={assignmentDetail.route?.routeName}
+                assignmentId={assignmentId}
+                vehicleSocketStatus={vehicleSocketStatus}
+                userSocketStatus={userSocketStatus}
+              />
             )}
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              {routeStops.length} halte tersedia untuk arah{" "}
-              {assignmentDetail.direction}.
-            </div>
+            <RouteStopInfoBar
+              stopCount={routeStops.length}
+              direction={assignmentDetail.direction}
+            />
           </div>
         )}
       </div>
 
-      {locationError && (
-        <p className="fixed bottom-4 left-1/2 z-60 -translate-x-1/2 rounded-lg bg-red-600 px-4 py-2 text-center text-xs text-white shadow-lg">
-          {locationError}
-        </p>
-      )}
+      <LocationErrorToast message={locationError} />
 
       <RouteStopLocationModal
         isOpen={isLocationModalOpen}
         routeStops={routeStops}
-        isSubmitting={createVehicleLocation.isPending}
-        onClose={() => setIsLocationModalOpen(false)}
-        onSelect={handleCreateVehicleLocation}
+        isSubmitting={isUpdatingLocation}
+        onClose={actions.closeLocationModal}
+        onSelect={actions.createVehicleLocation}
       />
 
       <GpsPermissionModal
-        open={hasValidAssignmentId && showGpsModal}
-        isLocating={isLocating}
-        onEnable={handleEnableGps}
+        open={hasValidAssignmentId && gpsState.showModal}
+        isLocating={gpsState.isLocating}
+        onEnable={actions.enableGps}
         onSkip={() => undefined}
         hideSkip
       />
 
       <UpdateStatusModal
         isOpen={isStatusModalOpen}
-        onClose={() => setIsStatusModalOpen(false)}
+        onClose={actions.closeStatusModal}
         selectedStatus={selectedStatus}
-        onStatusChange={(status) => setSelectedStatus(status)}
-        onSave={handleUpdateStatus}
-        isUpdating={updateAssignment.isPending}
-      />
-    </div>
-  );
-}
-
-function DriverSeatControl({
-  assignmentDetail,
-  onUpdate,
-  isUpdating,
-}: {
-  assignmentDetail: VehicleAssignment;
-  onUpdate: (currentPassengers: number) => Promise<unknown>;
-  isUpdating: boolean;
-}) {
-  const currentPassengers = assignmentDetail?.currentPassengers || 0;
-  const capacity = assignmentDetail?.vehicle?.capacity || 8;
-
-  const seats = Array.from({ length: capacity }, (_, i) => ({
-    seatNumber: i + 1,
-    isOccupied: i < currentPassengers,
-  }));
-
-  return (
-    <div>
-      <SeatGridControl
-        seats={seats}
-        canControl={!isUpdating}
-        onToggleSeat={(seatNumber) =>
-          onUpdate(
-            seats[seatNumber - 1].isOccupied ? seatNumber - 1 : seatNumber,
-          )
-        }
-        hasConductor={false}
-        isUserConductor={false}
+        onStatusChange={actions.setSelectedStatus}
+        onSave={actions.updateStatus}
+        isUpdating={isUpdatingStatus}
       />
     </div>
   );
