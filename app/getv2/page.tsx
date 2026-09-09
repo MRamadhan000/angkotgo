@@ -152,6 +152,7 @@ export default function CariRuteAngkot() {
   >(null);
   const restoredBookingStateRef = useRef(false);
   const journeyHydratedRef = useRef(false);
+  const currentJourneyActivityRef = useRef(false);
   const bookingPaymentRealtime = usePaymentSocket(
     bookingVehicle?.assignmentId ?? null,
   );
@@ -256,18 +257,35 @@ export default function CariRuteAngkot() {
   const upcomingAssignmentIds = (upcomingVehicles?.vehicles ?? []).map(
     (vehicle) => vehicle.assignmentId,
   );
-  const { data: realtimeVehicles } = useVehicleSockets(upcomingAssignmentIds);
+  const {
+    data: realtimeVehicles,
+    connected: isVehicleSocketConnected,
+    joinedAssignmentIds,
+  } = useVehicleSockets(upcomingAssignmentIds);
   const { data: vehicleAssignments = [] } = useVehicleAssignments();
   const realtimeUpcomingVehicles = (upcomingVehicles?.vehicles ?? []).map(
     (vehicle) => {
       const realtime = realtimeVehicles[vehicle.assignmentId];
+      const responseVehicle = vehicle as UpcomingVehicle & {
+        current_passengers?: number | null;
+        currentPassenger?: number | null;
+      };
+      const responsePassengers =
+        responseVehicle.currentPassengers ??
+        responseVehicle.current_passengers ??
+        responseVehicle.currentPassenger ??
+        null;
       const assignment = vehicleAssignments.find(
         (item) => item.id === vehicle.assignmentId,
       );
 
       return {
         ...vehicle,
-        currentPassengers: realtime?.currentPassengers ?? null,
+        currentPassengers:
+          realtime?.currentPassengers ??
+          responsePassengers ??
+          assignment?.currentPassengers ??
+          null,
         ...(realtime
           ? {
               vehicleLat: realtime.latitude,
@@ -297,9 +315,7 @@ export default function CariRuteAngkot() {
   );
 
   useEffect(() => {
-    if (isAuthLoading) return;
-
-    const hasCurrentJourneyActivity =
+    currentJourneyActivityRef.current =
       Boolean(origin.trim()) ||
       Boolean(destination.trim()) ||
       Boolean(originCoords) ||
@@ -307,8 +323,25 @@ export default function CariRuteAngkot() {
       Boolean(selectedRoute) ||
       Boolean(bookingVehicle) ||
       pendingBookingVehicleId !== null;
+  }, [
+    origin,
+    destination,
+    originCoords,
+    destinationCoords,
+    selectedRoute,
+    bookingVehicle,
+    pendingBookingVehicleId,
+  ]);
 
-    if (restoredBookingStateRef.current && hasCurrentJourneyActivity) return;
+  useEffect(() => {
+    if (isAuthLoading) return;
+
+    if (
+      restoredBookingStateRef.current &&
+      currentJourneyActivityRef.current
+    ) {
+      return;
+    }
 
     restoredBookingStateRef.current = true;
     let restoreTimer: number | undefined;
@@ -1343,6 +1376,24 @@ export default function CariRuteAngkot() {
 
           {/* CONTENT */}
           <div className="min-h-0 flex-1">
+            {upcomingAssignmentIds.length > 0 && (
+              <div className="flex items-center justify-between px-4 pb-2 text-[11px] font-medium">
+                <span className="text-slate-500">Status kendaraan realtime</span>
+                <span
+                  className={
+                    isVehicleSocketConnected &&
+                    joinedAssignmentIds.length >= upcomingAssignmentIds.length
+                      ? "text-emerald-600"
+                      : "text-amber-600"
+                  }
+                >
+                  {isVehicleSocketConnected &&
+                  joinedAssignmentIds.length >= upcomingAssignmentIds.length
+                    ? "Terhubung"
+                    : "Menghubungkan..."}
+                </span>
+              </div>
+            )}
             {isCreateSinyalError && (
               <p className="px-4 pb-3 text-sm text-red-600" role="alert">
                 {createSinyalError.message || "Gagal mengirim sinyal."}

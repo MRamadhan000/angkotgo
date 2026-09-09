@@ -202,10 +202,13 @@ export function useVehicleSockets(
   useEffect(() => {
     const assignmentIds = [...new Set(vehicleAssignmentIds)].filter(Number.isFinite);
     if (assignmentIds.length === 0) {
-      setData({});
-      setJoinedAssignmentIds([]);
-      setConnected(false);
-      return;
+      const resetTimer = window.setTimeout(() => {
+        setData({});
+        setJoinedAssignmentIds([]);
+        setConnected(false);
+      }, 0);
+
+      return () => window.clearTimeout(resetTimer);
     }
 
     const socket = vehicleSocket.connect();
