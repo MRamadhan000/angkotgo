@@ -107,6 +107,7 @@ export interface PaymentHistoryItem {
   amount: number | string;
   status: PaymentStatus;
   createdAt: string;
+  xenditPaymentRequestId?: string;
 }
 
 // Response pembungkus dari NestJS

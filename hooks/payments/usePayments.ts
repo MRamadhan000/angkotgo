@@ -10,7 +10,7 @@ import type {
   PaymentHistoryItem,
   PaymentWebhookResponse,
 } from "@/types/payments/payment.type";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function usePayments(assignmentId: number | null) {
   const [data, setData] = useState<PaymentFinancialResponse | null>(null);
@@ -128,6 +128,19 @@ export function usePayments(assignmentId: number | null) {
     upsertPayment,
     markAsSucceeded,
   };
+}
+
+export function useUpdatePaymentStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (xenditPaymentRequestId: string) =>
+      paymentService.updatePaymentStatusToSucceeded(xenditPaymentRequestId),
+    onSuccess: () => {
+      // Refresh / Refetch data riwayat pembayaran secara otomatis
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+    },
+  });
 }
 
 export function useHistoryPayments(userId: number | string | null) {
