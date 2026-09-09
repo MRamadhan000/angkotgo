@@ -8,6 +8,7 @@ interface Payment {
   payment_type: string;
   amount: number;
   status: string;
+  paid_at: Date;
   user?: { name: string } | null;
 }
 
@@ -165,9 +166,9 @@ export function PaymentMonitor({
       {!loading && paidPayments.length > 0 && (
         <div className="mt-3.5 sm:mt-4 max-h-64 sm:max-h-72 space-y-2 sm:space-y-2.5 overflow-y-auto pr-1">
           {paidPayments.map((payment) => (
-            <div
+                        <div
               key={payment.id}
-              className="group flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5 sm:p-3 hover:bg-slate-50 hover:border-slate-200 transition-all"
+              className="group flex items-start justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5 sm:p-3 hover:bg-slate-50 hover:border-slate-200 transition-all"
             >
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100/70 text-emerald-700 font-bold text-xs uppercase">
@@ -179,16 +180,28 @@ export function PaymentMonitor({
                     {payment.user?.name || `User #${payment.user_id}`}
                   </p>
                   <p className="truncate text-[10px] sm:text-[11px] font-medium text-slate-400">
-                    {payment.payment_type} •{" "}
-                    <span className="font-mono text-slate-500">
-                      {payment.payment_code}
-                    </span>
+                    {payment.payment_type}
+                  </p>
+                  <p className="truncate text-[9px] sm:text-[10px] font-mono text-slate-400">
+                    {payment.payment_code}
                   </p>
                 </div>
               </div>
 
               <div className="text-right shrink-0">
-                <p className="text-[11px] sm:text-xs font-bold text-slate-900 whitespace-nowrap">
+                <p className="text-[9px] sm:text-[10px] font-mono text-slate-400 whitespace-nowrap">
+                  {new Date(payment.paid_at).toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}{" "}
+                  {new Date(payment.paid_at).toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })}
+                </p>
+                <p className="mt-0.5 text-[11px] sm:text-xs font-bold text-slate-900 whitespace-nowrap">
                   +Rp {payment.amount.toLocaleString("id-ID")}
                 </p>
                 {/* <span className="inline-block mt-0.5 rounded-md bg-emerald-100/80 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-emerald-700">
