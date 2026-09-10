@@ -2,6 +2,7 @@ export enum PaymentType {
     QRIS = "qris",
     CASH = "cash",
     TRANSFER = "transfer",
+    ONLINE = "online",
 }
 
 export enum PaymentStatus {
@@ -100,3 +101,20 @@ export interface PaymentFinancialResponse {
 }
 
 export type PaymentSocketPayload = PaymentApiRecord;
+
+
+export interface PaymentHistoryItem {
+  paymentCode: string;
+  amount: number | string;
+  status: PaymentStatus;
+  createdAt: string;
+  xenditPaymentRequestId?: string;
+  paidAt : Date;
+  paymentType: PaymentType;
+}
+
+// Response pembungkus dari NestJS
+export interface PaymentHistoryResponse {
+  message: string;
+  data: PaymentHistoryItem[];
+}

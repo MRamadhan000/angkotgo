@@ -6,10 +6,11 @@ import type {
   PaymentApiRecord,
   PaymentWebhookResponse,
   UpdatePaymentStatusInput,
+  PaymentHistoryItem,
+  PaymentHistoryResponse,
 } from "@/types/payments/payment.type";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export function normalizePayment(payment: PaymentApiRecord): Payment {
   const userId = Number(payment.user_id ?? payment.userId ?? payment.user?.id);
@@ -35,9 +36,7 @@ export function normalizePayment(payment: PaymentApiRecord): Payment {
     ).toUpperCase() as Payment["payment_type"],
     amount: Number(payment.amount ?? 0),
     status: String(payment.status ?? "PENDING") as Payment["status"],
-    user: userName
-      ? { id: userId, name: userName }
-      : null,
+    user: userName ? { id: userId, name: userName } : null,
     paid_at: payment.paid_at ?? payment.paidAt ?? null,
     created_at: String(payment.created_at ?? payment.createdAt ?? ""),
   };
@@ -90,9 +89,7 @@ export const paymentService = {
     );
     const body = await parseResponse<unknown>(response);
     const payload =
-      body && typeof body === "object" && "data" in body
-        ? body.data
-        : body;
+      body && typeof body === "object" && "data" in body ? body.data : body;
     const financialData =
       payload && typeof payload === "object" ? payload : null;
     const rawPayments = Array.isArray(body)
@@ -110,7 +107,9 @@ export const paymentService = {
     return {
       summary: summary as PaymentFinancialResponse["summary"],
       payments: Array.isArray(rawPayments)
-        ? rawPayments.map((payment) => normalizePayment(payment as PaymentApiRecord))
+        ? rawPayments.map((payment) =>
+            normalizePayment(payment as PaymentApiRecord),
+          )
         : [],
     };
   },
@@ -125,5 +124,30 @@ export const paymentService = {
     });
 
     return parseResponse<PaymentWebhookResponse>(response);
+  },
+
+  async getHistoryByUserId(
+    userId: number | string,
+  ): Promise<PaymentHistoryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/payments/user/${userId}`);
+    const result = await parseResponse<PaymentHistoryResponse>(response);
+
+    return result.data;
+  },
+
+  async updatePaymentStatusToSucceeded(xenditPaymentRequestId: string) {
+    console.log("Updating payment status to SUCCEEDED for:", xenditPaymentRequestId);
+    const response = await fetch(`${API_BASE_URL}/payments/webhook/xendit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        payment_request_id: xenditPaymentRequestId,
+        status: "SUCCEEDED",
+      }),
+    });
+
+    return parseResponse<unknown>(response);
   },
 };
