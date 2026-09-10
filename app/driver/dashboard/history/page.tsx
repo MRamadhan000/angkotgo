@@ -220,7 +220,6 @@ export default function DriverHistoryPage() {
     // Total pendapatan hanya dihitung dari trip yang statusnya Selesai,
     // karena trip yang Dibatalkan tidak menghasilkan pendapatan.
     const totalIncome = filteredAndSortedHistory
-      .filter((t) => t.status === AssignmentStatus.COMPLETED)
       .reduce((sum, t) => sum + Number(t.totalAmount ?? 0), 0);
 
     return {
