@@ -195,7 +195,7 @@ export default function DriverHistoryPage() {
     driverHistory,
     driverHistoryLoading,
     driverHistoryError,
-  } = useVehicleAssignments();
+  } = useVehicleAssignments({ fetchOnMount: false });
 
   // State untuk Filter & Sort
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -391,6 +391,7 @@ export default function DriverHistoryPage() {
                     <th scope="col" className="px-4 py-3 font-semibold">Tanggal</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Rute</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Waktu / Armada</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Total</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Kondektur</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Status</th>
                   </tr>
@@ -423,6 +424,11 @@ export default function DriverHistoryPage() {
                           <p className="text-xs text-gray-500 mt-1">
                             {trip.vehicle?.plateNumber || "-"} (
                             {trip.vehicle?.vehicleCode || "-"})
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <p className="font-semibold text-slate-800">
+                            Rp {Number(trip.totalAmount ?? 0).toLocaleString("id-ID")}
                           </p>
                         </td>
                         <td className="px-4 py-4 align-top">

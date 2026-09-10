@@ -8,7 +8,8 @@ import { vehicleAssignmentService } from "@/services/vehicles/vehicleAssignmentS
 import { VehicleSchedule } from "@/types/vehicles/vehicle-schedule.type";
 import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
 
-export function useVehicleAssignments() {
+export function useVehicleAssignments(options: { fetchOnMount?: boolean } = {}) {
+  const { fetchOnMount = true } = options;
   const [assignments, setAssignments] = useState<VehicleAssignment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,8 +40,10 @@ export function useVehicleAssignments() {
   }, []);
 
   useEffect(() => {
+    if (!fetchOnMount) return;
+
     fetchAssignments();
-  }, [fetchAssignments]);
+  }, [fetchAssignments, fetchOnMount]);
 
   const fetchSchedulesByDate = useCallback(async (dateString: string) => {
     if (!dateString) return;

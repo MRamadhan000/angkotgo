@@ -86,7 +86,9 @@ export const vehicleAssignmentService = {
     return Array.isArray(result) ? result : result.data || [];
   },
 
-  async getDriverTripHistory(driverId: number | string) {
+  async getDriverTripHistory(
+    driverId: number | string,
+  ): Promise<TripHistoryItem[]> {
     const response = await fetch(
       `${API_URL}/vehicle-assignments/history?id=${driverId}&type=driver`,
       {
@@ -103,7 +105,14 @@ export const vehicleAssignmentService = {
     }
 
     const result = await response.json();
-    return result.data ?? result;
+    const items = Array.isArray(result) ? result : result.data ?? [];
+
+    return items.map(
+      (item: TripHistoryItem & { total_amount?: number | string }) => ({
+        ...item,
+        totalAmount: Number(item.totalAmount ?? item.total_amount ?? 0),
+      }),
+    );
   },
 
   async getConductorTripHistory(

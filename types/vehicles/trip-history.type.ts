@@ -14,5 +14,6 @@ export interface TripHistoryItem {
   direction: DirectionType;
   startTime: string;
   endTime: string;
+  totalAmount?: number;
   vehicle?: Vehicle;
 }
