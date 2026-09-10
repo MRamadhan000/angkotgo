@@ -23,6 +23,10 @@ interface UpcomingVehicleListProps {
    */
   onSubmit: () => Promise<void> | void;
 
+  onBoarded: () => Promise<void>;
+
+  isCompletingSinyal?: boolean;
+
   /**
    * Status loading dari parent jika diperlukan.
    */
@@ -37,6 +41,8 @@ export default function UpcomingVehicleList({
   onBook,
   selectedVehicleId = null,
   onSubmit,
+  onBoarded,
+  isCompletingSinyal = false,
   isSubmitting = false,
   realtimeVehicles = {},
   isSocketConnected = false,
@@ -51,6 +57,15 @@ export default function UpcomingVehicleList({
       setSubmitted(true);
     } catch (error) {
       console.error("Gagal mengirim sinyal:", error);
+    }
+  };
+
+  const handleBoarded = async () => {
+    try {
+      await onBoarded();
+      setHasBoarded(true);
+    } catch (error) {
+      console.error("Gagal menyelesaikan sinyal:", error);
     }
   };
 
@@ -133,15 +148,19 @@ export default function UpcomingVehicleList({
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              onClick={() => setHasBoarded(true)}
-              disabled={hasBoarded}
+              onClick={handleBoarded}
+              disabled={hasBoarded || isCompletingSinyal}
               className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
                 hasBoarded
                   ? "bg-[#003d9b] text-white shadow-sm ring-2 ring-blue-600/30"
                   : "bg-[#003d9b] text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98]"
               } disabled:cursor-default`}
             >
-              {hasBoarded ? "✓ Sudah Naik" : "Ya, Saya Sudah Naik"}
+              {isCompletingSinyal
+                ? "Memproses..."
+                : hasBoarded
+                  ? "✓ Sudah Naik"
+                  : "Ya, Saya Sudah Naik"}
             </button>
             <button
               type="button"

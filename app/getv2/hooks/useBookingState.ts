@@ -3,7 +3,10 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { usePayments } from "@/hooks/payments/usePayments";
 import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
-import { useCreateSinyal } from "@/hooks/sinyal/useSinyal";
+import {
+  useCompleteSinyal,
+  useCreateSinyal,
+} from "@/hooks/sinyal/useSinyal";
 import { PaymentStatus } from "@/types/payments/payment.type";
 import type {
   CreatePaymentType,
@@ -53,6 +56,7 @@ export function useBookingState({
   const [bookingType, setBookingType] = useState<CreatePaymentType>("CASH");
   const [bookingResult, setBookingResult] =
     useState<PaymentCreateResponse | null>(null);
+  const [sinyalId, setSinyalId] = useState<string | null>(null);
 
   const bookingPayments = usePayments(null);
 
@@ -85,6 +89,8 @@ export function useBookingState({
     isError: isCreateSinyalError,
     error: createSinyalError,
   } = useCreateSinyal();
+  const { mutateAsync: completeSinyal, isPending: isCompletingSinyal } =
+    useCompleteSinyal();
 
   // ─── Handlers ───
 
@@ -166,11 +172,24 @@ export function useBookingState({
       return;
     }
 
-    await createSinyal({
+    const createdSinyal = await createSinyal({
       latitude: originCoords.lat,
       longitude: originCoords.lng,
       vehicleAssignmentId,
     });
+    setSinyalId(createdSinyal.id);
+  };
+
+  const handleCompleteSinyal = async (): Promise<void> => {
+    if (!sinyalId) {
+      throw new Error("ID sinyal tidak tersedia.");
+    }
+
+    await completeSinyal({
+      id: sinyalId,
+      data: { status: "COMPLETED" },
+    });
+    setSinyalId(null);
   };
 
   const handleMarkAsSucceeded = async (): Promise<boolean> => {
@@ -215,6 +234,7 @@ export function useBookingState({
     bookingResult,
     bookingPayments,
     isCreatingSinyal,
+    isCompletingSinyal,
     isCreateSinyalError,
     createSinyalError,
     setBookingVehicle,
@@ -224,6 +244,7 @@ export function useBookingState({
     handleBookVehicle,
     handleCreateBookingPayment,
     handleSendSinyal,
+    handleCompleteSinyal,
     handleMarkAsSucceeded,
   };
 }

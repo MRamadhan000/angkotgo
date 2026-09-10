@@ -42,13 +42,9 @@ export function useCompleteSinyal() {
     mutationFn: ({ id, data }: { id: string; data: UpdateSinyalPayload }) =>
       SinyalService.complete(id, data),
 
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: sinyalKeys.all,
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: sinyalKeys.active(variables.data.status),
       });
     },
   });

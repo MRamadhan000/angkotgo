@@ -447,7 +447,9 @@ export default function CariRuteAngkot() {
             <UpcomingVehicleList
               upcomingVehicles={vehicles.realtimeUpcomingVehicles}
               onSubmit={booking.handleSendSinyal}
+              onBoarded={booking.handleCompleteSinyal}
               isSubmitting={booking.isCreatingSinyal}
+              isCompletingSinyal={booking.isCompletingSinyal}
               onBook={booking.handleBookVehicle}
               selectedVehicleId={booking.bookingVehicle?.assignmentId ?? null}
               realtimeVehicles={vehicles.realtimeVehicles}
