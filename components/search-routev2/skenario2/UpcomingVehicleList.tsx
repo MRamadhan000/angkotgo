@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  FiNavigation,
-  FiRadio,
-  FiCheck,
-  FiHelpCircle,
-} from "react-icons/fi";
+import { FiNavigation, FiRadio, FiCheck, FiHelpCircle } from "react-icons/fi";
 
 import UpcomingVehicleCard from "./UpcomingVehicleCard";
 import { UpcomingVehicle } from "@/types/route-search.type";
@@ -154,9 +149,9 @@ export default function UpcomingVehicleList({
               disabled={hasBoarded || isCompletingSinyal}
               className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
                 hasBoarded
-                  ? "bg-[#003d9b] text-white shadow-sm ring-2 ring-blue-600/30"
+                  ? "bg-slate-200 text-slate-500 cursor-not-allowed"
                   : "bg-[#003d9b] text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98]"
-              } disabled:cursor-default`}
+              }`}
             >
               {isCompletingSinyal
                 ? "Memproses..."
@@ -170,13 +165,13 @@ export default function UpcomingVehicleList({
                 setHasBoarded(false);
                 setSubmitted(false);
               }}
-              className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
-                !hasBoarded
-                  ? "bg-white text-slate-700 shadow-sm ring-1 ring-slate-300"
-                  : "bg-white/80 text-slate-500 hover:bg-white"
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer ${
+                hasBoarded
+                  ? "bg-rose-600 text-white shadow-md shadow-rose-600/20 hover:bg-rose-700 active:scale-[0.98]"
+                  : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-300 hover:bg-slate-50"
               }`}
             >
-              Belum
+              {hasBoarded ? "Batal Naik" : "Belum"}
             </button>
           </div>
         </div>
@@ -194,7 +189,9 @@ export default function UpcomingVehicleList({
               isBookingEnabled={hasBoarded}
               realtimeData={realtimeVehicles[vehicle.assignmentId] ?? null}
               isSocketConnected={isSocketConnected}
-              isRoomJoined={joinedAssignmentIds.includes(Number(vehicle.assignmentId))}
+              isRoomJoined={joinedAssignmentIds.includes(
+                Number(vehicle.assignmentId),
+              )}
             />
           ))}
         </div>
@@ -209,7 +206,8 @@ export default function UpcomingVehicleList({
           </p>
 
           <p className="mt-1 max-w-xs text-[11px] text-slate-500">
-            Belum ada angkot yang beroperasi di sekitar lokasi penjemputanmu saat ini. Coba cek beberapa saat lagi.
+            Belum ada angkot yang beroperasi di sekitar lokasi penjemputanmu
+            saat ini. Coba cek beberapa saat lagi.
           </p>
         </div>
       )}
