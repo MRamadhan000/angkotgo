@@ -109,16 +109,25 @@ export function BookingPaymentModal({
       `}</style>
 
       <div
-        className="bpm-modal relative w-full sm:max-w-md overflow-hidden bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl"
+        className={`bpm-modal relative w-full sm:max-w-md overflow-hidden bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl ${
+          showSuccess ? "min-h-105" : ""
+        }`}
         style={{ maxHeight: "95vh", overflowY: "auto" }}
       >
         {/* Success overlay */}
         {showSuccess && (
-          <SuccessOverlay onDone={() => setShowSuccess(false)} />
+          <SuccessOverlay
+            onDone={() => {
+              setShowSuccess(false);
+              onClose();
+            }}
+          />
         )}
 
-        {/* ── HEADER ──────────────────────────────────────────────────────── */}
-        <div className="sticky top-0 z-10 bg-white border-b border-slate-100">
+        {!showSuccess && (
+          <>
+            {/* ── HEADER ──────────────────────────────────────────────────────── */}
+            <div className="sticky top-0 z-10 bg-white border-b border-slate-100">
           {/* Drag handle (mobile) */}
           <div className="flex justify-center pt-3 pb-1 sm:hidden">
             <div className="h-1 w-10 rounded-full bg-slate-200" />
@@ -154,10 +163,10 @@ export function BookingPaymentModal({
           <div className="px-5 pb-3.5">
             <StepIndicator step={step} />
           </div>
-        </div>
+          </div>
 
-        {/* ── BODY ────────────────────────────────────────────────────────── */}
-        <div className="px-5 py-5">
+          {/* ── BODY ────────────────────────────────────────────────────────── */}
+          <div className="px-5 py-5">
 
           {/* ══ STEP 1 ════════════════════════════════════════════════════════ */}
           {step === 1 && (
@@ -492,7 +501,9 @@ export function BookingPaymentModal({
               </div>
             </div>
           )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
