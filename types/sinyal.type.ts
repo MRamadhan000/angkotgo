@@ -1,3 +1,5 @@
+import { User } from "./user.type";
+
 export type SinyalStatus = "ACTIVE" | "COMPLETED";
 
 export interface GeoJSONPoint {
@@ -10,6 +12,9 @@ export interface Sinyal {
 
   latitude: number;
   longitude: number;
+
+  userId: number;
+  user?: User;
 
   geom: GeoJSONPoint | null;
 
@@ -34,6 +39,7 @@ export interface SinyalDetail {
 }
 
 export interface CreateSinyalPayload {
+  userId: number;
   latitude: number;
   longitude: number;
   vehicleAssignmentId?: string[];

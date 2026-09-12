@@ -157,7 +157,36 @@ export function useBookingState({
     }
   };
 
-  const handleSendSinyal = async () => {
+const handleSendSinyal = async () => {
+    if (!isAuthenticated) {
+      const stateToRestore: BookingReturnState | null =
+        originCoords && destinationCoords && selectedRoute
+          ? {
+              origin,
+              destination,
+              originCoords,
+              destinationCoords,
+              selectedRoute,
+              scenario,
+              pickingMode: pickingMode as BookingReturnState["pickingMode"],
+              bookingVehicleId: bookingVehicle?.assignmentId ?? null,
+              bookingAmount,
+              bookingType,
+            }
+          : null;
+
+      if (stateToRestore) {
+        localStorage.setItem(
+          BOOKING_RETURN_STATE_KEY,
+          JSON.stringify(stateToRestore),
+        );
+      }
+
+      alert("Silakan login terlebih dahulu untuk mengirim sinyal.");
+      router.push("/auth/login?redirect=%2Fgetv2");
+      return;
+    }
+
     if (!originCoords) {
       alert("Titik penjemputan belum tersedia.");
       return;
@@ -176,6 +205,7 @@ export function useBookingState({
       latitude: originCoords.lat,
       longitude: originCoords.lng,
       vehicleAssignmentId,
+      userId: Number(user?.id),
     });
     setSinyalId(createdSinyal.id);
   };
