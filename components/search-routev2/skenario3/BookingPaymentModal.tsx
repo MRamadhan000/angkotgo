@@ -65,7 +65,9 @@ export function BookingPaymentModal({
   const [showSuccess, setShowSuccess] = useState(false);
 
   const totalAmount = passengers * FARE_PER_PASSENGER;
-  const isSucceeded = result?.data.status === PaymentStatus.SUCCEEDED;
+  const isSucceeded =
+    result?.data.status === PaymentStatus.PAID ||
+    result?.data.status === PaymentStatus.SUCCEEDED;
 
   // Sync amount to parent on passenger change
   useEffect(() => {

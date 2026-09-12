@@ -243,17 +243,24 @@ export function useBookingState({
       // Panggil webhook — parseResponse di service akan throw jika bukan 200/201
       const response = await bookingPayments.markAsSucceeded(paymentRequestId);
       const responseStatus = response.data?.status?.toUpperCase();
+      const successfulStatuses = [PaymentStatus.PAID, PaymentStatus.SUCCEEDED];
 
-      if (responseStatus && responseStatus !== PaymentStatus.SUCCEEDED) {
+      if (
+        responseStatus &&
+        !successfulStatuses.includes(responseStatus as PaymentStatus)
+      ) {
         throw new Error("Status pembayaran belum berhasil dikonfirmasi.");
       }
 
-      // Hanya sampai sini jika response 200/201 → update state → animasi sukses
+      // Simpan status aktual dari webhook agar UI mengikuti status di backend.
       setBookingResult((previous) =>
         previous
           ? {
               ...previous,
-              data: { ...previous.data, status: PaymentStatus.SUCCEEDED },
+              data: {
+                ...previous.data,
+                status: (responseStatus ?? PaymentStatus.SUCCEEDED) as PaymentStatus,
+              },
             }
           : previous,
       );
