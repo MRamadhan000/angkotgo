@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 export type UserRole = "driver" | "conductor" | "admin" | "user";
 
 export interface AuthUser {
+  email: string;
   id: string;
   name: string;
   role: UserRole;
