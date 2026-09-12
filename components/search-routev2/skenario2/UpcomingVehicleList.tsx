@@ -21,7 +21,7 @@ interface UpcomingVehicleListProps {
    * Method yang dipanggil ketika user
    * ingin mengirim sinyal.
    */
-  onSubmit: () => Promise<void> | void;
+  onSubmit: () => Promise<boolean>;
 
   onBoarded: () => Promise<void>;
 
@@ -53,8 +53,10 @@ export default function UpcomingVehicleList({
 
   const handleSubmit = async () => {
     try {
-      await onSubmit();
-      setSubmitted(true);
+      const submittedSuccessfully = await onSubmit();
+      if (submittedSuccessfully) {
+        setSubmitted(true);
+      }
     } catch (error) {
       console.error("Gagal mengirim sinyal:", error);
     }

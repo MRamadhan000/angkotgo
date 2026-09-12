@@ -39,6 +39,13 @@ import { useBottomSheet } from "./hooks/useBottomSheet";
 import type { SelectedRoute } from "./types";
 import RestoringOverlay from "@/components/search-routev2/RestoringOverlay";
 import TopBar from "@/components/search-routev2/TopBar";
+import AlertRoute from "@/components/search-routev2/AlertRoute";
+
+type RouteAlertState = {
+  message: string;
+  onSubmit: () => void;
+  resolve: (confirmed: boolean) => void;
+} | null;
 
 export default function CariRuteAngkot() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -48,6 +55,12 @@ export default function CariRuteAngkot() {
   // ─── Scenario & selected route ───
   const [scenario, setScenario] = useState<1 | 2>(1);
   const [selectedRoute, setSelectedRoute] = useState<SelectedRoute | null>(null);
+  const [routeAlert, setRouteAlert] = useState<RouteAlertState>(null);
+
+  const showRouteAlert = (message: string, onSubmit = () => {}) =>
+    new Promise<boolean>((resolve) => {
+      setRouteAlert({ message, onSubmit, resolve });
+    });
 
   // ─── mapRef dideklarasikan di sini agar bisa dibagi ke map & location search ───
   const sharedMapRef = useRef<mapboxgl.Map | null>(null);
@@ -111,6 +124,7 @@ export default function CariRuteAngkot() {
     selectedRoute,
     scenario,
     pickingMode: location.pickingMode,
+    showAlert: showRouteAlert,
   });
 
   // ─── Journey persistence (localStorage save/restore) ───
@@ -155,7 +169,7 @@ export default function CariRuteAngkot() {
     });
 
     if (!validation.isValid) {
-      alert(validation.message);
+      await showRouteAlert(validation.message ?? "Data rute belum lengkap.");
       return;
     }
 
@@ -164,7 +178,7 @@ export default function CariRuteAngkot() {
       const firstRoute = result.data?.[0];
 
       if (!firstRoute) {
-        alert("Rute tidak ditemukan.");
+        await showRouteAlert("Rute tidak ditemukan.");
         return;
       }
 
@@ -193,7 +207,7 @@ export default function CariRuteAngkot() {
       setScenario(2);
     } catch (error) {
       console.error("Gagal mencari rute:", error);
-      alert("Gagal terhubung ke server.");
+      await showRouteAlert("Gagal terhubung ke server.");
     }
   };
 
@@ -481,6 +495,21 @@ export default function CariRuteAngkot() {
           }}
         />
       )}
+
+      <AlertRoute
+        isOpen={Boolean(routeAlert)}
+        message={routeAlert?.message ?? ""}
+        onCancel={() => {
+          routeAlert?.resolve(false);
+          setRouteAlert(null);
+        }}
+        onSubmit={() => {
+          const currentAlert = routeAlert;
+          setRouteAlert(null);
+          currentAlert?.resolve(true);
+          currentAlert?.onSubmit();
+        }}
+      />
     </div>
   );
 }

@@ -27,6 +27,7 @@ type BookingStateDeps = {
   selectedRoute: SelectedRoute | null;
   scenario: 1 | 2;
   pickingMode: string;
+  showAlert: (message: string, onSubmit?: () => void) => Promise<boolean>;
 };
 
 /**
@@ -45,6 +46,7 @@ export function useBookingState({
   selectedRoute,
   scenario,
   pickingMode,
+  showAlert,
 }: BookingStateDeps) {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
@@ -94,7 +96,7 @@ export function useBookingState({
 
   // ─── Handlers ───
 
-  const handleBookVehicle = (vehicle: UpcomingVehicle) => {
+  const handleBookVehicle = async (vehicle: UpcomingVehicle) => {
     if (!isAuthenticated) {
       const stateToRestore: BookingReturnState | null =
         originCoords && destinationCoords && selectedRoute
@@ -119,8 +121,11 @@ export function useBookingState({
         );
       }
 
-      alert("Silakan login terlebih dahulu untuk melakukan booking.");
-      router.push("/auth/login?redirect=%2Fgetv2");
+      const confirmed = await showAlert(
+        "Silakan login terlebih dahulu untuk melakukan booking.",
+        () => router.push("/auth/login?redirect=%2Fgetv2"),
+      );
+      if (!confirmed) return;
       return;
     }
 
@@ -135,11 +140,11 @@ export function useBookingState({
     const amount = Number(bookingAmount.replace(/\D/g, ""));
 
     if (!Number.isInteger(userId) || userId <= 0) {
-      alert("Silakan login sebagai user sebelum melakukan booking.");
+      await showAlert("Silakan login sebagai user sebelum melakukan booking.");
       return false;
     }
     if (!Number.isFinite(amount) || amount < 1) {
-      alert("Nominal pembayaran harus lebih besar dari 0.");
+      await showAlert("Nominal pembayaran harus lebih besar dari 0.");
       return false;
     }
 
@@ -157,7 +162,7 @@ export function useBookingState({
     }
   };
 
-const handleSendSinyal = async () => {
+  const handleSendSinyal = async (): Promise<boolean> => {
     if (!isAuthenticated) {
       const stateToRestore: BookingReturnState | null =
         originCoords && destinationCoords && selectedRoute
@@ -182,14 +187,16 @@ const handleSendSinyal = async () => {
         );
       }
 
-      alert("Silakan login terlebih dahulu untuk mengirim sinyal.");
-      router.push("/auth/login?redirect=%2Fgetv2");
-      return;
+      const confirmed = await showAlert(
+        "Silakan login terlebih dahulu untuk mengirim sinyal.",
+        () => router.push("/auth/login?redirect=%2Fgetv2"),
+      );
+      return confirmed;
     }
 
     if (!originCoords) {
-      alert("Titik penjemputan belum tersedia.");
-      return;
+      await showAlert("Titik penjemputan belum tersedia.");
+      return false;
     }
 
     const vehicleAssignmentId = upcomingVehicles.map((vehicle) =>
@@ -197,8 +204,8 @@ const handleSendSinyal = async () => {
     );
 
     if (vehicleAssignmentId.length === 0) {
-      alert("Belum ada kendaraan yang tersedia.");
-      return;
+      await showAlert("Belum ada kendaraan yang tersedia.");
+      return false;
     }
 
     const createdSinyal = await createSinyal({
@@ -208,6 +215,7 @@ const handleSendSinyal = async () => {
       userId: Number(user?.id),
     });
     setSinyalId(createdSinyal.id);
+    return true;
   };
 
   const handleCompleteSinyal = async (): Promise<void> => {
