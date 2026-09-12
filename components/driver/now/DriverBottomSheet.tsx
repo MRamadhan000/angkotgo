@@ -20,7 +20,7 @@ import { DriverSeatControl } from "./DriverSeatControl";
 import { DriverQuickActions } from "./DriverQuickActions";
 import { RouteStopInfoBar } from "./RouteStopInfoBar";
 import { PaymentMonitor } from "./PaymentMonitor";
-import { AssignmentStatusCard } from "@/components/common/AssignmentStatusCard";
+// import { AssignmentStatusCard } from "@/components/common/AssignmentStatusCard";
 
 export type DriverTabType = "kursi" | "pembayaran" | "halte";
 
@@ -277,10 +277,10 @@ export function DriverBottomSheet({
             />
 
             {/* Status Perjalanan Card */}
-            <AssignmentStatusCard
+            {/* <AssignmentStatusCard
               status={assignmentDetail.status}
               onOpenModal={onOpenStatusModal}
-            />
+            /> */}
           </div>
         )}
 
