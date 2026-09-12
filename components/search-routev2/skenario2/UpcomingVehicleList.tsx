@@ -166,7 +166,10 @@ export default function UpcomingVehicleList({
             </button>
             <button
               type="button"
-              onClick={() => setHasBoarded(false)}
+              onClick={() => {
+                setHasBoarded(false);
+                setSubmitted(false);
+              }}
               className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
                 !hasBoarded
                   ? "bg-white text-slate-700 shadow-sm ring-1 ring-slate-300"
