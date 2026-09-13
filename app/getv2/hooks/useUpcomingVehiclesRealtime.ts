@@ -5,7 +5,6 @@ import {
   useUpcomingVehicles,
 } from "@/hooks/routes/useRouteSearch";
 import { useVehicleSockets } from "@/hooks/vehicles/useVehicleSocket";
-import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments2";
 import {
   calculateOsrmEstimates,
   type OsrmVehicleEstimate,
@@ -58,9 +57,7 @@ export function useUpcomingVehiclesRealtime(
     joinedAssignmentIds,
   } = useVehicleSockets(upcomingAssignmentIds);
 
-  const { data: vehicleAssignments = [] } = useVehicleAssignments();
-
-  // ─── Merge static + realtime + assignments ───
+  // ─── Merge static + realtime ───
   const realtimeUpcomingVehicles = (upcomingVehicles?.vehicles ?? []).map(
     (vehicle) => {
       const realtime = realtimeVehicles[vehicle.assignmentId];
@@ -73,10 +70,6 @@ export function useUpcomingVehiclesRealtime(
         responseVehicle.current_passengers ??
         responseVehicle.currentPassenger ??
         null;
-      const assignment = vehicleAssignments.find(
-        (item) => item.id === vehicle.assignmentId,
-      );
-
       const realtimePassengers =
         realtime?.currentPassengers ??
         (realtime as any)?.current_passengers ??
@@ -88,8 +81,6 @@ export function useUpcomingVehiclesRealtime(
           ? Number(realtimePassengers)
           : responsePassengers !== null && responsePassengers !== undefined
           ? Number(responsePassengers)
-          : assignment?.currentPassengers !== undefined && assignment?.currentPassengers !== null
-          ? Number(assignment.currentPassengers)
           : null;
 
       return {
@@ -112,12 +103,11 @@ export function useUpcomingVehiclesRealtime(
                 : vehicle.distanceToUserMeters,
             }
           : {}),
-        driverName: vehicle.driverName ?? assignment?.driver?.name,
-        vehicleCode: vehicle.vehicleCode ?? assignment?.vehicle?.vehicleCode,
-        vehicleCapacity:
-          vehicle.vehicleCapacity ?? assignment?.vehicle?.capacity,
-        driver: vehicle.driver ?? assignment?.driver,
-        vehicle: vehicle.vehicle ?? assignment?.vehicle,
+        driverName: vehicle.driverName,
+        vehicleCode: vehicle.vehicleCode,
+        vehicleCapacity: vehicle.vehicleCapacity,
+        driver: vehicle.driver,
+        vehicle: vehicle.vehicle,
         osrmEstimate: osrmEstimates[vehicle.assignmentId] ?? null,
       };
     },
