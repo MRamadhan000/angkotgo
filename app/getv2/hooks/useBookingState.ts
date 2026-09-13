@@ -213,6 +213,10 @@ export function useBookingState({
       longitude: originCoords.lng,
       vehicleAssignmentId,
       userId: Number(user?.id),
+      targetLat: destinationCoords?.lat ?? null,
+      targetLng: destinationCoords?.lng ?? null,
+      sourceName: origin || null,
+      destName: destination || null,
     });
     setSinyalId(createdSinyal.id);
     return true;

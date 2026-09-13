@@ -26,6 +26,10 @@ export interface Sinyal {
   user?: User;
 
   geom: GeoJSONPoint | null;
+  targetLat: number | null;
+  targetLng: number | null;
+  sourceName: string | null;
+  destName: string | null;
 
   status: SinyalStatus;
 
@@ -41,6 +45,10 @@ export interface CreateSinyalPayload {
   userId: number;
   latitude: number;
   longitude: number;
+  targetLat: number | null;
+  targetLng: number | null;
+  sourceName: string | null;
+  destName: string | null;
   vehicleAssignmentId?: string[];
 }
 
