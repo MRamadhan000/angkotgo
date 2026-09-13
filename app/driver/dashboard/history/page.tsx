@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
+import { paymentService } from "@/services/payments/payment.service";
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -155,6 +156,44 @@ const STATUS_FILTERS: { key: string; label: string }[] = [
   { key: AssignmentStatus.CANCELLED, label: "Dibatalkan" },
 ];
 
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function formatPaymentDate(value: string | null | undefined): string {
+  if (!value) return "-";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  return parsed.toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function getSummaryValue(
+  summary: Record<string, number> | null | undefined,
+  keys: string[],
+): number {
+  if (!summary) return 0;
+
+  for (const key of keys) {
+    const value = summary[key];
+    if (typeof value === "number") return Number(value || 0);
+  }
+
+  return 0;
+}
+
 export default function DriverHistoryPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -171,6 +210,13 @@ export default function DriverHistoryPage() {
   const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>(
     {},
   );
+  const [selectedTrip, setSelectedTrip] = useState<any | null>(null);
+  const [financialDetail, setFinancialDetail] = useState<{
+    summary: Record<string, number> | null;
+    payments: any[];
+  } | null>(null);
+  const [financialLoading, setFinancialLoading] = useState(false);
+  const [financialError, setFinancialError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -234,6 +280,84 @@ export default function DriverHistoryPage() {
   const toggleDate = (dateKey: string) => {
     setCollapsedDates((prev) => ({ ...prev, [dateKey]: !prev[dateKey] }));
   };
+
+  const handleOpenPaymentModal = async (trip: any) => {
+    if (!trip?.assignmentId) return;
+
+    setSelectedTrip(trip);
+    setFinancialError(null);
+    setFinancialDetail(null);
+    setFinancialLoading(true);
+
+    try {
+      const response = await paymentService.getFinancial(
+        Number(trip.assignmentId),
+      );
+      setFinancialDetail(response);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Gagal memuat detail pembayaran trip.";
+      setFinancialError(message);
+    } finally {
+      setFinancialLoading(false);
+    }
+  };
+
+  const closePaymentModal = () => {
+    setSelectedTrip(null);
+    setFinancialDetail(null);
+    setFinancialError(null);
+    setFinancialLoading(false);
+  };
+
+  const totalTransactions = financialDetail?.payments?.length ?? 0;
+  const totalPaid =
+    getSummaryValue(financialDetail?.summary, [
+      "total_paid",
+      "totalPaid",
+      "paid_total",
+      "paidTotal",
+    ]) ||
+    financialDetail?.payments
+      .filter((payment) =>
+        ["PAID", "SUCCEEDED"].includes(
+          String(payment.status || "").toUpperCase(),
+        ),
+      )
+      .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0) ||
+    0;
+  const totalOnline =
+    getSummaryValue(financialDetail?.summary, [
+      "total_online",
+      "totalOnline",
+      "online_total",
+      "onlineTotal",
+    ]) ||
+    financialDetail?.payments
+      .filter(
+        (payment) =>
+          String(payment.payment_type || "").toUpperCase() === "ONLINE" ||
+          String(payment.payment_type || "").toUpperCase() === "QRIS" ||
+          String(payment.payment_type || "").toUpperCase() === "TRANSFER",
+      )
+      .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0) ||
+    0;
+  const totalCash =
+    getSummaryValue(financialDetail?.summary, [
+      "total_cash",
+      "totalCash",
+      "cash_total",
+      "cashTotal",
+    ]) ||
+    financialDetail?.payments
+      .filter(
+        (payment) =>
+          String(payment.payment_type || "").toUpperCase() === "CASH",
+      )
+      .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0) ||
+    0;
 
   if (authLoading) {
     return (
@@ -489,9 +613,11 @@ export default function DriverHistoryPage() {
                             const vehicleTypeConfig =
                               VEHICLE_TYPE_CONFIG[trip.vehicle?.type as string];
                             return (
-                              <div
+                              <button
+                                type="button"
                                 key={trip.assignmentId}
-                                className="group/item space-y-3 p-5 transition-colors hover:bg-blue-50/30"
+                                onClick={() => handleOpenPaymentModal(trip)}
+                                className="group/item block w-full cursor-pointer space-y-3 p-5 text-left transition-all duration-300 hover:bg-blue-50/30 focus:outline-none focus:ring-2 focus:ring-blue-200"
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
@@ -556,7 +682,7 @@ export default function DriverHistoryPage() {
                                     </p>
                                   </div>
                                 </div>
-                              </div>
+                              </button>
                             );
                           })}
                         </div>
@@ -569,6 +695,179 @@ export default function DriverHistoryPage() {
           </div>
         </div>
       </div>
+
+      {selectedTrip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl animate-in fade-in-0 duration-300">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Detail Pembayaran
+                </p>
+                <h3 className="mt-1 text-lg font-bold text-slate-900">
+                  {selectedTrip.routeName || "Trip"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={closePaymentModal}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Tutup modal detail pembayaran"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="max-h-[calc(90vh-80px)] overflow-y-auto p-4 sm:p-6">
+              {financialLoading && (
+                <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500">
+                  Memuat detail pembayaran...
+                </div>
+              )}
+
+              {!financialLoading && financialError && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {financialError}
+                </div>
+              )}
+
+              {!financialLoading && !financialError && financialDetail && (
+                <div className="space-y-5">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Total Transaksi
+                      </p>
+                      <p className="mt-2 text-xl font-black text-slate-900">
+                        {totalTransactions}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700">
+                        Total Paid
+                      </p>
+                      <p className="mt-2 text-xl font-black text-emerald-700">
+                        {formatCurrency(totalPaid)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-700">
+                        Total Online
+                      </p>
+                      <p className="mt-2 text-xl font-black text-blue-700">
+                        {formatCurrency(totalOnline)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700">
+                        Total Cash
+                      </p>
+                      <p className="mt-2 text-xl font-black text-amber-700">
+                        {formatCurrency(totalCash)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                      Daftar Pembayaran
+                    </div>
+
+                    {financialDetail.payments.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-slate-500">
+                        Belum ada data pembayaran untuk trip ini.
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-200">
+                        {financialDetail.payments.map((payment) => {
+                          const userName =
+                            payment.user?.name || "Pengguna tidak tersedia";
+                          const userEmail =
+                            (payment as any)?.user?.email ||
+                            "email belum tersedia";
+                          const paymentType = String(
+                            payment.payment_type || "-",
+                          ).toUpperCase();
+                          const status = String(
+                            payment.status || "-",
+                          ).toUpperCase();
+
+                          return (
+                            <div
+                              key={payment.id}
+                              className="p-4 transition-colors hover:bg-slate-50"
+                            >
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">
+                                    Payment Code
+                                  </p>
+                                  <p className="mt-1 text-sm font-bold text-slate-900">
+                                    {payment.payment_code || "-"}
+                                  </p>
+                                </div>
+                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                                  {paymentType}
+                                </span>
+                              </div>
+
+                              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                <div>
+                                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                                    User
+                                  </p>
+                                  <p className="mt-1 text-sm font-semibold text-slate-800">
+                                    {userName}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                                    Email
+                                  </p>
+                                  <p className="mt-1 text-sm font-semibold text-slate-800 break-all">
+                                    {userEmail}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                                    Amount
+                                  </p>
+                                  <p className="mt-1 text-sm font-bold text-slate-900">
+                                    {formatCurrency(
+                                      Number(payment.amount ?? 0),
+                                    )}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                                    Status
+                                  </p>
+                                  <p className="mt-1 text-sm font-bold text-slate-900">
+                                    {status}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                                <span className="font-semibold text-slate-600">
+                                  Tanggal Pembayaran:
+                                </span>{" "}
+                                {formatPaymentDate(
+                                  payment.paid_at || payment.created_at,
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer Konsisten */}
       <div className="border-t border-gray-200 bg-white py-4 px-6 text-xs text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-2 mt-8">
