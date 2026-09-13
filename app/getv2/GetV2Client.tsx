@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { FiMapPin, FiNavigation } from "react-icons/fi";
 
@@ -50,20 +49,15 @@ type RouteAlertState = {
   resolve: (confirmed: boolean) => void;
 } | null;
 
-export default function CariRuteAngkot() {
+type GetV2ClientProps = {
+  sinyalId: string | null;
+  userId: string | null;
+};
+
+export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
-  const searchParams = useSearchParams();
   const isDevelopment = true;
-
-  // ─── URL params: sinyalId & userId (support berbagai variant nama) ───
-  const urlSinyalId =
-    searchParams.get("sinyalId") ??
-    searchParams.get("sinyalid") ??
-    searchParams.get("sinyal_id") ??
-    searchParams.get("id");
-  const urlUserId =
-    searchParams.get("userId") ?? searchParams.get("userid");
 
   // ─── Scenario & selected route ───
   const [scenario, setScenario] = useState<1 | 2>(1);
@@ -145,7 +139,7 @@ export default function CariRuteAngkot() {
     data: sinyalHistory,
     isSuccess: isSinyalSuccess,
     isError: isSinyalError,
-  } = useSinyalDetailByUser(urlSinyalId, urlUserId);
+  } = useSinyalDetailByUser(sinyalId, userId);
 
   // Restore state saat fetch sinyal history berhasil
   useEffect(() => {
@@ -193,9 +187,9 @@ export default function CariRuteAngkot() {
 
   // Alert langsung jika sinyal tidak valid
   useEffect(() => {
-    if (!urlSinyalId || !isSinyalError) return;
+    if (!sinyalId || !isSinyalError) return;
     alert("Sinyal tidak valid atau tidak ditemukan.");
-  }, [isSinyalError, urlSinyalId]);
+  }, [isSinyalError, sinyalId]);
 
   // ─── Journey persistence (localStorage save/restore) ───
   const { isRestoringBooking } = useJourneyPersistence(

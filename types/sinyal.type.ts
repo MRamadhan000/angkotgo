@@ -1,6 +1,5 @@
 import { Route } from "@/types/routes/route.type";
 import { User } from "./user.type";
-import { VehicleAssignment } from "./vehicles/vehicle-assignments.type";
 import { DirectionType } from "./vehicles/vehicle.type";
 export type SinyalStatus = "ACTIVE" | "COMPLETED";
 
@@ -9,11 +8,27 @@ export interface GeoJSONPoint {
   coordinates: [number, number]; // [longitude, latitude]
 }
 
+export interface SinyalVehicleAssignment {
+  id: number;
+  vehicleId: number;
+  driverId: number;
+  conductorId: number;
+  status: string;
+  driver?: { id?: number; name?: string | null; [key: string]: unknown } | null;
+  vehicle?: {
+    vehicleCode?: string | null;
+    capacity?: number | null;
+    [key: string]: unknown;
+  } | null;
+  currentPassengers?: number | null;
+  [key: string]: unknown;
+}
+
 export interface SinyalDetail {
   id: string;
   idSinyal: string;
-  vehicleAssignmentId: string;
-  vehicleAssignment?: VehicleAssignment;
+  vehicleAssignmentId: number;
+  vehicleAssignment: SinyalVehicleAssignment;
   createdAt: string;
 }
 
