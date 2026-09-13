@@ -14,6 +14,7 @@ import {
   AssignmentStatus,
   VehicleAssignment,
 } from "@/types/vehicles/vehicle-assignments.type";
+import { useAuth } from "@/context/AuthContext";
 import { RouteStopType } from "@/types/routes/route-stop.type";
 import { StopInterval } from "@/types/routes/stop-interval.type";
 import { DriverSeatControl } from "./DriverSeatControl";
@@ -56,6 +57,7 @@ export function DriverBottomSheet({
   paymentsError,
   paymentRealtimeStatus,
 }: DriverBottomSheetProps) {
+  const { role } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<DriverTabType>("kursi");
 
@@ -88,6 +90,10 @@ export function DriverBottomSheet({
       setIsExpanded(true);
     }
   };
+
+  const visibleTab = role === "driver" && activeTab === "kursi"
+    ? "pembayaran"
+    : activeTab;
 
   const currentPassengers = assignmentDetail?.currentPassengers || 0;
   const capacity = assignmentDetail?.vehicle?.capacity || 8;
@@ -163,18 +169,20 @@ export function DriverBottomSheet({
       <div className="shrink-0 px-2.5 sm:px-4 pb-1 sm:pb-1.5">
         <div className="flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Status Badge (Click to update status) */}
-          <button
-            type="button"
-            onClick={onOpenStatusModal}
-            className={`flex items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs font-bold transition hover:opacity-90 active:scale-95 ${statusBadge.badgeBg}`}
-            title="Klik untuk ubah status perjalanan"
-          >
-            <span
-              className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${statusBadge.bg} ${assignmentDetail?.status === AssignmentStatus.ONGOING ? "animate-pulse" : ""}`}
-            />
-            <span>{statusBadge.label}</span>
-            <FaPenToSquare className="ml-0.5 text-[9px] sm:text-[10px] opacity-70" />
-          </button>
+          {role !== "conductor" && (
+            <button
+              type="button"
+              onClick={onOpenStatusModal}
+              className={`flex items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs font-bold transition hover:opacity-90 active:scale-95 ${statusBadge.badgeBg}`}
+              title="Klik untuk ubah status perjalanan"
+            >
+              <span
+                className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${statusBadge.bg} ${assignmentDetail?.status === AssignmentStatus.ONGOING ? "animate-pulse" : ""}`}
+              />
+              <span>{statusBadge.label}</span>
+              <FaPenToSquare className="ml-0.5 text-[9px] sm:text-[10px] opacity-70" />
+            </button>
+          )}
 
           {/* Sisa Kursi Pill */}
           <button
@@ -218,19 +226,23 @@ export function DriverBottomSheet({
 
       {/* PINTASAN TABS (Segmented Buttons for Fast thumb navigation) */}
       <div className="shrink-0 px-2.5 sm:px-4 py-1 border-b border-slate-100">
-        <div className="grid grid-cols-3 gap-1 rounded-xl sm:rounded-2xl bg-slate-100/90 p-0.5 sm:p-1">
-          <button
-            type="button"
-            onClick={() => handleTabClick("kursi")}
-            className={`flex items-center justify-center gap-1 rounded-lg sm:rounded-xl py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all ${
-              activeTab === "kursi"
-                ? "bg-white text-blue-600 shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <FaChair className="text-[10px] sm:text-xs" />
-            <span>Kursi</span>
-          </button>
+        <div
+          className={`grid ${role === "driver" ? "grid-cols-2" : "grid-cols-3"} gap-1 rounded-xl sm:rounded-2xl bg-slate-100/90 p-0.5 sm:p-1`}
+        >
+          {role !== "driver" && (
+            <button
+              type="button"
+              onClick={() => handleTabClick("kursi")}
+              className={`flex items-center justify-center gap-1 rounded-lg sm:rounded-xl py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all ${
+                visibleTab === "kursi"
+                  ? "bg-white text-blue-600 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <FaChair className="text-[10px] sm:text-xs" />
+              <span>Kursi</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -266,15 +278,17 @@ export function DriverBottomSheet({
       </div>
 
       {/* TAB CONTENT PANEL */}
-      <div className="flex-1 overflow-y-auto px-2.5 sm:px-4 py-2 sm:py-3 pb-8 overscroll-contain">
-        {activeTab === "kursi" && (
+      <div className="min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-2 sm:px-4 sm:py-3 md:px-5 md:py-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+        {visibleTab === "kursi" && (
           <div className="space-y-2.5 sm:space-y-3.5">
             {/* Passenger Seat Grid */}
-            <DriverSeatControl
-              assignmentDetail={assignmentDetail}
-              onUpdate={onUpdatePassengers}
-              isUpdating={isUpdatingStatus}
-            />
+            {role !== "driver" && (
+              <DriverSeatControl
+                assignmentDetail={assignmentDetail}
+                onUpdate={onUpdatePassengers}
+                isUpdating={isUpdatingStatus}
+              />
+            )}
 
             {/* Status Perjalanan Card */}
             {/* <AssignmentStatusCard
@@ -284,7 +298,7 @@ export function DriverBottomSheet({
           </div>
         )}
 
-        {activeTab === "pembayaran" && (
+        {visibleTab === "pembayaran" && (
           <div className="space-y-3">
             <PaymentMonitor
               payments={payments}
@@ -297,7 +311,7 @@ export function DriverBottomSheet({
           </div>
         )}
 
-        {activeTab === "halte" && (
+        {visibleTab === "halte" && (
           <div className="space-y-3">
             <DriverQuickActions
               onSelectLocation={onOpenLocationModal}
