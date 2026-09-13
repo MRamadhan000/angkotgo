@@ -143,6 +143,7 @@ export default function CariRuteAngkot() {
   // ─── Sinyal history: fetch berdasarkan sinyalId + userId dari URL ───
   const {
     data: sinyalHistory,
+    isLoading: isSinyalLoading,
     isSuccess: isSinyalSuccess,
     isError: isSinyalError,
   } = useSinyalDetailByUser(urlSinyalId, urlUserId);
@@ -302,7 +303,17 @@ export default function CariRuteAngkot() {
       />
 
       {/* Restoring overlay */}
-      <RestoringOverlay show={isRestoringBooking} />
+      <RestoringOverlay
+        show={
+          isRestoringBooking ||
+          Boolean(urlSinyalId && urlUserId && isSinyalLoading)
+        }
+        message={
+          isSinyalLoading
+            ? "Memuat perjalanan Anda..."
+            : "Menghubungkan kembali perjalanan Anda..."
+        }
+      />
 
       {/* MAP LAYER */}
       <div className="absolute inset-0 z-0">
