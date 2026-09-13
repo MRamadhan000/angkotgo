@@ -11,7 +11,7 @@ export default function LoginPortalPage() {
       label: "User",
       description: "Lihat rute, pesan tiket, dan cek jadwal bus.",
       icon: FaUser,
-      href: "/login",
+      href: "/auth/login",
     },
     {
       label: "Driver",

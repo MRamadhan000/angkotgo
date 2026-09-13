@@ -44,15 +44,24 @@ export default function UserLoginPage() {
 
     try {
       await loginUser(data);
+
+      // 1. Ambil parameter `redirect` dari URL jika user datang dari proteksi route
       const redirectPath = new URLSearchParams(window.location.search).get(
         "redirect",
       );
+
+      // 2. Tentukan default redirect path ke User Dashboard
+      const DEFAULT_DASHBOARD = "/user/dashboard"; // Adjust path sesuai struktur folder router Anda
+
+      // 3. Validasi open-redirect vulnerability
       const safeRedirectPath =
         redirectPath &&
         redirectPath.startsWith("/") &&
         !redirectPath.startsWith("//")
           ? redirectPath
-          : "/";
+          : DEFAULT_DASHBOARD;
+
+      // 4. Router replace ke dashboard atau redirect path
       router.replace(safeRedirectPath);
     } catch (err: unknown) {
       const errorMessage =
