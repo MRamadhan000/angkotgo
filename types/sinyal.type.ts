@@ -1,10 +1,19 @@
 import { User } from "./user.type";
+import { VehicleAssignment } from "./vehicles/vehicle-assignments.type";
 
 export type SinyalStatus = "ACTIVE" | "COMPLETED";
 
 export interface GeoJSONPoint {
   type: "Point";
   coordinates: [number, number]; // [longitude, latitude]
+}
+
+export interface SinyalDetail {
+  id: string;
+  idSinyal: string;
+  vehicleAssignmentId: string;
+  vehicleAssignment?: VehicleAssignment;
+  createdAt: string;
 }
 
 export interface Sinyal {
@@ -26,16 +35,6 @@ export interface Sinyal {
 
   createdAt: string;
   updatedAt: string;
-}
-
-export interface SinyalDetail {
-  id: string;
-
-  idSinyal: string;
-
-  vehicleAssignmentId: string;
-
-  createdAt: string;
 }
 
 export interface CreateSinyalPayload {

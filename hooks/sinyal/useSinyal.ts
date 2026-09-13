@@ -8,6 +8,10 @@ export const sinyalKeys = {
   all: ["sinyal"] as const,
   active: (vehicleAssignmentId: string) =>
     ["sinyal", "active", vehicleAssignmentId] as const,
+  userList: (userId: number | string) =>
+    ["sinyal", "user", String(userId)] as const,
+  userDetail: (id: string, userId: number | string) =>
+    ["sinyal", "detail", id, "user", String(userId)] as const,
 };
 
 // Mendapatkan sinyal aktif berdasarkan vehicle assignment
@@ -16,6 +20,27 @@ export function useActiveSinyal(vehicleAssignmentId: string) {
     queryKey: sinyalKeys.active(vehicleAssignmentId),
     queryFn: () => SinyalService.getActive(vehicleAssignmentId),
     enabled: !!vehicleAssignmentId,
+  });
+}
+
+// Mendapatkan semua riwayat sinyal milik user tertentu
+export function useSinyalByUser(userId: number | string | null | undefined) {
+  return useQuery({
+    queryKey: sinyalKeys.userList(userId ?? ""),
+    queryFn: () => SinyalService.getByUserId(userId!),
+    enabled: !!userId,
+  });
+}
+
+// Mendapatkan detail sinyal spesifik milik user tertentu
+export function useSinyalDetailByUser(
+  id: string | null | undefined,
+  userId: number | string | null | undefined,
+) {
+  return useQuery({
+    queryKey: sinyalKeys.userDetail(id ?? "", userId ?? ""),
+    queryFn: () => SinyalService.getByIdAndUserId(id!, userId!),
+    enabled: !!id && !!userId,
   });
 }
 
