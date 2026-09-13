@@ -2,7 +2,6 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
-import { paymentService } from "@/services/payments/payment.service";
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -156,6 +155,9 @@ const STATUS_FILTERS: { key: string; label: string }[] = [
   { key: AssignmentStatus.CANCELLED, label: "Dibatalkan" },
 ];
 
+const PAYMENT_API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -192,6 +194,111 @@ function getSummaryValue(
   }
 
   return 0;
+}
+
+function getPaymentUserName(payment: any): string {
+  const user = payment?.user ?? {};
+  const candidates = [
+    user?.name,
+    user?.full_name,
+    user?.fullName,
+    user?.username,
+    user?.display_name,
+    payment?.user_name,
+    payment?.userName,
+    payment?.username,
+    payment?.name,
+  ];
+
+  const value = candidates.find(
+    (item) => typeof item === "string" && item.trim(),
+  );
+  return value ? String(value) : "Pengguna tidak tersedia";
+}
+
+function getPaymentUserEmail(payment: any): string {
+  const user = payment?.user ?? {};
+  const candidates = [
+    user?.email,
+    user?.email_address,
+    user?.emailAddress,
+    payment?.user_email,
+    payment?.userEmail,
+    payment?.email,
+    payment?.email_address,
+    payment?.emailAddress,
+  ];
+
+  const value = candidates.find(
+    (item) => typeof item === "string" && item.includes("@"),
+  );
+  return value ? String(value) : "email belum tersedia";
+}
+
+function getPaymentCode(payment: any): string {
+  const candidates = [
+    payment?.payment_code,
+    payment?.paymentCode,
+    payment?.payment_code_value,
+    payment?.paymentCodeValue,
+    payment?.code,
+    payment?.payment?.code,
+    payment?.paymentCodeId,
+  ];
+
+  const value = candidates.find(
+    (item) => typeof item === "string" && item.trim().length > 0,
+  );
+
+  return value ? String(value) : "-";
+}
+
+function getPaymentTypeValue(payment: any): string {
+  const candidates = [
+    payment?.payment_type,
+    payment?.paymentType,
+    payment?.type,
+    payment?.payment?.type,
+  ];
+
+  const value = candidates.find(
+    (item) => typeof item === "string" && item.trim().length > 0,
+  );
+
+  return value ? String(value).toUpperCase() : "-";
+}
+
+function getPaymentStatusValue(payment: any): string {
+  const candidates = [
+    payment?.status,
+    payment?.payment_status,
+    payment?.paymentStatus,
+    payment?.state,
+    payment?.payment?.status,
+  ];
+
+  const value = candidates.find(
+    (item) => typeof item === "string" && item.trim().length > 0,
+  );
+
+  return value ? String(value).toUpperCase() : "-";
+}
+
+function getPaymentDateValue(payment: any): string | null {
+  const candidates = [
+    payment?.paid_at,
+    payment?.paidAt,
+    payment?.created_at,
+    payment?.createdAt,
+    payment?.payment?.paid_at,
+    payment?.payment?.paidAt,
+  ];
+
+  const value = candidates.find(
+    (item) => typeof item === "string" && item.trim().length > 0,
+  );
+
+  return value ?? null;
 }
 
 export default function DriverHistoryPage() {
@@ -290,10 +397,48 @@ export default function DriverHistoryPage() {
     setFinancialLoading(true);
 
     try {
-      const response = await paymentService.getFinancial(
-        Number(trip.assignmentId),
+      const response = await fetch(
+        `${PAYMENT_API_BASE_URL}/payments/financial/vehicle-assignment/${Number(trip.assignmentId)}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        },
       );
-      setFinancialDetail(response);
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message =
+          payload && typeof payload === "object" && "message" in payload
+            ? String(payload.message)
+            : "Gagal memuat detail pembayaran trip.";
+        throw new Error(message);
+      }
+
+      const normalizedPayload =
+        payload && typeof payload === "object" && "data" in payload
+          ? payload.data
+          : payload;
+
+      const nextFinancialDetail = {
+        summary:
+          normalizedPayload && typeof normalizedPayload === "object"
+            ? ((normalizedPayload as any).summary ?? null)
+            : null,
+        payments: Array.isArray(
+          normalizedPayload && typeof normalizedPayload === "object"
+            ? (normalizedPayload as any).payments
+            : normalizedPayload,
+        )
+          ? ((normalizedPayload as any).payments ?? [])
+          : Array.isArray(normalizedPayload)
+            ? normalizedPayload
+            : [],
+      };
+
+      setFinancialDetail(nextFinancialDetail);
     } catch (error) {
       const message =
         error instanceof Error
@@ -780,17 +925,12 @@ export default function DriverHistoryPage() {
                     ) : (
                       <div className="divide-y divide-slate-200">
                         {financialDetail.payments.map((payment) => {
-                          const userName =
-                            payment.user?.name || "Pengguna tidak tersedia";
-                          const userEmail =
-                            (payment as any)?.user?.email ||
-                            "email belum tersedia";
-                          const paymentType = String(
-                            payment.payment_type || "-",
-                          ).toUpperCase();
-                          const status = String(
-                            payment.status || "-",
-                          ).toUpperCase();
+                          const userName = getPaymentUserName(payment);
+                          const userEmail = getPaymentUserEmail(payment);
+                          const paymentCode = getPaymentCode(payment);
+                          const paymentType = getPaymentTypeValue(payment);
+                          const status = getPaymentStatusValue(payment);
+                          const paymentDate = getPaymentDateValue(payment);
 
                           return (
                             <div
@@ -803,7 +943,7 @@ export default function DriverHistoryPage() {
                                     Payment Code
                                   </p>
                                   <p className="mt-1 text-sm font-bold text-slate-900">
-                                    {payment.payment_code || "-"}
+                                    {paymentCode}
                                   </p>
                                 </div>
                                 <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
@@ -852,9 +992,7 @@ export default function DriverHistoryPage() {
                                 <span className="font-semibold text-slate-600">
                                   Tanggal Pembayaran:
                                 </span>{" "}
-                                {formatPaymentDate(
-                                  payment.paid_at || payment.created_at,
-                                )}
+                                {formatPaymentDate(paymentDate)}
                               </div>
                             </div>
                           );
