@@ -217,6 +217,8 @@ export function useBookingState({
       targetLng: destinationCoords?.lng ?? null,
       sourceName: origin || null,
       destName: destination || null,
+      routeId: selectedRoute?.routeId ?? null,
+      direction: selectedRoute?.direction ?? null,
     });
     setSinyalId(createdSinyal.id);
     return true;
