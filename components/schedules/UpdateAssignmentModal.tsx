@@ -33,10 +33,10 @@ export default function UpdateAssignmentModal({
   onSuccess,
   initialData,
 }: UpdateAssignmentModalProps) {
-  const { drivers, loading: loadingDrivers } = useDrivers();
-  const { vehicles, loading: loadingVehicles } = useVehicles();
-  const { routes, loading: loadingRoutes } = useRoutes();
-  const { conductors, loading: loadingConductors } = useConductors();
+  const { data: drivers = [], isLoading: loadingDrivers } = useDrivers();
+  const { data: vehicles = [], isLoading: loadingVehicles } = useVehicles();
+  const { data: routes = [], isLoading: loadingRoutes } = useRoutes();
+  const { data: conductors = [], isLoading: loadingConductors } = useConductors();
 
   const [formData, setFormData] = useState({
     vehicleId: "",
