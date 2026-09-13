@@ -39,7 +39,7 @@ export default function DashboardOverviewPage() {
         </div>
         <div className="flex flex-col md:flex-row items-center gap-3 bg-[#f8f9ff] p-3 rounded-xl border border-[#c3c5d8]/20">
           <Link
-            href="/search" // Sesuaikan dengan route halaman pencarian angkot
+            href="/getv2" // Sesuaikan dengan route halaman pencarian angkot
             className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-[#1e56f1] hover:bg-[#003fc7] text-white font-bold text-sm px-6 py-3 rounded-lg transition-all duration-200 shadow-sm active:scale-95 shrink-0"
           >
             <FaSearchLocation className="w-4 h-4" />

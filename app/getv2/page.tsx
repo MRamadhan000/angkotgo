@@ -62,12 +62,13 @@ export default function CariRuteAngkot() {
     searchParams.get("sinyalid") ??
     searchParams.get("sinyal_id") ??
     searchParams.get("id");
-  const urlUserId =
-    searchParams.get("userId") ?? searchParams.get("userid");
+  const urlUserId = searchParams.get("userId") ?? searchParams.get("userid");
 
   // ─── Scenario & selected route ───
   const [scenario, setScenario] = useState<1 | 2>(1);
-  const [selectedRoute, setSelectedRoute] = useState<SelectedRoute | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<SelectedRoute | null>(
+    null,
+  );
   const [routeAlert, setRouteAlert] = useState<RouteAlertState>(null);
 
   const showRouteAlert = (message: string, onSubmit = () => {}) =>
@@ -185,7 +186,10 @@ export default function CariRuteAngkot() {
       latitude: sinyalHistory.latitude,
       longitude: sinyalHistory.longitude,
     };
-    queryClient.setQueryData(["upcoming-vehicles", vehicleParams], syntheticVehicles);
+    queryClient.setQueryData(
+      ["upcoming-vehicles", vehicleParams],
+      syntheticVehicles,
+    );
 
     // [4] Transisi ke Skenario 2
     setSelectedRoute({ routeId, direction });
@@ -271,7 +275,10 @@ export default function CariRuteAngkot() {
       await queryClient.fetchQuery({
         queryKey: routePathKeys.byRouteAndDirection(routeId, direction),
         queryFn: () =>
-          routePathService.getRoutePathByRouteIdandDirection(routeId, direction),
+          routePathService.getRoutePathByRouteIdandDirection(
+            routeId,
+            direction,
+          ),
       });
 
       setSelectedRoute({ routeId, direction });
@@ -317,9 +324,15 @@ export default function CariRuteAngkot() {
 
       {/* MAP LAYER */}
       <div className="absolute inset-0 z-0">
-        <div ref={map.mapContainerRef} className="absolute inset-0 h-full w-full" />
+        <div
+          ref={map.mapContainerRef}
+          className="absolute inset-0 h-full w-full"
+        />
         <RoutePathLine map={map.mapInstance} routePaths={routePaths ?? []} />
-        <VehicleMarkers map={map.mapInstance} vehicles={vehicles.realtimeUpcomingVehicles} />
+        <VehicleMarkers
+          map={map.mapInstance}
+          vehicles={vehicles.realtimeUpcomingVehicles}
+        />
       </div>
 
       {/* CENTER PICKER */}
@@ -352,7 +365,13 @@ export default function CariRuteAngkot() {
         <TopBar
           user={user}
           isAuthenticated={isAuthenticated}
-          onBack={() => window.history.back()}
+          onBack={() => {
+            if (isAuthenticated) {
+              window.location.href = "/user/dashboard";
+            } else {
+              window.history.back();
+            }
+          }}
         />
 
         {/* Floating Search Card */}
@@ -446,7 +465,10 @@ export default function CariRuteAngkot() {
             size="md"
             icon={<FiMapPin />}
             onClick={() =>
-              location.handleConfirmMapLocation(location.pickingMode, sharedMapRef)
+              location.handleConfirmMapLocation(
+                location.pickingMode,
+                sharedMapRef,
+              )
             }
             disabled={
               !showCenterPicker ||
@@ -472,7 +494,9 @@ export default function CariRuteAngkot() {
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#003d9b] via-blue-600 to-blue-500 py-3.5 text-sm font-bold text-white shadow-xl shadow-blue-600/25 transition-all hover:from-blue-700 hover:to-blue-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <FiNavigation className="text-base rotate-45" />
-              <span>{isSearchingRoute ? "Mencari Rute..." : "Cari Angkot"}</span>
+              <span>
+                {isSearchingRoute ? "Mencari Rute..." : "Cari Angkot"}
+              </span>
             </button>
           )}
         </div>
