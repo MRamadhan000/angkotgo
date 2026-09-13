@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   FiRefreshCw,
   FiTruck,
@@ -42,6 +43,7 @@ const ASSIGNMENT_STATUS_FILTERS = [
 ] as const;
 
 export default function OperationalBoardPage() {
+  const router = useRouter();
   const todayString = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
@@ -177,7 +179,6 @@ export default function OperationalBoardPage() {
 
   return (
     <div className="p-6 max-w-[1700px] mx-auto space-y-6 relative">
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -188,7 +189,6 @@ export default function OperationalBoardPage() {
             harian dalam format tabel. (Klik baris tabel untuk mengedit)
           </p>
         </div>
-
         <div className="flex items-center gap-3 flex-wrap">
           <DateDropdownModal
             selectedDate={selectedDate}
@@ -199,7 +199,6 @@ export default function OperationalBoardPage() {
             assignments={assignments}
             todayString={todayString}
           />
-
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
@@ -207,7 +206,6 @@ export default function OperationalBoardPage() {
             <FiPlus className="w-4 h-4" />
             Tambah Jadwal
           </button>
-
           <button
             onClick={handleRefresh}
             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
@@ -222,7 +220,6 @@ export default function OperationalBoardPage() {
 
       {error && <ErrorAlert message={`Gagal memuat data: ${error}`} />}
 
-      {/* FILTER & SEARCH TOOLBAR */}
       <div className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:grid-cols-2 lg:items-center">
         <div className="relative w-full">
           <FiSearch className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -234,8 +231,6 @@ export default function OperationalBoardPage() {
             className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:outline-none"
           />
         </div>
-
-        {/* Status Filter */}
         <div className="flex justify-end overflow-x-auto pb-1 scrollbar-hide">
           <div className="flex flex-wrap items-center gap-2">
             {ASSIGNMENT_STATUS_FILTERS.map((tab) => (
@@ -327,6 +322,7 @@ export default function OperationalBoardPage() {
                       ))}
                   </div>
                 </th>
+                <th className="py-4 px-6 text-center">Pemasukan</th>
                 <th
                   onClick={() => handleSortChange("status")}
                   className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
@@ -347,14 +343,14 @@ export default function OperationalBoardPage() {
             <tbody className="divide-y divide-gray-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center text-gray-400">
+                  <td colSpan={8} className="py-20 text-center text-gray-400">
                     Memuat data operasional...
                   </td>
                 </tr>
               ) : processedAssignments.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="py-20 text-center text-gray-400 italic"
                   >
                     Tidak ada jadwal penugasan operasional yang cocok dengan
@@ -487,6 +483,24 @@ export default function OperationalBoardPage() {
                             {item.direction}
                           </span>
                         </div>
+                      </td>
+
+                      {/* Income */}
+                      <td
+                        className="px-6 py-4 text-center"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/admin/dashboard/assignments/${item.id}?date=${encodeURIComponent(item.assignmentDate)}&vehicle=${encodeURIComponent(item.vehicle?.vehicleCode || "")}`,
+                            )
+                          }
+                          className="inline-flex items-center justify-center rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                        >
+                          Detail
+                        </button>
                       </td>
 
                       {/* Status */}
