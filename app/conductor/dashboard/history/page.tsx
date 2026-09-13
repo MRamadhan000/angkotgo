@@ -6,25 +6,23 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineCalendar,
-  HiOutlineClock,
   HiOutlineTruck,
-  HiOutlineUser,
-  HiOutlineTicket,
   HiOutlineBell,
 } from "react-icons/hi";
 import {
   FiAlertCircle,
   FiRefreshCw,
   FiCheckCircle,
-  FiLoader,
   FiXCircle,
   FiArrowRight,
   FiArrowLeft,
   FiStar,
-  FiArrowLeft as FiBackIcon,
   FiFilter,
   FiChevronDown,
   FiChevronUp,
+  FiUser,
+  FiClock,
+  FiShield,
 } from "react-icons/fi";
 import {
   AssignmentStatus,
@@ -53,10 +51,15 @@ function getDateKey(value: string | Date): string {
   return `${year}-${month}-${day}`;
 }
 
-
 const STATUS_CONFIG: Record<
   string,
-  { label: string; icon: React.ElementType; className: string; dot: string; pill: string }
+  {
+    label: string;
+    icon: React.ElementType;
+    className: string;
+    dot: string;
+    pill: string;
+  }
 > = {
   [AssignmentStatus.COMPLETED]: {
     label: "Selesai",
@@ -104,15 +107,6 @@ const VEHICLE_TYPE_CONFIG: Record<
   },
 };
 
-function RouteAvatar({ code }: { code: string }) {
-  const initials = (code || "?").slice(0, 3).toUpperCase();
-  return (
-    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 text-[11px] font-bold text-white shadow-xs">
-      {initials}
-    </span>
-  );
-}
-
 function StatusBadge({ status }: { status: string }) {
   const config = STATUS_CONFIG[status] ?? {
     label: status,
@@ -126,9 +120,7 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${config.className}`}
     >
-      <Icon
-        className={`h-3.5 w-3.5 ${status === AssignmentStatus.ONGOING ? "animate-spin" : ""}`}
-      />
+      <Icon className="h-3.5 w-3.5" />
       {config.label}
     </span>
   );
@@ -152,30 +144,17 @@ function DirectionBadge({ direction }: { direction: string }) {
   );
 }
 
-function VehicleTypeBadge({ type }: { type?: string }) {
-  if (!type) return null;
-  const config = VEHICLE_TYPE_CONFIG[type] ?? {
-    label: type,
-    className: "bg-gray-100 text-gray-600 border-gray-200",
-  };
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase ${config.className}`}
-    >
-      {type === VehicleType.PREMIUM && <FiStar className="h-2.5 w-2.5" />}
-      {config.label}
-    </span>
-  );
-}
-
 function formatDate(value: string | Date): string {
-  const dateKey = typeof value === "string" ? value.slice(0, 10) : new Date(value).toISOString().slice(0, 10);
+  const dateKey =
+    typeof value === "string"
+      ? value.slice(0, 10)
+      : new Date(value).toISOString().slice(0, 10);
   const [year, month, day] = dateKey.split("-").map(Number);
 
   return new Date(year, month - 1, day).toLocaleDateString("id-ID", {
-    weekday: "long",
+    weekday: "short",
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
   });
 }
@@ -197,9 +176,11 @@ export default function ConductorHistoryPage() {
     conductorHistoryError,
   } = useVehicleAssignments();
 
-  // State untuk Filter & Sort
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>(
+    {},
+  );
 
   useEffect(() => {
     if (user?.id) {
@@ -207,12 +188,10 @@ export default function ConductorHistoryPage() {
     }
   }, [user, fetchConductorTripHistory]);
 
-  // Filter & Sort Data
   const filteredAndSortedHistory = useMemo(() => {
     const today = getTodayDateKey();
 
     let result = conductorHistory.filter((trip) => {
-      // Hanya biarkan lewat jika datanya STRICTLY di masa lalu sebelum jadwal hari ini!
       return getDateKey(trip.date) < today;
     });
 
@@ -229,6 +208,41 @@ export default function ConductorHistoryPage() {
     return result;
   }, [conductorHistory, statusFilter, sortOrder]);
 
+  const groupedHistory = useMemo(() => {
+    const groups = new Map<string, typeof filteredAndSortedHistory>();
+    for (const trip of filteredAndSortedHistory) {
+      const key = getDateKey(trip.date);
+      const existing = groups.get(key);
+      if (existing) {
+        existing.push(trip);
+      } else {
+        groups.set(key, [trip]);
+      }
+    }
+    return Array.from(groups.entries()).map(([dateKey, trips]) => ({
+      dateKey,
+      trips,
+    }));
+  }, [filteredAndSortedHistory]);
+
+  const summary = useMemo(() => {
+    const completed = filteredAndSortedHistory.filter(
+      (t) => t.status === AssignmentStatus.COMPLETED,
+    ).length;
+    const cancelled = filteredAndSortedHistory.filter(
+      (t) => t.status === AssignmentStatus.CANCELLED,
+    ).length;
+
+    return {
+      total: filteredAndSortedHistory.length,
+      completed,
+      cancelled,
+    };
+  }, [filteredAndSortedHistory]);
+
+  const toggleDate = (dateKey: string) => {
+    setCollapsedDates((prev) => ({ ...prev, [dateKey]: !prev[dateKey] }));
+  };
 
   if (authLoading) {
     return (
@@ -257,189 +271,310 @@ export default function ConductorHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden">
-      <div className="mx-auto w-full max-w-[1200px] space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8">
-
-        {/* Header Biru Utama */}
-        <div className="relative overflow-hidden rounded-2xl bg-blue-900 p-5 shadow-md sm:rounded-3xl sm:p-8">
-          {/* Background Accent Gradient Effect */}
-          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-600/30 blur-2xl"></div>
-
-          <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-              {/* Tombol Kembali */}
-              <button
-                onClick={() => router.back()}
-                className="flex-shrink-0 flex items-center justify-center rounded-2xl bg-blue-800/80 p-3 sm:p-4 text-white border border-blue-700/60 shadow-inner transition-all hover:bg-blue-800 cursor-pointer"
-                title="Kembali"
-              >
-                <FiBackIcon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-              </button>
-
-              {/* Informasi Judul */}
-              <div className="min-w-0 space-y-1 sm:space-y-2">
-                <div>
-                  <p className="text-[11px] sm:text-sm font-medium text-blue-200">
-                    Arsip Perjalanan
-                  </p>
-                  <h1 className="mt-0.5 text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight text-white truncate leading-snug">
-                    Riwayat Trip Kondektur
-                  </h1>
-                </div>
-                <p className="text-xs text-blue-100 truncate">
-                  Akun: <span className="font-semibold">{user.name}</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Tombol Notifikasi di Header */}
-            <button
-              type="button"
-              aria-label="Notifikasi"
-              className="relative flex-shrink-0 inline-flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-blue-800/80 text-white border border-blue-700/60 shadow-inner hover:bg-blue-800 transition-colors cursor-pointer"
-            >
-              <HiOutlineBell className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
-                1
-              </span>
-            </button>
+    <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden flex flex-col justify-between">
+      <div className="mx-auto w-full max-w-[1240px] p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* Top Navigation Bar */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-xs font-bold text-blue-600 shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:ring-2 hover:ring-blue-50 cursor-pointer"
+          >
+            ← Kembali
+          </button>
+          <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-medium text-gray-600 shadow-xs transition-all duration-300 hover:border-blue-200 hover:shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse"></span>
+            SISTEM KRU LAPANGAN
+          </div>
+          <div className="text-xs font-medium text-gray-500 border border-gray-200 bg-white px-4 py-1.5 rounded-full shadow-xs transition-all duration-300 hover:border-blue-200 hover:shadow-sm">
+            Portal Resmi Tugas Armada
           </div>
         </div>
 
-        {/* Konten Utama */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 lg:p-8 space-y-5">
+        {/* Main Grid Layout (Sidebar Profil + Content Riwayat Kondektur) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Profile Card Sidebar (Konsisten dengan Dashboard Kondektur) */}
+          <div className="group/sidebar lg:col-span-4 rounded-3xl bg-blue-600 p-6 text-white shadow-lg flex flex-col justify-between space-y-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:ring-4 hover:ring-blue-200">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-blue-600 font-black text-xl shadow-inner transition-transform duration-300 group-hover/sidebar:scale-105">
+                  {user?.name ? user.name.charAt(0) : "C"}
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/40 px-3 py-1 text-xs font-medium text-white border border-blue-400/30 transition-colors duration-300 group-hover/sidebar:bg-blue-500">
+                  <FiCheckCircle className="text-[10px] text-emerald-300" />{" "}
+                  Siap Operasional
+                </span>
+              </div>
 
-          {/* Filter & Sort Control Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-            {/* Filter Status */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-              <FiFilter className="h-4 w-4 text-gray-400 flex-shrink-0" />
-              {STATUS_FILTERS.map((filter) => {
-                const isActive = statusFilter === filter.key;
-                const isCancelled = filter.key === AssignmentStatus.CANCELLED;
-                return (
-                  <button
-                    key={filter.key}
-                    onClick={() => setStatusFilter(filter.key)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${isActive
-                      ? isCancelled
-                        ? "bg-rose-600 text-white shadow-xs"
-                        : "bg-blue-600 text-white shadow-xs"
-                      : isCancelled
-                        ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                  >
-                    {filter.label}
-                  </button>
-                );
-              })}
+              <div>
+                <p className="text-xs uppercase tracking-wider text-blue-200 font-medium">
+                  Profil Kondektur
+                </p>
+                <h1 className="text-2xl font-black mt-1 tracking-tight">
+                  {user.name}
+                </h1>
+                <p className="text-xs text-blue-100 mt-0.5">
+                  Kru ID: {user?.id ? `C${user.id}-OPS-2024` : "C1-OPS-2024"}
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center gap-2.5 rounded-xl bg-blue-700/50 px-4 py-2.5 text-xs text-blue-100 border border-blue-500/30 transition-all duration-300 hover:bg-blue-700 hover:border-blue-300">
+                  <FiUser className="text-blue-300" />
+                  <span className="truncate">Kondektur Bertugas</span>
+                </div>
+                <div className="flex items-center gap-2.5 rounded-xl bg-blue-700/50 px-4 py-2.5 text-xs text-blue-100 border border-blue-500/30 transition-all duration-300 hover:bg-blue-700 hover:border-blue-300">
+                  <FiShield className="text-blue-300" />
+                  <span className="truncate">
+                    {user?.email || "email belum tersedia"}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Sort Order */}
-            <button
-              onClick={() =>
-                setSortOrder(sortOrder === "desc" ? "asc" : "desc")
-              }
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              <HiOutlineCalendar className="h-3.5 w-3.5 text-gray-400" />
-              <span>{sortOrder === "desc" ? "Terbaru" : "Terlama"}</span>
-              <FiChevronDown className="h-3.5 w-3.5 text-gray-400" />
-            </button>
+            {/* Ringkasan Statistik Tugas Kondektur di Sidebar */}
+            <div className="rounded-2xl bg-blue-700/50 border border-blue-400/30 p-4 transition-all duration-300 group-hover/sidebar:bg-blue-700">
+              <p className="text-[10px] font-semibold text-blue-200 uppercase tracking-wider">
+                Rekapitulasi Arsip Trip
+              </p>
+              <div className="mt-3 grid grid-cols-3 gap-2 pt-2 border-t border-blue-500/30 text-center">
+                <div>
+                  <p className="text-[9px] text-blue-200">Total</p>
+                  <p className="text-xs font-bold text-white">
+                    {summary.total}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-emerald-200">Selesai</p>
+                  <p className="text-xs font-bold text-emerald-300">
+                    {summary.completed}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-rose-200">Batal</p>
+                  <p className="text-xs font-bold text-rose-300">
+                    {summary.cancelled}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Loading State */}
-          {conductorHistoryLoading && (
-            <div className="p-12 text-center">
-              <FiRefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin text-blue-600" />
-              <p className="text-sm font-medium text-gray-500">
-                Memuat riwayat trip...
-              </p>
-            </div>
-          )}
+          {/* Right Column: History List & Controls */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Header / Filter Section dengan efek hover interaktif */}
+            <div className="group rounded-3xl border border-gray-100 bg-white p-6 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:ring-4 hover:ring-blue-50 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 transition-colors duration-300 group-hover:bg-blue-600 group-hover:text-white">
+                    <HiOutlineCalendar className="text-base" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors duration-300">
+                      Riwayat Trip Kondektur
+                    </h2>
+                    <p className="text-xs text-gray-400">
+                      Arsip perjalanan dan tugas operasional masa lalu
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Notifikasi"
+                  className="relative inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-gray-600 border border-gray-200 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 cursor-pointer"
+                >
+                  <HiOutlineBell className="h-5 w-5" />
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-extrabold text-white">
+                    1
+                  </span>
+                </button>
+              </div>
 
-          {/* Error State */}
-          {conductorHistoryError && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              <FiAlertCircle className="h-5 w-5 flex-shrink-0" />
-              <span>{conductorHistoryError}</span>
-            </div>
-          )}
+              {/* Filter & Sort Bar */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <FiFilter className="h-4 w-4 flex-shrink-0 text-gray-400" />
+                  {STATUS_FILTERS.map((filter) => {
+                    const isActive = statusFilter === filter.key;
+                    const isCancelled =
+                      filter.key === AssignmentStatus.CANCELLED;
+                    return (
+                      <button
+                        key={filter.key}
+                        onClick={() => setStatusFilter(filter.key)}
+                        className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-300 cursor-pointer ${
+                          isActive
+                            ? isCancelled
+                              ? "bg-rose-600 text-white shadow-xs"
+                              : "bg-blue-600 text-white shadow-xs"
+                            : isCancelled
+                              ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        {filter.label}
+                      </button>
+                    );
+                  })}
+                </div>
 
-          {/* Empty State */}
-          {!conductorHistoryLoading &&
-            !conductorHistoryError &&
-            filteredAndSortedHistory.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-gray-200 p-12 text-center">
-                <p className="text-sm font-medium text-gray-500">
-                  Tidak ada riwayat trip ditemukan.
-                </p>
+                <button
+                  onClick={() =>
+                    setSortOrder(sortOrder === "desc" ? "asc" : "desc")
+                  }
+                  className="inline-flex flex-shrink-0 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-1.5 text-xs font-semibold text-gray-700 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 cursor-pointer"
+                >
+                  <HiOutlineCalendar className="h-3.5 w-3.5 text-gray-400" />
+                  <span>{sortOrder === "desc" ? "Terbaru" : "Terlama"}</span>
+                  <FiChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Loading State */}
+            {conductorHistoryLoading && (
+              <div className="space-y-3 p-4 bg-white rounded-3xl border border-gray-100">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-24 animate-pulse rounded-2xl bg-gray-100"
+                  />
+                ))}
               </div>
             )}
 
-          {/* Daftar Riwayat Trip dengan Format Tabel */}
-          {!conductorHistoryLoading && filteredAndSortedHistory.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
-              <table className="w-full text-left text-sm text-slate-600">
-                <thead className="bg-blue-50/50 text-xs uppercase text-slate-500">
-                  <tr>
-                    <th scope="col" className="px-4 py-3 font-semibold">Tanggal</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Rute</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Waktu / Armada</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Driver</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {filteredAndSortedHistory.map((trip) => {
-                    return (
-                      <tr
-                        key={trip.assignmentId}
-                        className="hover:bg-slate-50/50 transition duration-150"
+            {/* Error State */}
+            {conductorHistoryError && (
+              <div className="flex items-center gap-2 rounded-3xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700">
+                <FiAlertCircle className="h-5 w-5 flex-shrink-0" />
+                <span>{conductorHistoryError}</span>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!conductorHistoryLoading &&
+              !conductorHistoryError &&
+              filteredAndSortedHistory.length === 0 && (
+                <div className="rounded-3xl border border-dashed border-gray-200 bg-white p-12 text-center">
+                  <HiOutlineTruck className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-500">
+                    Tidak ada riwayat trip ditemukan.
+                  </p>
+                </div>
+              )}
+
+            {/* Daftar Riwayat Grouped per Tanggal */}
+            {!conductorHistoryLoading && groupedHistory.length > 0 && (
+              <div className="space-y-4">
+                {groupedHistory.map(({ dateKey, trips }) => {
+                  const isCollapsed = collapsedDates[dateKey];
+                  return (
+                    <div
+                      key={dateKey}
+                      className="group/date overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xs transition-all duration-300 hover:border-blue-300 hover:shadow-md"
+                    >
+                      <button
+                        onClick={() => toggleDate(dateKey)}
+                        className="flex w-full items-center justify-between gap-2 bg-gray-50/70 px-6 py-3.5 text-left transition-colors hover:bg-blue-50/50 cursor-pointer"
                       >
-                        <td className="px-4 py-4 align-top">
-                          <p className="font-semibold text-slate-800">
-                            {formatDate(trip.date)}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <p className="font-bold text-slate-900">
-                            {trip.routeName || "-"}
-                          </p>
-                          <p className="text-xs font-semibold text-blue-600">
-                            {trip.routeCode || "-"}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <p className="font-semibold text-slate-800">
-                            {trip.startTime || "-"} -{" "}
-                            {trip.endTime || "-"}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {trip.vehicle?.plateNumber || "-"} (
-                            {trip.vehicle?.vehicleCode || "-"})
-                          </p>
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <p className="font-medium text-slate-700">
-                            {trip.driver?.name || "Tidak ada"}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <div className="flex flex-col items-start gap-1.5">
-                            <StatusBadge status={trip.status} />
-                            <DirectionBadge direction={trip.direction} />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-700 sm:text-sm">
+                          {formatDate(dateKey)}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                            {trips.length} trip
+                          </span>
+                          {isCollapsed ? (
+                            <FiChevronDown className="h-4 w-4 text-slate-500" />
+                          ) : (
+                            <FiChevronUp className="h-4 w-4 text-slate-500" />
+                          )}
+                        </span>
+                      </button>
+
+                      {!isCollapsed && (
+                        <div className="divide-y divide-gray-100">
+                          {trips.map((trip) => {
+                            const vehicleTypeConfig =
+                              VEHICLE_TYPE_CONFIG[trip.vehicle?.type as string];
+                            return (
+                              <div
+                                key={trip.assignmentId}
+                                className="group/item space-y-3 p-5 transition-colors hover:bg-blue-50/30"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-slate-900 text-sm sm:text-base group-hover/item:text-blue-600 transition-colors">
+                                      {trip.routeName || "-"}
+                                    </p>
+                                    <p className="text-xs font-semibold text-blue-600 mt-0.5">
+                                      {trip.routeCode || "-"}
+                                    </p>
+                                  </div>
+                                  <StatusBadge status={trip.status} />
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <DirectionBadge direction={trip.direction} />
+                                  {vehicleTypeConfig && (
+                                    <span
+                                      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${vehicleTypeConfig.className}`}
+                                    >
+                                      {vehicleTypeConfig.label}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-2xl bg-gray-50/80 border border-gray-100 p-3 text-xs">
+                                  <div>
+                                    <p className="text-gray-400 text-[10px] uppercase font-semibold">
+                                      Waktu Operasional
+                                    </p>
+                                    <p className="font-semibold text-slate-700 mt-0.5 flex items-center gap-1">
+                                      <FiClock className="text-gray-400 h-3 w-3" />
+                                      {trip.startTime || "-"} -{" "}
+                                      {trip.endTime || "-"}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-400 text-[10px] uppercase font-semibold">
+                                      Armada Kendaraan
+                                    </p>
+                                    <p className="font-semibold text-slate-700 mt-0.5">
+                                      {trip.vehicle?.plateNumber || "-"} (
+                                      {trip.vehicle?.vehicleCode || "-"})
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-400 text-[10px] uppercase font-semibold">
+                                      Driver Bertugas
+                                    </p>
+                                    <p className="flex items-center gap-1 font-semibold text-slate-700 mt-0.5">
+                                      <FiUser className="h-3 w-3 text-gray-400" />
+                                      {trip.driver?.name || "Tidak ada"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* Footer Konsisten */}
+      <div className="border-t border-gray-200 bg-white py-4 px-6 text-xs text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-2 mt-8">
+        <span>Portal Operasional Terintegrasi • Mode Website Responsif</span>
+        <span className="flex items-center gap-1.5 font-medium text-slate-700">
+          <span className="h-2 w-2 rounded-full bg-emerald-500"></span> Koneksi
+          Aman Lapangan
+        </span>
       </div>
     </div>
   );
