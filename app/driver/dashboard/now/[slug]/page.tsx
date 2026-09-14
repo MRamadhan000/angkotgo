@@ -98,6 +98,7 @@ export default function AssignmentDetailPage() {
           vehicleSocketStatus={vehicleSocketStatus}
           userSocketStatus={userSocketStatus}
           onRefreshGps={actions.enableGps}
+          role={"driver"}
         />
       )}
 

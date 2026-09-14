@@ -15,6 +15,7 @@ interface DriverFloatingTopBarProps {
   userSocketStatus: { connected: boolean; joined: boolean };
   onBackClick?: () => void;
   onRefreshGps?: () => void;
+  role : "driver" | "conductor";
 }
 
 export function DriverFloatingTopBar({
@@ -26,8 +27,10 @@ export function DriverFloatingTopBar({
   userSocketStatus,
   onBackClick,
   onRefreshGps,
+  role,
 }: DriverFloatingTopBarProps) {
   const isVehicleLive = vehicleSocketStatus.connected && vehicleSocketStatus.joined;
+  const dashboardHref = role === "conductor" ? "/conductor/dashboard" : "/driver/dashboard";
 
   return (
     <header className="pointer-events-auto fixed inset-x-2.5 top-2 z-20 mx-auto max-w-xl transition-all sm:inset-x-4 sm:top-4">
@@ -45,7 +48,7 @@ export function DriverFloatingTopBar({
             </button>
           ) : (
             <Link
-              href="/driver/dashboard"
+              href={dashboardHref}
               className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-slate-100 text-slate-700 transition hover:bg-slate-200 active:scale-95"
               aria-label="Kembali ke Dashboard"
             >
