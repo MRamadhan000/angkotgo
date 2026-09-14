@@ -36,7 +36,8 @@ export default function UpdateAssignmentModal({
   const { data: drivers = [], isLoading: loadingDrivers } = useDrivers();
   const { data: vehicles = [], isLoading: loadingVehicles } = useVehicles();
   const { data: routes = [], isLoading: loadingRoutes } = useRoutes();
-  const { data: conductors = [], isLoading: loadingConductors } = useConductors();
+  const { data: conductors = [], isLoading: loadingConductors } =
+    useConductors();
 
   const [formData, setFormData] = useState({
     vehicleId: "",
@@ -61,7 +62,10 @@ export default function UpdateAssignmentModal({
           initialData.vehicle?.id || initialData.vehicleId || "",
         ),
         driverId: String(initialData.driver?.id || initialData.driverId || ""),
-        conductorId: initialData.conductor?.id || initialData.conductorId ? String(initialData.conductor?.id || initialData.conductorId) : "",
+        conductorId:
+          initialData.conductor?.id || initialData.conductorId
+            ? String(initialData.conductor?.id || initialData.conductorId)
+            : "",
         routeId: String(initialData.route?.id || initialData.routeId || ""),
         assignmentDate: initialData.assignmentDate || "",
         startTime: initialData.startTime || "",
@@ -96,7 +100,9 @@ export default function UpdateAssignmentModal({
       ...formData,
       vehicleId: Number(formData.vehicleId),
       driverId: Number(formData.driverId),
-      conductorId: formData.conductorId ? Number(formData.conductorId) : undefined,
+      conductorId: formData.conductorId
+        ? Number(formData.conductorId)
+        : undefined,
       routeId: Number(formData.routeId),
     };
 
@@ -161,7 +167,9 @@ export default function UpdateAssignmentModal({
                 required
               >
                 <option value="" disabled>
-                  {loadingVehicles ? "Memuat kendaraan..." : "-- Pilih Kendaraan --"}
+                  {loadingVehicles
+                    ? "Memuat kendaraan..."
+                    : "-- Pilih Kendaraan --"}
                 </option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>

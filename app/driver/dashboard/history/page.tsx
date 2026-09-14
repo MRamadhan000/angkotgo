@@ -8,6 +8,7 @@ import {
   HiOutlineCalendar,
   HiOutlineTruck,
   HiOutlineBell,
+  HiOutlineCash,
 } from "react-icons/hi";
 import {
   FiAlertCircle,
@@ -16,13 +17,11 @@ import {
   FiXCircle,
   FiArrowRight,
   FiArrowLeft,
-  FiArrowLeft as FiBackIcon,
   FiFilter,
   FiChevronDown,
   FiChevronUp,
-  FiUser,
   FiClock,
-  FiShield,
+  FiUser,
 } from "react-icons/fi";
 import {
   AssignmentStatus,
@@ -521,7 +520,7 @@ export default function DriverHistoryPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
         <div className="flex w-full max-w-md items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-6 py-4 text-center text-sm text-amber-800 shadow-xs">
-          <FiAlertCircle className="h-5 w-5 flex-shrink-0" />
+          <FiAlertCircle className="h-5 w-5 shrink-0" />
           <span>
             Silakan masuk terlebih dahulu untuk melihat riwayat trip Anda.
           </span>
@@ -532,7 +531,7 @@ export default function DriverHistoryPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800 antialiased overflow-x-hidden pb-8">
-      <div className="mx-auto w-full max-w-[1240px] space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto w-full max-w-310 space-y-6 p-4 sm:p-6 lg:p-8">
         {/* Top Navigation Bar */}
         <div className="flex items-center justify-between">
           <button
@@ -552,69 +551,71 @@ export default function DriverHistoryPage() {
 
         {/* Main Grid Layout (Sidebar Profil + Content Riwayat) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Profile Card Sidebar (Konsisten dengan Dashboard) */}
-          <div className="group/sidebar lg:col-span-4 rounded-3xl bg-blue-600 p-6 text-white shadow-lg flex flex-col justify-between space-y-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:ring-4 hover:ring-blue-200">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-blue-600 font-black text-xl shadow-inner transition-transform duration-300 group-hover/sidebar:scale-105">
-                  {user?.name ? user.name.charAt(0) : "D"}
-                </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/40 px-3 py-1 text-xs font-medium text-white border border-blue-400/30 transition-colors duration-300 group-hover/sidebar:bg-blue-500">
-                  <FiCheckCircle className="text-[10px] text-emerald-300" />{" "}
-                  Siap Operasional
-                </span>
-              </div>
-
-              <div>
-                <p className="text-xs uppercase tracking-wider text-blue-200 font-medium">
-                  Profil Pengemudi
-                </p>
-                <h1 className="text-2xl font-black mt-1 tracking-tight">
-                  {user.name}
-                </h1>
-                <p className="text-xs text-blue-100 mt-0.5">
-                  Kru ID: {user?.id ? `D${user.id}-OPS-2024` : "D1-OPS-2024"}
-                </p>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center gap-2.5 rounded-xl bg-blue-700/50 px-4 py-2.5 text-xs text-blue-100 border border-blue-500/30 transition-all duration-300 hover:bg-blue-700 hover:border-blue-300">
-                  <FiUser className="text-blue-300" />
-                  <span className="truncate">Driver Aktif & Terverifikasi</span>
-                </div>
-                <div className="flex items-center gap-2.5 rounded-xl bg-blue-700/50 px-4 py-2.5 text-xs text-blue-100 border border-blue-500/30 transition-all duration-300 hover:bg-blue-700 hover:border-blue-300">
-                  <FiShield className="text-blue-300" />
-                  <span className="truncate">
-                    {user?.email || "email belum tersedia"}
+          {/* Left Column: Profile Card Sidebar */}
+          <div className="lg:col-span-4 flex flex-col gap-3">
+            <div className="rounded-3xl bg-linear-to-b from-[#102a5c] to-[#0d234d] p-6 text-white shadow-xl flex flex-col justify-between space-y-6 border border-blue-900/50">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-white font-bold text-xl border border-white/10 shadow-inner">
+                    {user?.name ? user.name.charAt(0) : "D"}
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300 border border-emerald-500/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>{" "}
+                    Siap Operasional
                   </span>
                 </div>
-              </div>
-            </div>
 
-            {/* Ringkasan Cepat Pendapatan di Sidebar */}
-            <div className="rounded-2xl bg-blue-700/50 border border-blue-400/30 p-4 transition-all duration-300 group-hover/sidebar:bg-blue-700">
-              <p className="text-[10px] font-semibold text-blue-200 uppercase tracking-wider">
-                Total Pendapatan Bersih
-              </p>
-              <p className="text-lg font-black text-white mt-0.5">
-                Rp {summary.totalIncome.toLocaleString("id-ID")}
-              </p>
-              <div className="mt-3 grid grid-cols-3 gap-2 pt-3 border-t border-blue-500/30 text-center">
                 <div>
-                  <p className="text-[9px] text-blue-200">Total</p>
-                  <p className="text-xs font-bold">{summary.total}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] text-emerald-200">Selesai</p>
-                  <p className="text-xs font-bold text-emerald-300">
-                    {summary.completed}
+                  <p className="text-xs uppercase tracking-wider text-blue-300 font-medium">
+                    PROFIL PENGEMUDI
                   </p>
+                  <h1 className="text-2xl font-black mt-1 tracking-tight text-white">
+                    {user.name}
+                  </h1>
                 </div>
-                <div>
-                  <p className="text-[9px] text-rose-200">Batal</p>
-                  <p className="text-xs font-bold text-rose-300">
-                    {summary.cancelled}
-                  </p>
+              </div>
+
+              {/* Total Pendapatan Bersih Card Box */}
+              <div className="rounded-2xl bg-blue-950/40 border border-white/10 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-blue-300 uppercase tracking-wider">
+                      TOTAL PENDAPATAN BERSIH
+                    </p>
+                    <p className="text-lg font-black text-white mt-0.5">
+                      Rp {summary.totalIncome.toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-blue-200">
+                    <HiOutlineCash className="h-5 w-5" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-white/10 text-center">
+                  <div>
+                    <p className="text-[9px] text-blue-200 font-semibold">
+                      Total
+                    </p>
+                    <p className="text-xs font-bold text-white">
+                      {summary.total}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-emerald-300 font-semibold">
+                      Selesai
+                    </p>
+                    <p className="text-xs font-bold text-emerald-300">
+                      {summary.completed}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-rose-300 font-semibold">
+                      Batal
+                    </p>
+                    <p className="text-xs font-bold text-rose-300">
+                      {summary.cancelled}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -622,7 +623,7 @@ export default function DriverHistoryPage() {
 
           {/* Right Column: History List & Controls */}
           <div className="lg:col-span-8 space-y-6">
-            {/* Header / Filter Section dengan efek hover konsisten */}
+            {/* Header / Filter Section */}
             <div className="group rounded-3xl border border-gray-100 bg-white p-6 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:ring-4 hover:ring-blue-50 space-y-4">
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div className="flex items-center gap-3">
@@ -641,7 +642,7 @@ export default function DriverHistoryPage() {
                 <button
                   type="button"
                   aria-label="Notifikasi"
-                  className="relative inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-gray-600 border border-gray-200 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                  className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-gray-600 border border-gray-200 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
                 >
                   <HiOutlineBell className="h-5 w-5" />
                   <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-extrabold text-white">
@@ -652,8 +653,8 @@ export default function DriverHistoryPage() {
 
               {/* Filter & Sort Bar */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <FiFilter className="h-4 w-4 flex-shrink-0 text-gray-400" />
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  <FiFilter className="h-4 w-4 shrink-0 text-gray-400" />
                   {STATUS_FILTERS.map((filter) => {
                     const isActive = statusFilter === filter.key;
                     const isCancelled =
@@ -662,7 +663,7 @@ export default function DriverHistoryPage() {
                       <button
                         key={filter.key}
                         onClick={() => setStatusFilter(filter.key)}
-                        className={`flex-shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-300 cursor-pointer ${
+                        className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-300 cursor-pointer ${
                           isActive
                             ? isCancelled
                               ? "bg-rose-600 text-white shadow-xs"
@@ -682,7 +683,7 @@ export default function DriverHistoryPage() {
                   onClick={() =>
                     setSortOrder(sortOrder === "desc" ? "asc" : "desc")
                   }
-                  className="inline-flex flex-shrink-0 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-1.5 text-xs font-semibold text-gray-700 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 cursor-pointer"
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-1.5 text-xs font-semibold text-gray-700 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 cursor-pointer"
                 >
                   <HiOutlineCalendar className="h-3.5 w-3.5 text-gray-400" />
                   <span>{sortOrder === "desc" ? "Terbaru" : "Terlama"}</span>
@@ -706,7 +707,7 @@ export default function DriverHistoryPage() {
             {/* Error State */}
             {driverHistoryError && (
               <div className="flex items-center gap-2 rounded-3xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700">
-                <FiAlertCircle className="h-5 w-5 flex-shrink-0" />
+                <FiAlertCircle className="h-5 w-5 shrink-0" />
                 <span>{driverHistoryError}</span>
               </div>
             )}
@@ -856,7 +857,7 @@ export default function DriverHistoryPage() {
               <button
                 type="button"
                 onClick={closePaymentModal}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
                 aria-label="Tutup modal detail pembayaran"
               >
                 ×
@@ -865,7 +866,7 @@ export default function DriverHistoryPage() {
 
             <div className="max-h-[calc(90vh-80px)] overflow-y-auto p-4 sm:p-6">
               {financialLoading && (
-                <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500">
+                <div className="flex min-h-50 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm font-medium text-slate-500">
                   Memuat detail pembayaran...
                 </div>
               )}
