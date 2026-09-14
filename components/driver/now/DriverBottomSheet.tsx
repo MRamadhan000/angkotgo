@@ -169,7 +169,7 @@ export function DriverBottomSheet({
       <div className="shrink-0 px-2.5 sm:px-4 pb-1 sm:pb-1.5">
         <div className="flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Status Badge (Click to update status) */}
-          {role !== "conductor" && (
+          {(role === "driver" || assignmentDetail !== null) && (
             <button
               type="button"
               onClick={onOpenStatusModal}
@@ -282,7 +282,7 @@ export function DriverBottomSheet({
         {visibleTab === "kursi" && (
           <div className="space-y-2.5 sm:space-y-3.5">
             {/* Passenger Seat Grid */}
-            {role !== "driver" && (
+            {(role === "driver" || assignmentDetail !== null) && (
               <DriverSeatControl
                 assignmentDetail={assignmentDetail}
                 onUpdate={onUpdatePassengers}
