@@ -32,10 +32,11 @@ export default function CreateAssignmentModal({
   onClose,
   onSuccess,
 }: CreateAssignmentModalProps) {
-  const { drivers, loading: loadingDrivers } = useDrivers();
-  const { vehicles, loading: loadingVehicles } = useVehicles();
-  const { routes, loading: loadingRoutes } = useRoutes();
-  const { conductors, loading: loadingConductors } = useConductors();
+  const { data: drivers = [], isLoading: loadingDrivers } = useDrivers();
+  const { data: vehicles = [], isLoading: loadingVehicles } = useVehicles();
+  const { data: routes = [], isLoading: loadingRoutes } = useRoutes();
+  const { data: conductors = [], isLoading: loadingConductors } =
+    useConductors();
 
   const todayString = new Date().toISOString().split("T")[0];
 
@@ -200,7 +201,9 @@ export default function CreateAssignmentModal({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    conductorId: e.target.value ? Number(e.target.value) : undefined,
+                    conductorId: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
                   })
                 }
               >
