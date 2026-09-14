@@ -14,56 +14,24 @@ import {
   FaLongArrowAltLeft,
   FaArrowLeft,
 } from "react-icons/fa";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-import { useMap } from "react-leaflet";
 import { useRoutes } from "@/hooks/routes/useRoutes";
 import { useRoutePaths } from "@/hooks/routes/useRoutePath";
 import { useRouteStops } from "@/hooks/routes/useRouteStops";
 import type { Route } from "@/types/routes/route.type";
 import { DirectionType } from "@/types/vehicles/vehicle.type";
-import type {
-  MapContainerProps,
-  TileLayerProps,
-  PolylineProps,
-  MarkerProps,
-  PopupProps,
-} from "react-leaflet";
 
-// Import Leaflet secara dinamis agar tidak error saat rendering sisi server (SSR).
-// Generic type diberikan secara eksplisit ke dynamic() agar props (position, icon,
-// center, zoom, dll) tetap punya tipe yang benar dan tidak memicu type error.
-const MapContainer = dynamic<MapContainerProps>(
-  () => import("react-leaflet").then((mod) => mod.MapContainer),
-  { ssr: false },
-);
-const TileLayer = dynamic<TileLayerProps>(
-  () => import("react-leaflet").then((mod) => mod.TileLayer),
-  { ssr: false },
-);
-const Polyline = dynamic<PolylineProps>(
-  () => import("react-leaflet").then((mod) => mod.Polyline),
-  { ssr: false },
-);
-const Marker = dynamic<MarkerProps>(
-  () => import("react-leaflet").then((mod) => mod.Marker),
-  { ssr: false },
-);
-const Popup = dynamic<PopupProps>(
-  () => import("react-leaflet").then((mod) => mod.Popup),
-  { ssr: false },
-);
-
-// Komponen Pembantu Khusus Map FlyTo (auto focus peta saat titik awal berubah)
-function MapFlyTo({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (center && center[0] && center[1]) {
-      map.flyTo(center, 15, { duration: 1.5 });
-    }
-  }, [center, map]);
-  return null;
-}
+// Seluruh dependensi Leaflet (import "leaflet", `L.divIcon`, `useMap`, dll)
+// diisolasi sepenuhnya di file RouteMap.tsx. Dengan ssr:false di sini,
+// Next.js TIDAK PERNAH mengimpor/mengevaluasi modul "leaflet" di server,
+// sehingga error "window is not defined" tidak akan terjadi lagi.
+const RouteMap = dynamic(() => import("@/components/list-rute/RouteMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 font-medium text-sm">
+      Memuat peta...
+    </div>
+  ),
+});
 
 // Setiap trayek punya "warna garis" sendiri, meniru konvensi peta transit
 // (mis. peta MRT/Trans Jogja) di mana tiap rute dikenali dari warnanya, bukan arahnya.
@@ -77,31 +45,6 @@ const ROUTE_LINE_PALETTE = [
   "#CA8A04", // kuning tua
   "#7C3AED", // ungu
 ];
-
-// Fungsi untuk membuat Marker Angka (Custom DivIcon).
-// Border solid = arah Berangkat, border putus-putus = arah Pulang — konsisten
-// dengan gaya garis pada polyline di peta.
-const createNumberIcon = (number: number, color: string, dashed: boolean) => {
-  return L.divIcon({
-    className: "custom-number-marker",
-    html: `<div style="
-      background-color: ${color};
-      color: white;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 13px;
-      border: 2.5px ${dashed ? "dashed" : "solid"} #ffffff;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.12);
-    ">${number}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-  });
-};
 
 // ==================== INTERFACES / TYPES ====================
 export default function InfoRutePage() {
@@ -319,90 +262,12 @@ export default function InfoRutePage() {
                       )}
 
                       {pathData.length > 0 ? (
-                        <>
-                          <MapContainer
-                            center={[
-                              pathData[0].latitude,
-                              pathData[0].longitude,
-                            ]}
-                            zoom={14}
-                            className="h-full w-full"
-                          >
-                            {/* Auto Focus Map Component */}
-                            <MapFlyTo
-                              center={[
-                                pathData[0].latitude,
-                                pathData[0].longitude,
-                              ]}
-                            />
-
-                            {/* Light TileLayer (CartoDB Voyager) */}
-                            <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
-
-                            {/* Polyline — solid untuk Berangkat, putus-putus untuk Pulang */}
-                            <Polyline
-                              positions={pathData.map(
-                                (p) =>
-                                  [p.latitude, p.longitude] as [number, number],
-                              )}
-                              color={routeColor}
-                              weight={5}
-                              dashArray={isReturn ? "10 8" : undefined}
-                            />
-
-                            {/* Numbered Markers */}
-                            {stopData.map((stop) => (
-                              <Marker
-                                key={stop.id}
-                                position={[stop.latitude, stop.longitude]}
-                                icon={createNumberIcon(
-                                  stop.stopOrder,
-                                  routeColor,
-                                  isReturn,
-                                )}
-                              >
-                                <Popup className="custom-popup">
-                                  <div className="p-1 text-slate-900">
-                                    <span
-                                      className="text-[10px] font-bold px-2 py-0.5 rounded border"
-                                      style={{
-                                        color: routeColor,
-                                        backgroundColor: `${routeColor}0F`,
-                                        borderColor: `${routeColor}33`,
-                                      }}
-                                    >
-                                      Halte #{stop.stopOrder}
-                                    </span>
-                                    <div className="font-bold text-slate-900 text-xs mt-1">
-                                      {stop.stopName}
-                                    </div>
-                                  </div>
-                                </Popup>
-                              </Marker>
-                            ))}
-                          </MapContainer>
-
-                          {/* Legend arah — pojok kiri bawah, aman dari kontrol zoom Leaflet */}
-                          <div className="absolute bottom-3 left-3 z-[500] bg-white/90 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm px-3 py-2 space-y-1.5">
-                            <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-600">
-                              <span
-                                className="inline-block w-5 h-[3px] rounded-full"
-                                style={{ backgroundColor: routeColor }}
-                              />
-                              Berangkat
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-600">
-                              <span
-                                className="inline-block w-5 h-0 border-t-[3px] rounded-full"
-                                style={{
-                                  borderColor: routeColor,
-                                  borderStyle: "dashed",
-                                }}
-                              />
-                              Pulang
-                            </div>
-                          </div>
-                        </>
+                        <RouteMap
+                          pathData={pathData}
+                          stopData={stopData}
+                          routeColor={routeColor}
+                          isReturn={isReturn}
+                        />
                       ) : (
                         <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 font-medium text-sm">
                           {!loading && "Belum ada data koordinat jalur trayek."}

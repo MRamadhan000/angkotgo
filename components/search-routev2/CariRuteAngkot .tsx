@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { FiMapPin, FiNavigation } from "react-icons/fi";
 
@@ -28,17 +29,17 @@ import LocationSummary from "@/components/search-routev2/skenario2/LocationSumma
 import { BookingPaymentModal } from "@/components/search-routev2/skenario3/BookingPaymentModal";
 
 // Local hooks
-import { useMapInitialization } from "./hooks/useMapInitialization";
-import { useLocationSearch } from "./hooks/useLocationSearch";
-import { useGps } from "./hooks/useGps";
-import { useUpcomingVehiclesRealtime } from "./hooks/useUpcomingVehiclesRealtime";
-import { useBookingState } from "./hooks/useBookingState";
-import { useJourneyPersistence } from "./hooks/useJourneyPersistence";
-import { useBottomSheet } from "./hooks/useBottomSheet";
+import { useMapInitialization } from "../../app/getv2/hooks/useMapInitialization";
+import { useLocationSearch } from "../../app/getv2/hooks/useLocationSearch";
+import { useGps } from "../../app/getv2/hooks/useGps";
+import { useUpcomingVehiclesRealtime } from "../../app/getv2/hooks/useUpcomingVehiclesRealtime";
+import { useBookingState } from "../../app/getv2/hooks/useBookingState";
+import { useJourneyPersistence } from "../../app/getv2/hooks/useJourneyPersistence";
+import { useBottomSheet } from "../../app/getv2/hooks/useBottomSheet";
 import { useSinyalDetailByUser } from "@/hooks/sinyal/useSinyal";
-import { buildSyntheticUpcomingVehicles } from "./getv2.util";
+import { buildSyntheticUpcomingVehicles } from "../../app/getv2/getv2.util";
 
-import type { SelectedRoute } from "./types";
+import type { SelectedRoute } from "../../app/getv2/types";
 import RestoringOverlay from "@/components/search-routev2/RestoringOverlay";
 import TopBar from "@/components/search-routev2/TopBar";
 import AlertRoute from "@/components/search-routev2/AlertRoute";
@@ -49,19 +50,25 @@ type RouteAlertState = {
   resolve: (confirmed: boolean) => void;
 } | null;
 
-type GetV2ClientProps = {
-  sinyalId: string | null;
-  userId: string | null;
-};
-
-export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
+export default function CariRuteAngkot() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
   const isDevelopment = true;
+
+  // ─── URL params: sinyalId & userId (support berbagai variant nama) ───
+  const urlSinyalId =
+    searchParams.get("sinyalId") ??
+    searchParams.get("sinyalid") ??
+    searchParams.get("sinyal_id") ??
+    searchParams.get("id");
+  const urlUserId = searchParams.get("userId") ?? searchParams.get("userid");
 
   // ─── Scenario & selected route ───
   const [scenario, setScenario] = useState<1 | 2>(1);
-  const [selectedRoute, setSelectedRoute] = useState<SelectedRoute | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<SelectedRoute | null>(
+    null,
+  );
   const [routeAlert, setRouteAlert] = useState<RouteAlertState>(null);
 
   const showRouteAlert = (message: string, onSubmit = () => {}) =>
@@ -137,9 +144,10 @@ export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
   // ─── Sinyal history: fetch berdasarkan sinyalId + userId dari URL ───
   const {
     data: sinyalHistory,
+    isLoading: isSinyalLoading,
     isSuccess: isSinyalSuccess,
     isError: isSinyalError,
-  } = useSinyalDetailByUser(sinyalId, userId);
+  } = useSinyalDetailByUser(urlSinyalId, urlUserId);
 
   // Restore state saat fetch sinyal history berhasil
   useEffect(() => {
@@ -178,7 +186,10 @@ export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
       latitude: sinyalHistory.latitude,
       longitude: sinyalHistory.longitude,
     };
-    queryClient.setQueryData(["upcoming-vehicles", vehicleParams], syntheticVehicles);
+    queryClient.setQueryData(
+      ["upcoming-vehicles", vehicleParams],
+      syntheticVehicles,
+    );
 
     // [4] Transisi ke Skenario 2
     setSelectedRoute({ routeId, direction });
@@ -187,9 +198,9 @@ export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
 
   // Alert langsung jika sinyal tidak valid
   useEffect(() => {
-    if (!sinyalId || !isSinyalError) return;
+    if (!urlSinyalId || !isSinyalError) return;
     alert("Sinyal tidak valid atau tidak ditemukan.");
-  }, [isSinyalError, sinyalId]);
+  }, [isSinyalError, urlSinyalId]);
 
   // ─── Journey persistence (localStorage save/restore) ───
   const { isRestoringBooking } = useJourneyPersistence(
@@ -264,7 +275,10 @@ export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
       await queryClient.fetchQuery({
         queryKey: routePathKeys.byRouteAndDirection(routeId, direction),
         queryFn: () =>
-          routePathService.getRoutePathByRouteIdandDirection(routeId, direction),
+          routePathService.getRoutePathByRouteIdandDirection(
+            routeId,
+            direction,
+          ),
       });
 
       setSelectedRoute({ routeId, direction });
@@ -296,13 +310,29 @@ export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
       />
 
       {/* Restoring overlay */}
-      <RestoringOverlay show={isRestoringBooking} />
+      <RestoringOverlay
+        show={
+          isRestoringBooking ||
+          Boolean(urlSinyalId && urlUserId && isSinyalLoading)
+        }
+        message={
+          isSinyalLoading
+            ? "Memuat perjalanan Anda..."
+            : "Menghubungkan kembali perjalanan Anda..."
+        }
+      />
 
       {/* MAP LAYER */}
       <div className="absolute inset-0 z-0">
-        <div ref={map.mapContainerRef} className="absolute inset-0 h-full w-full" />
+        <div
+          ref={map.mapContainerRef}
+          className="absolute inset-0 h-full w-full"
+        />
         <RoutePathLine map={map.mapInstance} routePaths={routePaths ?? []} />
-        <VehicleMarkers map={map.mapInstance} vehicles={vehicles.realtimeUpcomingVehicles} />
+        <VehicleMarkers
+          map={map.mapInstance}
+          vehicles={vehicles.realtimeUpcomingVehicles}
+        />
       </div>
 
       {/* CENTER PICKER */}
@@ -335,7 +365,13 @@ export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
         <TopBar
           user={user}
           isAuthenticated={isAuthenticated}
-          onBack={() => window.history.back()}
+          onBack={() => {
+            if (isAuthenticated) {
+              window.location.href = "/user/dashboard";
+            } else {
+              window.history.back();
+            }
+          }}
         />
 
         {/* Floating Search Card */}
@@ -429,7 +465,10 @@ export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
             size="md"
             icon={<FiMapPin />}
             onClick={() =>
-              location.handleConfirmMapLocation(location.pickingMode, sharedMapRef)
+              location.handleConfirmMapLocation(
+                location.pickingMode,
+                sharedMapRef,
+              )
             }
             disabled={
               !showCenterPicker ||
@@ -455,7 +494,9 @@ export default function GetV2Client({ sinyalId, userId }: GetV2ClientProps) {
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#003d9b] via-blue-600 to-blue-500 py-3.5 text-sm font-bold text-white shadow-xl shadow-blue-600/25 transition-all hover:from-blue-700 hover:to-blue-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <FiNavigation className="text-base rotate-45" />
-              <span>{isSearchingRoute ? "Mencari Rute..." : "Cari Angkot"}</span>
+              <span>
+                {isSearchingRoute ? "Mencari Rute..." : "Cari Angkot"}
+              </span>
             </button>
           )}
         </div>
