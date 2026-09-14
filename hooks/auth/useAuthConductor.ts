@@ -41,6 +41,7 @@ export function useAuthConductor() {
         name: conductorData.name ?? "Conductor",
         role: "conductor",
         token: conductorData.token,
+        email: conductorData.email,
       });
 
       return conductorData as Conductor;

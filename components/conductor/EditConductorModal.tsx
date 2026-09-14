@@ -23,7 +23,7 @@ interface ConductorFormState {
   address: string;
   isVerified: boolean;
   status: ConductorStatus;
-  totalTrips: number;
+  // totalTrips: number;
 }
 
 export function EditConductorModal({
@@ -40,7 +40,7 @@ export function EditConductorModal({
     address: "",
     isVerified: false,
     status: "OFF_DUTY",
-    totalTrips: 0,
+    // totalTrips: 0,
   });
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function EditConductorModal({
         address: conductor.address || "",
         isVerified: conductor.isVerified ?? false,
         status: conductor.status || "OFF_DUTY",
-        totalTrips: conductor.totalTrips ?? 0,
+        // totalTrips: conductor.totalTrips ?? 0,
       });
     }
   }, [conductor]);
@@ -78,7 +78,7 @@ export function EditConductorModal({
       address: form.address || null,
       isVerified: form.isVerified,
       status: form.status,
-      totalTrips: Number(form.totalTrips),
+      // totalTrips: Number(form.totalTrips),
     };
 
     onSave(updatedData);
@@ -170,14 +170,14 @@ export function EditConductorModal({
             <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
               Total Trip
             </label>
-            <input
+            {/* <input
               type="number"
               value={form.totalTrips}
               onChange={(e) =>
                 handleChange("totalTrips", Number(e.target.value))
               }
               className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-800"
-            />
+            /> */}
           </div>
 
           {/* Baris 4: Alamat */}

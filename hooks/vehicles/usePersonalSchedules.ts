@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { vehicleAssignmentService } from "@/services/vehicles/vehicleAssignmentService.service";
 import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
-import { VehicleSchedule } from "@/types/vehicles/vehicle-schedule.type";
+import { VehicleAssignment } from "@/types/vehicles/vehicle-assignments.type";
 
 export function usePersonnelSchedule() {
   const [activeSchedule, setActiveSchedule] = useState<TripHistoryItem[]>([]);
@@ -13,7 +13,7 @@ export function usePersonnelSchedule() {
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   const [assignmentDetail, setAssignmentDetail] =
-    useState<VehicleSchedule | null>(null);
+    useState<VehicleAssignment | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 

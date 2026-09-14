@@ -34,6 +34,7 @@ export function useAuthDriver() {
         name: driverData.name ?? "Driver",
         role: "driver",
         token: driverData.token,
+        email: driverData.email,
       });
 
       return driverData as Driver;

@@ -31,6 +31,7 @@ export function useAuthUser() {
         name: userData.name ?? "User",
         role: "user",
         token: userData.token,
+        email: userData.email,
       });
 
       queryClient.invalidateQueries({ queryKey: ["authUserProfile"] });
