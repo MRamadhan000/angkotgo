@@ -9,6 +9,16 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+function normalizeTarif(value: Tarif & Record<string, unknown>): Tarif {
+  return {
+    id: Number(value.id),
+    name: String(value.name ?? value.role ?? value.type ?? ""),
+    nominal: Number(value.nominal ?? value.amount ?? 0),
+    createdAt: String(value.createdAt ?? value.created_at ?? ""),
+    updatedAt: String(value.updatedAt ?? value.updated_at ?? ""),
+  };
+}
+
 export const tarifService = {
   async register(data: CreateTarifRequest): Promise<TarifResponse> {
     const response = await fetch(`${API_URL}/costs`, {
@@ -25,7 +35,10 @@ export const tarifService = {
       throw new Error(result.message || "Gagal membuat tarif");
     }
 
-    return result;
+    return {
+      message: result.message,
+      data: normalizeTarif(result.data ?? result),
+    };
   },
 
   async findAll(): Promise<TarifsResponse> {
@@ -37,7 +50,12 @@ export const tarifService = {
       throw new Error(result.message || "Gagal mengambil data tarif");
     }
 
-    return result;
+    return {
+      message: result.message,
+      data: (Array.isArray(result) ? result : result.data || []).map(
+        (tarif: Tarif & Record<string, unknown>) => normalizeTarif(tarif),
+      ),
+    };
   },
 
   async findOne(id: number): Promise<TarifResponse> {
@@ -49,7 +67,10 @@ export const tarifService = {
       throw new Error(result.message || "Tarif tidak ditemukan");
     }
 
-    return result;
+    return {
+      message: result.message,
+      data: normalizeTarif(result.data ?? result),
+    };
   },
 
   async update(id: number, data: UpdateTarifRequest): Promise<TarifResponse> {
@@ -67,7 +88,10 @@ export const tarifService = {
       throw new Error(result.message || "Gagal memperbarui tarif");
     }
 
-    return result;
+    return {
+      message: result.message,
+      data: normalizeTarif(result.data ?? result),
+    };
   },
 
   async remove(id: number): Promise<DeleteTarifResponse> {

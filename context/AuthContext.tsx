@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export type UserRole = "driver" | "conductor" | "admin" | "user";
+export type UserRole = "driver" | "conductor" | "admin" | "PELAJAR" | "UMUM";
 
 export interface AuthUser {
   email: string;
@@ -111,7 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push("/admin/auth/login");
         break;
 
-      case "user":
+      case "PELAJAR":
+      case "UMUM":
         router.push("/auth/login");
         break;
 
