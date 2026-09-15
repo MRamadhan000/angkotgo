@@ -39,7 +39,7 @@ export function useAuthUser() {
       }
 
       login({
-        email: userData.email ?? "",
+        // email: userData.email ?? "",
         id: userData.id.toString(),
         name: userData.name ?? "User",
         role: userType === "PELAJAR" ? "PELAJAR" : "UMUM",
