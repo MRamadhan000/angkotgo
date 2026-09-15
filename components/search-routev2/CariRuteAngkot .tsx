@@ -615,6 +615,9 @@ export default function CariRuteAngkot() {
         <FeedbackModal
           vehicle={feedbackVehicle}
           onClose={() => setFeedbackVehicle(null)}
+          onFinished={() => {
+            window.location.assign("/user/dashboard");
+          }}
           onSubmitted={(assignmentId) => {
             setFeedbackSubmittedIds((previous) =>
               previous.includes(assignmentId)
