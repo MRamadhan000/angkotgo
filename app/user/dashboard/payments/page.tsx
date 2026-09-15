@@ -176,13 +176,9 @@ export default function PaymentPage() {
                     item.paymentType === PaymentType.ONLINE && (
                       <button
                         onClick={() =>
-                          handleMarkAsDone(
-                            item.xenditPaymentRequestId ?? null,
-                          )
+                          handleMarkAsDone(item.xenditPaymentRequestId ?? null)
                         }
-                        disabled={
-                          isUpdating || !item.xenditPaymentRequestId
-                        }
+                        disabled={isUpdating || !item.xenditPaymentRequestId}
                         className="flex items-center gap-1 bg-[#00772c] hover:bg-[#005c20] text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isUpdating ? (
