@@ -3,7 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaUser, FaEnvelope, FaPhone, FaArrowRight } from "react-icons/fa";
+import {
+  FaUser,
+  FaEnvelope,
+  FaPhone,
+  FaArrowRight,
+  FaGraduationCap,
+} from "react-icons/fa";
 import { Poppins } from "next/font/google";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,6 +44,7 @@ export default function UserRegisterPage() {
       email: "",
       phone: "",
       password: "",
+      role: "PELAJAR",
     },
   });
 
@@ -52,6 +59,7 @@ export default function UserRegisterPage() {
         err instanceof Error
           ? err.message
           : error || "Gagal mendaftarkan akun. Periksa kembali data Anda.";
+
       setFormError(errorMessage);
     }
   };
@@ -67,7 +75,9 @@ export default function UserRegisterPage() {
       {/* Background Decorations */}
       <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
         <div className="absolute top-[-120px] left-[-120px] w-[320px] h-[320px] bg-blue-200/40 rounded-full blur-3xl" />
+
         <div className="absolute bottom-[-120px] right-[-120px] w-[320px] h-[320px] bg-green-200/40 rounded-full blur-3xl" />
+
         <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] bg-[size:38px_38px]" />
       </div>
 
@@ -83,6 +93,7 @@ export default function UserRegisterPage() {
               <h1 className="mt-3 text-2xl font-extrabold text-slate-900 tracking-tight">
                 AngkotGo
               </h1>
+
               <p className="text-xs text-slate-500">Pendaftaran Akun Baru</p>
             </div>
 
@@ -93,6 +104,7 @@ export default function UserRegisterPage() {
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
                   Daftar Akun Baru
                 </h2>
+
                 <p className="text-xs sm:text-sm text-slate-500 mt-1">
                   Lengkapi data diri Anda untuk membuat akun.
                 </p>
@@ -107,6 +119,7 @@ export default function UserRegisterPage() {
 
               {/* FORM */}
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Nama */}
                 <TextField
                   label="Nama Lengkap"
                   type="text"
@@ -116,6 +129,7 @@ export default function UserRegisterPage() {
                   {...register("name")}
                 />
 
+                {/* Email */}
                 <TextField
                   label="Email"
                   type="email"
@@ -125,6 +139,7 @@ export default function UserRegisterPage() {
                   {...register("email")}
                 />
 
+                {/* Nomor Telepon */}
                 <TextField
                   label="Nomor Telepon"
                   type="text"
@@ -134,6 +149,56 @@ export default function UserRegisterPage() {
                   {...register("phone")}
                 />
 
+                {/* ROLE */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Daftar Sebagai
+                  </label>
+
+                  <div className="relative">
+                    <FaGraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none z-10" />
+
+                    <select
+                      {...register("role")}
+                      className={`w-full h-12 pl-11 pr-10 rounded-xl border bg-white/80 text-sm text-slate-700 outline-none transition-all appearance-none cursor-pointer ${
+                        errors.role
+                          ? "border-red-300 focus:border-red-400"
+                          : "border-slate-200 focus:border-blue-400"
+                      }`}
+                    >
+                      <option value="PELAJAR">Pelajar</option>
+                      <option value="UMUM">Umum</option>
+                    </select>
+
+                    {/* Dropdown Arrow */}
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {errors.role?.message && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.role.message}
+                    </p>
+                  )}
+
+                  <p className="mt-1.5 text-[11px] text-slate-400">
+                    Pilih sesuai dengan status Anda.
+                  </p>
+                </div>
+
+                {/* Password */}
                 <PasswordField
                   label="Password (Min. 6 Karakter)"
                   placeholder="Masukkan password"
@@ -141,6 +206,7 @@ export default function UserRegisterPage() {
                   {...register("password")}
                 />
 
+                {/* Submit */}
                 <PrimaryButton
                   type="submit"
                   loading={isLoading}
@@ -154,9 +220,11 @@ export default function UserRegisterPage() {
               {/* Divider */}
               <div className="flex items-center gap-3 my-5">
                 <div className="flex-1 h-px bg-slate-100" />
+
                 <span className="text-[11px] sm:text-xs text-slate-400 font-medium tracking-wide">
                   atau
                 </span>
+
                 <div className="flex-1 h-px bg-slate-100" />
               </div>
 
@@ -166,9 +234,11 @@ export default function UserRegisterPage() {
                 className="group flex items-center justify-center gap-2 w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border-2 border-blue-200 hover:border-blue-300 bg-blue-50/50 hover:bg-blue-50 text-blue-600 font-bold text-xs sm:text-sm transition-all duration-200 hover:scale-[1.01]"
               >
                 <FaUser className="text-xs sm:text-sm" />
+
                 <span>Sudah punya akun? Masuk</span>
               </Link>
 
+              {/* Info Notice */}
               <InfoNotice color="blue">
                 Pastikan data yang Anda masukkan sudah benar sebelum membuat
                 akun.

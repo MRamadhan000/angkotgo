@@ -113,13 +113,6 @@ export default function DriverProfilePage() {
 
                 <div className="space-y-2 pt-2">
                   <div className="flex items-center gap-2.5 rounded-xl bg-blue-950/40 px-4 py-2.5 text-xs text-blue-100 border border-white/10 transition-all duration-300 hover:bg-blue-900/60">
-                    <FiShield className="text-blue-300" />
-                    <span className="truncate">
-                      Akun{" "}
-                      {driver.isVerified ? "Terverifikasi" : "Belum Verifikasi"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2.5 rounded-xl bg-blue-950/40 px-4 py-2.5 text-xs text-blue-100 border border-white/10 transition-all duration-300 hover:bg-blue-900/60">
                     <FiStar className="text-blue-300" />
                     <span className="truncate">
                       Rating Performa: {driver.averageRating ?? 0} / 5.0

@@ -3,7 +3,7 @@ export interface Tarif {
   name: string;
   nominal: number;
   createdAt: string;
-  updated_at: string;
+  updatedAt: string;
 }
 
 export interface CreateTarifRequest {

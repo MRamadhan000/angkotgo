@@ -24,8 +24,8 @@ import { DummyQrCode } from "./DummyQrCode";
 import { SuccessOverlay } from "./SuccessOverlay";
 import { StepIndicator } from "./StepIndicator";
 import { formatRupiah } from "./util";
-
-const FARE_PER_PASSENGER = 5000;
+import { useAuth } from "@/context/AuthContext";
+import { useTarifs } from "@/hooks/useTarif";
 
 interface BookingPaymentModalProps {
   vehicle: UpcomingVehicle;
@@ -64,8 +64,15 @@ export function BookingPaymentModal({
   const [step, setStep] = useState<1 | 2>(1);
   const [passengers, setPassengers] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
+  const { user } = useAuth();
+  const { data: tarifResponse, isLoading: isTarifLoading } = useTarifs();
+  const userRole = user?.role === "PELAJAR" ? "PELAJAR" : "UMUM";
+  const farePerPassenger =
+    (tarifResponse?.data ?? []).find(
+      (tarif) => tarif.name.trim().toUpperCase() === userRole,
+    )?.nominal ?? 0;
 
-  const totalAmount = passengers * FARE_PER_PASSENGER;
+  const totalAmount = passengers * farePerPassenger;
   const isSucceeded =
     result?.data.status === PaymentStatus.PAID ||
     result?.data.status === PaymentStatus.SUCCEEDED;
@@ -73,8 +80,8 @@ export function BookingPaymentModal({
   // Sync amount to parent on passenger change
   useEffect(() => {
     onAmountChange(String(totalAmount));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalAmount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalAmount, onAmountChange]);
 
   const changePassengers = (delta: number) => {
     setPassengers((prev) => Math.min(10, Math.max(1, prev + delta)));
@@ -162,18 +169,19 @@ export function BookingPaymentModal({
 
               {/* Step indicator */}
               <div className="px-4 pb-3">
-                <StepIndicator step={step} totalSteps={paymentType === "CASH" ? 1 : 2} />
+                <StepIndicator
+                  step={step}
+                  totalSteps={paymentType === "CASH" ? 1 : 2}
+                />
               </div>
               <div className="h-px bg-slate-100" />
             </div>
 
             {/* ── BODY ────────────────────────────────────────────────────────── */}
             <div className="px-4 py-4">
-
               {/* ══ STEP 1 ════════════════════════════════════════════════════ */}
               {step === 1 && (
                 <div className="space-y-4">
-
                   {/* Payment Method */}
                   <div>
                     <p className="text-xs font-semibold text-slate-500 mb-2">
@@ -199,7 +207,9 @@ export function BookingPaymentModal({
                         <span className="text-xs font-bold">Tunai</span>
                         <span
                           className={`text-[10px] ${
-                            paymentType === "CASH" ? "text-white/80" : "text-slate-400"
+                            paymentType === "CASH"
+                              ? "text-white/80"
+                              : "text-slate-400"
                           }`}
                         >
                           Bayar ke driver
@@ -225,7 +235,9 @@ export function BookingPaymentModal({
                         <span className="text-xs font-bold">QRIS</span>
                         <span
                           className={`text-[10px] ${
-                            paymentType === "ONLINE" ? "text-white/80" : "text-slate-400"
+                            paymentType === "ONLINE"
+                              ? "text-white/80"
+                              : "text-slate-400"
                           }`}
                         >
                           Bayar online
@@ -282,19 +294,30 @@ export function BookingPaymentModal({
                   {/* Price Breakdown */}
                   <div className="rounded-xl bg-slate-50 px-3.5 py-3 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Harga per penumpang</span>
+                      <span className="text-slate-500">
+                        Harga per penumpang
+                      </span>
                       <span className="font-semibold text-slate-700">
-                        {formatRupiah(FARE_PER_PASSENGER)}
+                        {isTarifLoading
+                          ? "Memuat..."
+                          : formatRupiah(farePerPassenger)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-500">Jumlah penumpang</span>
-                      <span className="font-semibold text-slate-700">× {passengers}</span>
+                      <span className="font-semibold text-slate-700">
+                        × {passengers}
+                      </span>
                     </div>
                     <div className="h-px bg-slate-200" />
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-slate-900">Total bayar</span>
-                      <span className="text-base font-extrabold" style={{ color: BRAND_BLUE_DARK }}>
+                      <span className="text-sm font-bold text-slate-900">
+                        Total bayar
+                      </span>
+                      <span
+                        className="text-base font-extrabold"
+                        style={{ color: BRAND_BLUE_DARK }}
+                      >
                         {formatRupiah(totalAmount)}
                       </span>
                     </div>
@@ -312,9 +335,13 @@ export function BookingPaymentModal({
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isSubmitting}
+                    disabled={
+                      isSubmitting || isTarifLoading || farePerPassenger <= 0
+                    }
                     className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-                    style={{ backgroundColor: isSubmitting ? "#94a3b8" : BRAND_BLUE }}
+                    style={{
+                      backgroundColor: isSubmitting ? "#94a3b8" : BRAND_BLUE,
+                    }}
                   >
                     {isSubmitting ? (
                       <>
@@ -324,7 +351,9 @@ export function BookingPaymentModal({
                     ) : (
                       <>
                         <span>
-                          {paymentType === "CASH" ? "Konfirmasi booking" : "Lanjut ke pembayaran"}
+                          {paymentType === "CASH"
+                            ? "Konfirmasi booking"
+                            : "Lanjut ke pembayaran"}
                         </span>
                         <FiArrowRight />
                       </>
@@ -336,7 +365,6 @@ export function BookingPaymentModal({
               {/* ══ STEP 2 ════════════════════════════════════════════════════ */}
               {step === 2 && result && (
                 <div className="space-y-4">
-
                   {/* Status banner */}
                   <div
                     className={`rounded-xl p-3.5 flex items-start gap-3 ${
@@ -345,7 +373,9 @@ export function BookingPaymentModal({
                   >
                     <div
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white"
-                      style={{ backgroundColor: isSucceeded ? BRAND_BLUE : "#f59e0b" }}
+                      style={{
+                        backgroundColor: isSucceeded ? BRAND_BLUE : "#f59e0b",
+                      }}
                     >
                       {isSucceeded ? (
                         <FiCheck className="text-lg" />
@@ -355,7 +385,9 @@ export function BookingPaymentModal({
                     </div>
                     <div>
                       <h3 className="text-sm font-bold text-slate-900">
-                        {isSucceeded ? "Pembayaran berhasil" : "Menunggu pembayaran"}
+                        {isSucceeded
+                          ? "Pembayaran berhasil"
+                          : "Menunggu pembayaran"}
                       </h3>
                       <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
                         {isSucceeded
@@ -380,41 +412,43 @@ export function BookingPaymentModal({
                         <DummyQrCode />
                       </div>
                       <p className="text-[11px] text-slate-400 text-center max-w-[220px] leading-relaxed">
-                        Gunakan GoPay, OVO, Dana, atau aplikasi bank untuk scan QR ini
+                        Gunakan GoPay, OVO, Dana, atau aplikasi bank untuk scan
+                        QR ini
                       </p>
                     </div>
                   )}
 
                   {/* Simulasi Bayar: tampil untuk ONLINE mode atau mode dev */}
-                  {(paymentType === "ONLINE" || isDevelopment) && result.data.status === PaymentStatus.PENDING && (
-                    <div className="rounded-xl border border-dashed border-slate-300 p-3.5 space-y-2.5">
-                      <div className="flex items-center gap-2 text-slate-500">
-                        <FiTerminal className="shrink-0 text-sm" />
-                        <span className="text-[10px] font-bold uppercase tracking-wide">
-                          Mode testing
-                        </span>
+                  {(paymentType === "ONLINE" || isDevelopment) &&
+                    result.data.status === PaymentStatus.PENDING && (
+                      <div className="rounded-xl border border-dashed border-slate-300 p-3.5 space-y-2.5">
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <FiTerminal className="shrink-0 text-sm" />
+                          <span className="text-[10px] font-bold uppercase tracking-wide">
+                            Mode testing
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleMarkAsSucceeded}
+                          disabled={isMarkingSucceeded}
+                          className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                          style={{ backgroundColor: BRAND_BLUE_DARK }}
+                        >
+                          {isMarkingSucceeded ? (
+                            <>
+                              <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                              <span>Memproses...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FiCheck className="text-sm" />
+                              <span>Tandai sudah bayar</span>
+                            </>
+                          )}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleMarkAsSucceeded}
-                        disabled={isMarkingSucceeded}
-                        className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-                        style={{ backgroundColor: BRAND_BLUE_DARK }}
-                      >
-                        {isMarkingSucceeded ? (
-                          <>
-                            <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                            <span>Memproses...</span>
-                          </>
-                        ) : (
-                          <>
-                            <FiCheck className="text-sm" />
-                            <span>Tandai sudah bayar</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
+                    )}
 
                   {/* Back & Close */}
                   <div className="flex gap-2.5 pt-1">
@@ -432,7 +466,9 @@ export function BookingPaymentModal({
                       type="button"
                       onClick={onClose}
                       className="flex-1 rounded-xl py-3 text-xs font-bold text-white transition-transform active:scale-95 cursor-pointer"
-                      style={{ backgroundColor: isSucceeded ? BRAND_BLUE : "#1e293b" }}
+                      style={{
+                        backgroundColor: isSucceeded ? BRAND_BLUE : "#1e293b",
+                      }}
                     >
                       {isSucceeded ? "Selesai" : "Tutup"}
                     </button>

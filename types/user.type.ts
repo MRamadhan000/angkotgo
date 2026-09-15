@@ -1,5 +1,5 @@
 // --- ENUMS & TYPES ---
-export type UserStatus = 'ACTIVE' | 'PENDING' | 'DEACTIVE';
+export type UserStatus = "ACTIVE" | "PENDING" | "DEACTIVE";
 
 // --- INTERFACES & MODELS ---
 export interface User {
@@ -12,6 +12,7 @@ export interface User {
   updated_at: string;
   deletedAt?: string | null;
   token?: string;
+  role: "driver" | "conductor" | "admin" | "PELAJAR" | "UMUM";
 }
 
 // --- REQUEST TYPES ---
@@ -20,6 +21,7 @@ export interface CreateUserRequest {
   password: string;
   name: string;
   phone?: string;
+  role: "driver" | "conductor" | "admin" | "PELAJAR" | "UMUM";
 }
 
 // Alias untuk kecocokan penamaan fitur

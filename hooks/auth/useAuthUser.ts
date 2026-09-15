@@ -19,6 +19,18 @@ export function useAuthUser() {
     },
     onSuccess: (response) => {
       const userData = response?.data || response;
+      const userType = String(
+        (
+          userData as User & {
+            role?: string;
+            userType?: string;
+            type?: string;
+          }
+        ).role ??
+          (userData as User & { userType?: string; type?: string }).userType ??
+          (userData as User & { type?: string }).type ??
+          "UMUM",
+      ).toUpperCase();
 
       if (!userData?.id) {
         const message = "Data user tidak ditemukan.";
@@ -27,9 +39,10 @@ export function useAuthUser() {
       }
 
       login({
+        email: userData.email ?? "",
         id: userData.id.toString(),
         name: userData.name ?? "User",
-        role: "user",
+        role: userType === "PELAJAR" ? "PELAJAR" : "UMUM",
         token: userData.token,
         email: userData.email,
       });
@@ -59,7 +72,7 @@ export function useAuthUser() {
       const response = await userService.getMe(parseInt(user?.id || "0", 10));
       return (response?.data || response) as User;
     },
-    enabled: !!user?.id && user?.role === "user",
+    enabled: !!user?.id && (user?.role === "PELAJAR" || user?.role === "UMUM"),
     staleTime: 1000 * 60 * 5, // Cache selama 5 menit
   });
 
@@ -100,7 +113,10 @@ export function useAuthUser() {
   };
 
   return {
-    user: user?.role === "user" ? (user as unknown as User) : null,
+    user:
+      user?.role === "PELAJAR" || user?.role === "UMUM"
+        ? (user as unknown as User)
+        : null,
     profile: profileQuery.data ?? null,
     isLoading: loginMutation.isPending || registerMutation.isPending,
     isFetchingProfile: profileQuery.isFetching,

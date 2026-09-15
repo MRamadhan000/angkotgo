@@ -14,6 +14,8 @@ import {
 
 import { UpcomingVehicle } from "@/types/route-search.type";
 import type { VehicleRealtimePayload } from "@/services/vehicles/vehicleSocket.service";
+import { useAuth } from "@/context/AuthContext";
+import { useTarifs } from "@/hooks/useTarif";
 
 interface UpcomingVehicleCardProps {
   vehicle: UpcomingVehicle;
@@ -62,6 +64,8 @@ export default function UpcomingVehicleCard({
   isRoomJoined = false,
 }: UpcomingVehicleCardProps) {
   const [isDebugOpen, setIsDebugOpen] = useState(false);
+  const { user } = useAuth();
+  const { data: tarifResponse } = useTarifs();
   const passengers = vehicle.currentPassengers ?? null;
 
   const hasLocation =
@@ -73,8 +77,14 @@ export default function UpcomingVehicleCard({
   const capacity = vehicle.vehicleCapacity ?? vehicle.vehicle?.capacity ?? 8;
   const hasPassengerData = passengers !== null && passengers !== undefined;
   const isFull = hasPassengerData && passengers >= capacity;
-  const remainingSeats = hasPassengerData ? Math.max(0, capacity - passengers) : null;
+  const remainingSeats = hasPassengerData
+    ? Math.max(0, capacity - passengers)
+    : null;
   const isOngoing = vehicle.status === "ONGOING";
+  const userRole = user?.role === "PELAJAR" ? "PELAJAR" : "UMUM";
+  const fare = (tarifResponse?.data ?? []).find(
+    (tarif) => tarif.name.trim().toUpperCase() === userRole,
+  )?.nominal;
 
   const driverLabel =
     vehicle.driverName || vehicle.driver?.name || `Driver #${vehicle.driverId}`;
@@ -118,9 +128,7 @@ export default function UpcomingVehicleCard({
           {/* Angkot Icon / Pill */}
           <div
             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg font-bold transition sm:h-8 sm:w-8 sm:rounded-xl ${
-              isSelected
-                ? "bg-blue-600 text-white"
-                : "bg-blue-50 text-blue-700"
+              isSelected ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"
             }`}
           >
             <FiNavigation className="text-[10px] rotate-45 sm:text-sm" />
@@ -142,7 +150,10 @@ export default function UpcomingVehicleCard({
         {/* Fare Pill */}
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="whitespace-nowrap rounded-lg bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#003d9b] sm:px-2 sm:text-xs">
-            Rp 5.000<span className="text-[9px] font-normal text-blue-600 sm:text-[10px]">/org</span>
+            {fare ? `Rp ${fare.toLocaleString("id-ID")}` : "Tarif -"}
+            <span className="text-[9px] font-normal text-blue-600 sm:text-[10px]">
+              /org
+            </span>
           </span>
         </div>
       </div>
@@ -155,7 +166,9 @@ export default function UpcomingVehicleCard({
           </span>
           <span className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-slate-800 sm:text-xs">
             <FiMapPin className="shrink-0 text-[10px] text-blue-600 sm:text-[11px]" />
-            <span className="truncate">{formatDistance(vehicle.distanceToUserMeters)}</span>
+            <span className="truncate">
+              {formatDistance(vehicle.distanceToUserMeters)}
+            </span>
           </span>
         </div>
 
@@ -189,7 +202,8 @@ export default function UpcomingVehicleCard({
             </span>
           </div>
           <span className="shrink-0 whitespace-nowrap text-sm font-bold text-blue-700 sm:text-base">
-            {vehicleToUserEstimate} <span className="text-[10px] font-medium sm:text-[11px]">mnt</span>
+            {vehicleToUserEstimate}{" "}
+            <span className="text-[10px] font-medium sm:text-[11px]">mnt</span>
           </span>
         </div>
 
@@ -207,7 +221,8 @@ export default function UpcomingVehicleCard({
             </span>
           </div>
           <span className="shrink-0 whitespace-nowrap text-[11px] font-semibold text-slate-600 sm:text-xs">
-            {userToDestinationEstimate} <span className="text-[9px] font-normal sm:text-[10px]">mnt</span>
+            {userToDestinationEstimate}{" "}
+            <span className="text-[9px] font-normal sm:text-[10px]">mnt</span>
           </span>
         </div>
 
@@ -217,7 +232,10 @@ export default function UpcomingVehicleCard({
             Total estimasi perjalanan
           </span>
           <span className="whitespace-nowrap text-[11px] font-bold text-slate-900 sm:text-xs">
-            {totalEstimate} <span className="text-[9px] font-normal text-slate-500 sm:text-[10px]">mnt</span>
+            {totalEstimate}{" "}
+            <span className="text-[9px] font-normal text-slate-500 sm:text-[10px]">
+              mnt
+            </span>
           </span>
         </div>
       </div>
@@ -233,8 +251,8 @@ export default function UpcomingVehicleCard({
             !canBook
               ? "cursor-not-allowed bg-slate-100 text-slate-400"
               : isSelected
-              ? "bg-[#003d9b] text-white shadow-md shadow-blue-800/20"
-              : "bg-gradient-to-r from-[#003d9b] via-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/25 hover:from-blue-700 hover:to-blue-600 hover:shadow-lg active:scale-[0.98]"
+                ? "bg-[#003d9b] text-white shadow-md shadow-blue-800/20"
+                : "bg-gradient-to-r from-[#003d9b] via-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/25 hover:from-blue-700 hover:to-blue-600 hover:shadow-lg active:scale-[0.98]"
           }
         `}
       >
@@ -293,19 +311,25 @@ export default function UpcomingVehicleCard({
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                   <p className="text-[10px] text-slate-500">Koneksi socket</p>
-                  <p className={`mt-1 font-bold ${isSocketConnected ? "text-emerald-600" : "text-rose-600"}`}>
+                  <p
+                    className={`mt-1 font-bold ${isSocketConnected ? "text-emerald-600" : "text-rose-600"}`}
+                  >
                     {isSocketConnected ? "Terhubung" : "Tidak terhubung"}
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                   <p className="text-[10px] text-slate-500">Data assignment</p>
-                  <p className={`mt-1 font-bold ${realtimeData ? "text-emerald-600" : "text-amber-600"}`}>
+                  <p
+                    className={`mt-1 font-bold ${realtimeData ? "text-emerald-600" : "text-amber-600"}`}
+                  >
                     {realtimeData ? "Ada di WebSocket" : "Belum ada"}
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                   <p className="text-[10px] text-slate-500">Room</p>
-                  <p className={`mt-1 font-bold ${isRoomJoined ? "text-emerald-600" : "text-amber-600"}`}>
+                  <p
+                    className={`mt-1 font-bold ${isRoomJoined ? "text-emerald-600" : "text-amber-600"}`}
+                  >
                     {isRoomJoined ? "Joined" : "Belum joined"}
                   </p>
                 </div>
@@ -316,8 +340,13 @@ export default function UpcomingVehicleCard({
                   Perbandingan current passenger
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-slate-700">
-                  <span>WebSocket: <strong>{realtimeData?.currentPassengers ?? "-"}</strong></span>
-                  <span>Dipakai kartu: <strong>{passengers ?? "-"}</strong></span>
+                  <span>
+                    WebSocket:{" "}
+                    <strong>{realtimeData?.currentPassengers ?? "-"}</strong>
+                  </span>
+                  <span>
+                    Dipakai kartu: <strong>{passengers ?? "-"}</strong>
+                  </span>
                 </div>
               </div>
 

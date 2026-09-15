@@ -3,10 +3,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { usePayments } from "@/hooks/payments/usePayments";
 import { usePaymentSocket } from "@/hooks/payments/usePaymentSocket";
-import {
-  useCompleteSinyal,
-  useCreateSinyal,
-} from "@/hooks/sinyal/useSinyal";
+import { useCompleteSinyal, useCreateSinyal } from "@/hooks/sinyal/useSinyal";
 import { PaymentStatus } from "@/types/payments/payment.type";
 import type {
   CreatePaymentType,
@@ -54,7 +51,7 @@ export function useBookingState({
   const [bookingVehicle, setBookingVehicle] = useState<UpcomingVehicle | null>(
     null,
   );
-  const [bookingAmount, setBookingAmount] = useState("5000");
+  const [bookingAmount, setBookingAmount] = useState("");
   const [bookingType, setBookingType] = useState<CreatePaymentType>("CASH");
   const [bookingResult, setBookingResult] =
     useState<PaymentCreateResponse | null>(null);
@@ -265,7 +262,8 @@ export function useBookingState({
               ...previous,
               data: {
                 ...previous.data,
-                status: (responseStatus ?? PaymentStatus.SUCCEEDED) as PaymentStatus,
+                status: (responseStatus ??
+                  PaymentStatus.SUCCEEDED) as PaymentStatus,
               },
             }
           : previous,
