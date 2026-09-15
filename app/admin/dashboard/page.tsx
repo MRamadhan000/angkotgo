@@ -158,37 +158,6 @@ function TarifForm({ tariffs }: { tariffs: Tariff[] }) {
         </div>
       </div>
 
-      <p className="text-[11px] text-slate-500 font-medium mb-1.5">
-        Set Tarif Baru (Umum)
-      </p>
-      <div className="flex items-center border border-slate-200 rounded-[7px] overflow-hidden mb-4">
-        <span className="px-3 py-2 bg-slate-50 border-r border-slate-200 text-[12px] text-slate-500 font-medium">
-          Rp
-        </span>
-        <input
-          type="number"
-          value={tarifBaru}
-          onChange={(e) => setTarifBaru(Number(e.target.value))}
-          className="flex-1 px-3 py-2 text-[13px] font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-          min={0}
-          step={500}
-        />
-      </div>
-
-      <button
-        onClick={handleSimpan}
-        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[13px] font-bold rounded-[9px] flex items-center justify-center gap-2 transition-colors"
-      >
-        <HiOutlineSave className="text-[16px]" />
-        Simpan Perubahan Tarif
-      </button>
-
-      {saved && (
-        <div className="mt-2.5 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-[11px] font-semibold px-3 py-2 rounded-[8px]">
-          <FaCheckCircle className="text-[12px]" />
-          Tarif berhasil diperbarui
-        </div>
-      )}
     </>
   );
 }
@@ -552,7 +521,7 @@ export default function DashboardPage() {
           {/* Tarif Form Component */}
           <div className="bg-white border border-slate-100 rounded-xl p-4">
             <p className="text-[13px] font-bold text-slate-900 mb-3">
-              Ubah Tarif Angkot
+              Tarif Angkot
             </p>
             <TarifForm tariffs={data.tariffs} />
           </div>
