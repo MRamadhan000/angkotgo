@@ -212,54 +212,47 @@ export default function ConductorUpcomingPage() {
         {/* Main Grid Layout (Sidebar Profil + Content Jadwal Mendatang) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Profile Card Sidebar (Konsisten dengan Dashboard Kondektur) */}
-          <div className="group/sidebar lg:col-span-4 rounded-3xl bg-blue-600 p-6 text-white shadow-lg flex flex-col justify-between space-y-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:ring-4 hover:ring-blue-200">
+          <div className="group/sidebar lg:col-span-4 rounded-3xl border border-blue-900/50 bg-linear-to-b from-[#102a5c] to-[#0d234d] p-6 text-white shadow-xl flex flex-col justify-between space-y-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-blue-600 font-black text-xl shadow-inner transition-transform duration-300 group-hover/sidebar:scale-105">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-xl font-black text-white shadow-inner transition-transform duration-300 group-hover/sidebar:scale-105">
                   {user?.name ? user.name.charAt(0) : "C"}
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/40 px-3 py-1 text-xs font-medium text-white border border-blue-400/30 transition-colors duration-300 group-hover/sidebar:bg-blue-500">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">
                   <FiCheckCircle className="text-[10px] text-emerald-300" />{" "}
                   Siap Operasional
                 </span>
               </div>
 
               <div>
-                <p className="text-xs uppercase tracking-wider text-blue-200 font-medium">
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-300">
                   Profil Kondektur
                 </p>
                 <h1 className="text-2xl font-black mt-1 tracking-tight">
                   {user.name}
                 </h1>
-                <p className="text-xs text-blue-100 mt-0.5">
-                  Kru ID: {user?.id ? `C${user.id}-OPS-2024` : "C1-OPS-2024"}
-                </p>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center gap-2.5 rounded-xl bg-blue-700/50 px-4 py-2.5 text-xs text-blue-100 border border-blue-500/30 transition-all duration-300 hover:bg-blue-700 hover:border-blue-300">
-                  <FiUser className="text-blue-300" />
-                  <span className="truncate">Kondektur Bertugas</span>
-                </div>
-                <div className="flex items-center gap-2.5 rounded-xl bg-blue-700/50 px-4 py-2.5 text-xs text-blue-100 border border-blue-500/30 transition-all duration-300 hover:bg-blue-700 hover:border-blue-300">
-                  <FiShield className="text-blue-300" />
-                  <span className="truncate">
-                    {user?.email || "email belum tersedia"}
-                  </span>
-                </div>
               </div>
             </div>
 
             {/* Ringkasan Cepat Jadwal Mendatang di Sidebar */}
-            <div className="rounded-2xl bg-blue-700/50 border border-blue-400/30 p-4 transition-all duration-300 group-hover/sidebar:bg-blue-700">
-              <p className="text-[10px] font-semibold text-blue-200 uppercase tracking-wider">
-                Total Penugasan Aktif
-              </p>
-              <p className="text-lg font-black text-white mt-0.5">
-                {upcomingSchedules.length} Agenda Trip
-              </p>
-              <p className="text-[11px] text-blue-100 mt-1">
-                Pantau jadwal perjalanan armada mendatang secara real-time.
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 group-hover/sidebar:bg-white/10">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
+                    Total Penugasan Aktif
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {upcomingSchedules.length}{" "}
+                    <span className="text-base text-blue-200">Agenda Trip</span>
+                  </p>
+                </div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/20 text-blue-200">
+                  <HiOutlineCalendar className="h-5 w-5" />
+                </div>
+              </div>
+              <p className="mt-3 border-t border-white/10 pt-3 text-xs leading-relaxed text-blue-100/75">
+                Pantau jadwal perjalanan dan driver yang terhubung secara
+                real-time.
               </p>
             </div>
           </div>
@@ -283,16 +276,6 @@ export default function ConductorUpcomingPage() {
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  aria-label="Notifikasi"
-                  className="relative inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-gray-600 border border-gray-200 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 cursor-pointer"
-                >
-                  <HiOutlineBell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-extrabold text-white">
-                    1
-                  </span>
-                </button>
               </div>
             </div>
 

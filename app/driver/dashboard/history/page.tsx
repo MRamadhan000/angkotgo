@@ -639,16 +639,6 @@ export default function DriverHistoryPage() {
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  aria-label="Notifikasi"
-                  className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gray-50 text-gray-600 border border-gray-200 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                >
-                  <HiOutlineBell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-extrabold text-white">
-                    1
-                  </span>
-                </button>
               </div>
 
               {/* Filter & Sort Bar */}

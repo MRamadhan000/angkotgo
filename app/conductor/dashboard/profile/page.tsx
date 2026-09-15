@@ -73,59 +73,54 @@ export default function ConductorProfilePage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Column: Profile Card Sidebar (Konsisten dengan Dashboard & History Kondektur) */}
-            <div className="group/sidebar lg:col-span-4 rounded-3xl bg-blue-600 p-6 text-white shadow-lg flex flex-col justify-between space-y-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:ring-4 hover:ring-blue-200">
+            <div className="group/sidebar lg:col-span-4 rounded-3xl border border-blue-900/50 bg-linear-to-b from-[#102a5c] to-[#0d234d] p-6 text-white shadow-xl flex flex-col justify-between space-y-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-blue-600 font-black text-xl shadow-inner transition-transform duration-300 group-hover/sidebar:scale-105">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-xl font-black text-white shadow-inner transition-transform duration-300 group-hover/sidebar:scale-105">
                     {conductor.name ? conductor.name.charAt(0) : "C"}
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/40 px-3 py-1 text-xs font-medium text-white border border-blue-400/30 transition-colors duration-300 group-hover/sidebar:bg-blue-500">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">
                     <FiCheckCircle className="text-[10px] text-emerald-300" />{" "}
-                    {conductor.status || "Aktif"}
+                    {conductor.status === "ACTIVE"
+                      ? "ACTIVE"
+                      : conductor.status || "Aktif"}
                   </span>
                 </div>
 
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-blue-200 font-medium">
+                  <p className="text-xs font-bold uppercase tracking-wider text-blue-300">
                     Profil Kondektur
                   </p>
-                  <h1 className="text-2xl font-black mt-1 tracking-tight truncate">
+                  <h1 className="mt-1 truncate text-2xl font-black tracking-tight">
                     {conductor.name}
                   </h1>
-                  <p className="text-xs text-blue-100 mt-0.5 font-mono">
+                  <p className="mt-0.5 font-mono text-xs text-blue-100">
                     NIK: {conductor.nik || "-"}
                   </p>
                 </div>
 
                 <div className="space-y-2 pt-2">
-                  <div className="flex items-center gap-2.5 rounded-xl bg-blue-700/50 px-4 py-2.5 text-xs text-blue-100 border border-blue-500/30 transition-all duration-300 hover:bg-blue-700 hover:border-blue-300">
+                  <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-blue-100">
                     <FiUser className="text-blue-300" />
                     <span className="truncate">
-                      Akun{" "}
-                      {conductor.isVerified
-                        ? "Terverifikasi"
-                        : "Belum Verifikasi"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2.5 rounded-xl bg-blue-700/50 px-4 py-2.5 text-xs text-blue-100 border border-blue-500/30 transition-all duration-300 hover:bg-blue-700 hover:border-blue-300">
-                    <FiShield className="text-blue-300" />
-                    <span className="truncate">
-                      Kru ID: C{conductor.id || "1"}-OPS-2024
+                      Status Personel: {conductor.status || "Belum tersedia"}
                     </span>
                   </div>
                 </div>
               </div>
 
               {/* Quick Info Box di Sidebar */}
-              <div className="rounded-2xl bg-blue-700/50 border border-blue-400/30 p-4 transition-all duration-300 group-hover/sidebar:bg-blue-700">
-                <p className="text-[10px] font-semibold text-blue-200 uppercase tracking-wider">
-                  Status Penugasan
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 group-hover/sidebar:bg-white/10">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
+                  Status Kondektur
                 </p>
-                <p className="text-sm font-bold text-white mt-1">
-                  {conductor.status || "Tersedia"}
+                <p className="mt-1 text-sm font-bold text-white">
+                  {conductor.isVerified
+                    ? "Akun Terverifikasi"
+                    : "Verifikasi diperlukan"}
                 </p>
-                <p className="text-[11px] text-blue-200 mt-0.5">
-                  Siap melayani operasional armada harian.
+                <p className="mt-0.5 text-[11px] text-blue-200">
+                  Siap mendukung operasional armada harian.
                 </p>
               </div>
             </div>
