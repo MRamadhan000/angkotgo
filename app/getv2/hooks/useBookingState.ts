@@ -27,6 +27,11 @@ type BookingStateDeps = {
   showAlert: (message: string, onSubmit?: () => void) => Promise<boolean>;
 };
 
+export type SuccessfulBooking = {
+  vehicle: UpcomingVehicle;
+  payment: PaymentCreateResponse;
+};
+
 /**
  * Mengelola state booking & pembayaran Skenario 3:
  * - Pilih kendaraan untuk di-booking
@@ -55,6 +60,9 @@ export function useBookingState({
   const [bookingType, setBookingType] = useState<CreatePaymentType>("CASH");
   const [bookingResult, setBookingResult] =
     useState<PaymentCreateResponse | null>(null);
+  const [successfulBookings, setSuccessfulBookings] = useState<
+    SuccessfulBooking[]
+  >([]);
   const [sinyalId, setSinyalId] = useState<string | null>(null);
 
   const bookingPayments = usePayments(null);
@@ -152,6 +160,17 @@ export function useBookingState({
         amount,
       });
       setBookingResult(result);
+      if (
+        result.data.status === PaymentStatus.PAID ||
+        result.data.status === PaymentStatus.SUCCEEDED
+      ) {
+        setSuccessfulBookings((previous) => [
+          ...previous.filter(
+            (item) => item.vehicle.assignmentId !== bookingVehicle.assignmentId,
+          ),
+          { vehicle: bookingVehicle, payment: result },
+        ]);
+      }
       return true;
     } catch {
       // Error ditampilkan oleh modal dari hook state.
@@ -268,6 +287,24 @@ export function useBookingState({
             }
           : previous,
       );
+      if (bookingVehicle) {
+        setSuccessfulBookings((previous) => [
+          ...previous.filter(
+            (item) => item.vehicle.assignmentId !== bookingVehicle.assignmentId,
+          ),
+          {
+            vehicle: bookingVehicle,
+            payment: {
+              ...bookingResult,
+              data: {
+                ...bookingResult.data,
+                status: (responseStatus ??
+                  PaymentStatus.SUCCEEDED) as PaymentStatus,
+              },
+            },
+          },
+        ]);
+      }
       return true;
     } catch {
       // Webhook gagal (4xx/5xx) — error sudah di-set oleh usePayments.
@@ -281,6 +318,7 @@ export function useBookingState({
     bookingAmount,
     bookingType,
     bookingResult,
+    successfulBookings,
     bookingPayments,
     isCreatingSinyal,
     isCompletingSinyal,

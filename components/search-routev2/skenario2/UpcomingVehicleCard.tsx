@@ -25,6 +25,9 @@ interface UpcomingVehicleCardProps {
   realtimeData?: VehicleRealtimePayload | null;
   isSocketConnected?: boolean;
   isRoomJoined?: boolean;
+  isPaidBooking?: boolean;
+  isFeedbackSubmitted?: boolean;
+  onBoardingFeedback?: (vehicle: UpcomingVehicle) => void;
 }
 
 const formatDistance = (meters: number | null | undefined) => {
@@ -62,6 +65,9 @@ export default function UpcomingVehicleCard({
   realtimeData = null,
   isSocketConnected = false,
   isRoomJoined = false,
+  isPaidBooking = false,
+  isFeedbackSubmitted = false,
+  onBoardingFeedback,
 }: UpcomingVehicleCardProps) {
   const [isDebugOpen, setIsDebugOpen] = useState(false);
   const { user } = useAuth();
@@ -243,20 +249,33 @@ export default function UpcomingVehicleCard({
       {/* ACTION CTA: BLUE GRADIENT BUTTON */}
       <button
         type="button"
-        disabled={!canBook}
-        onClick={() => onBook?.(vehicle)}
+        disabled={isPaidBooking ? isFeedbackSubmitted : !canBook}
+        onClick={() =>
+          isPaidBooking ? onBoardingFeedback?.(vehicle) : onBook?.(vehicle)
+        }
         className={`
           mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-all duration-150 sm:mt-3 sm:gap-2 sm:rounded-xl sm:py-2.5 sm:text-xs
           ${
-            !canBook
-              ? "cursor-not-allowed bg-slate-100 text-slate-400"
-              : isSelected
-                ? "bg-[#003d9b] text-white shadow-md shadow-blue-800/20"
-                : "bg-gradient-to-r from-[#003d9b] via-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/25 hover:from-blue-700 hover:to-blue-600 hover:shadow-lg active:scale-[0.98]"
+            isPaidBooking
+              ? isFeedbackSubmitted
+                ? "cursor-not-allowed bg-emerald-50 text-emerald-600"
+                : "bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 active:scale-[0.98]"
+              : !canBook
+                ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                : isSelected
+                  ? "bg-[#003d9b] text-white shadow-md shadow-blue-800/20"
+                  : "bg-gradient-to-r from-[#003d9b] via-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/25 hover:from-blue-700 hover:to-blue-600 hover:shadow-lg active:scale-[0.98]"
           }
         `}
       >
-        {isSelected ? (
+        {isPaidBooking ? (
+          <>
+            <FiCheckCircle />
+            {isFeedbackSubmitted
+              ? "Feedback terkirim"
+              : "Apakah Anda sudah naik?"}
+          </>
+        ) : isSelected ? (
           <>
             <FiCheckCircle className="shrink-0 text-xs text-white sm:text-sm" />
             <span>Angkot Terpilih</span>

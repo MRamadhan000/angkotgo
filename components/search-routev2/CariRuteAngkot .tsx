@@ -27,6 +27,7 @@ import VehicleMarkers from "@/components/search-routev2/skenario2/VehicleMarkers
 import RoutePathLine from "@/components/search-routev2/skenario2/RoutePathLine";
 import LocationSummary from "@/components/search-routev2/skenario2/LocationSummary";
 import { BookingPaymentModal } from "@/components/search-routev2/skenario3/BookingPaymentModal";
+import FeedbackModal from "@/components/search-routev2/skenario6/FeedbackModal";
 
 // Local hooks
 import { useMapInitialization } from "../../app/getv2/hooks/useMapInitialization";
@@ -40,6 +41,7 @@ import { useSinyalDetailByUser } from "@/hooks/sinyal/useSinyal";
 import { buildSyntheticUpcomingVehicles } from "../../app/getv2/getv2.util";
 
 import type { SelectedRoute } from "../../app/getv2/types";
+import type { UpcomingVehicle } from "@/types/route-search.type";
 import RestoringOverlay from "@/components/search-routev2/RestoringOverlay";
 import TopBar from "@/components/search-routev2/TopBar";
 import AlertRoute from "@/components/search-routev2/AlertRoute";
@@ -70,6 +72,11 @@ export default function CariRuteAngkot() {
     null,
   );
   const [routeAlert, setRouteAlert] = useState<RouteAlertState>(null);
+  const [feedbackVehicle, setFeedbackVehicle] =
+    useState<UpcomingVehicle | null>(null);
+  const [feedbackSubmittedIds, setFeedbackSubmittedIds] = useState<number[]>(
+    [],
+  );
 
   const showRouteAlert = (message: string, onSubmit = () => {}) =>
     new Promise<boolean>((resolve) => {
@@ -565,6 +572,9 @@ export default function CariRuteAngkot() {
 
             <UpcomingVehicleList
               upcomingVehicles={vehicles.realtimeUpcomingVehicles}
+              successfulBookings={booking.successfulBookings}
+              feedbackSubmittedIds={feedbackSubmittedIds}
+              onBoardingFeedback={setFeedbackVehicle}
               onSubmit={booking.handleSendSinyal}
               onBoarded={booking.handleCompleteSinyal}
               isSubmitting={booking.isCreatingSinyal}
@@ -597,6 +607,20 @@ export default function CariRuteAngkot() {
           onClose={() => {
             booking.setBookingVehicle(null);
             booking.setBookingResult(null);
+          }}
+        />
+      )}
+
+      {feedbackVehicle && user?.id && (
+        <FeedbackModal
+          vehicle={feedbackVehicle}
+          onClose={() => setFeedbackVehicle(null)}
+          onSubmitted={(assignmentId) => {
+            setFeedbackSubmittedIds((previous) =>
+              previous.includes(assignmentId)
+                ? previous
+                : [...previous, assignmentId],
+            );
           }}
         />
       )}
