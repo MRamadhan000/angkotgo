@@ -48,7 +48,9 @@ export interface UpcomingVehicle {
   distanceToUserMeters: number;
   vehicleFraction: number;
   driverName?: string | null;
+  conductorName?: string | null;
   vehicleCode?: string | null;
+  plateNumber?: string | null;
   capacity?: number | null;
   vehicleCapacity?: number | null;
   currentPassengers?: number | null;

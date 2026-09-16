@@ -94,10 +94,12 @@ export default function UpcomingVehicleCard({
 
   const driverLabel =
     vehicle.driverName || vehicle.driver?.name || `Driver #${vehicle.driverId}`;
+  const conductorLabel = vehicle.conductorName || "Kondektur belum tersedia";
   const vehicleLabel =
     vehicle.vehicleCode ||
     vehicle.vehicle?.vehicleCode ||
     `AG-${String(vehicle.vehicleId).padStart(3, "0")}`;
+  const plateLabel = vehicle.plateNumber || "Plat belum tersedia";
 
   // Same underlying values/conditions as before — only where & how they're displayed has changed.
   const vehicleToUserEstimate = hasLocation
@@ -143,13 +145,16 @@ export default function UpcomingVehicleCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="truncate text-xs font-bold text-slate-900 sm:text-sm">
-                {vehicleLabel}
+                {vehicle.plateNumber}
               </span>
             </div>
             <p className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-500 sm:text-[11px]">
               <FiUser className="shrink-0 text-[9px] text-slate-400 sm:text-[10px]" />
               <span className="truncate">{driverLabel}</span>
             </p>
+            {/* <p className="mt-0.5 truncate text-[10px] text-slate-500 sm:text-[11px]"> */}
+              {/* Kondektur: {conductorLabel} */}
+            {/* </p> */}
           </div>
         </div>
 
@@ -194,6 +199,15 @@ export default function UpcomingVehicleCard({
           </span>
         </div>
       </div>
+
+      {/* <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2 text-[10px] text-slate-600 sm:text-[11px]"> */}
+        {/* <span className="truncate"> */}
+          {/* Plat: <strong className="text-slate-800">{plateLabel}</strong> */}
+        {/* </span> */}
+        {/* <span className="shrink-0"> */}
+          {/* Kapasitas: <strong className="text-slate-800">{capacity}</strong> */}
+        {/* </span> */}
+      {/* </div> */}
 
       {/* PERJALANAN: hierarki jelas — angkot ke kamu (utama), kamu ke tujuan, lalu total */}
       <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 sm:mt-2.5 sm:rounded-xl sm:p-3">
@@ -287,14 +301,14 @@ export default function UpcomingVehicleCard({
         )}
       </button>
 
-      <button
+      {/* <button
         type="button"
         onClick={() => setIsDebugOpen(true)}
         className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-2 py-1.5 text-[10px] font-semibold text-slate-500 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
       >
         <FiCode className="text-xs" />
         <span>Debug WebSocket</span>
-      </button>
+      </button> */}
 
       {isDebugOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
