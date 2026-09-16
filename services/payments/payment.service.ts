@@ -129,10 +129,12 @@ export const paymentService = {
   async getHistoryByUserId(
     userId: number | string,
   ): Promise<PaymentHistoryItem[]> {
-    const response = await fetch(`${API_BASE_URL}/payments/user/${userId}`);
-    const result = await parseResponse<PaymentHistoryResponse>(response);
+    const response = await fetch(`${API_BASE_URL}/payments/user/${userId}`, {
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = await parseResponse<PaymentHistoryResponse | PaymentHistoryItem[]>(response);
 
-    return result.data;
+    return Array.isArray(result) ? result : result.data;
   },
 
   async updatePaymentStatusToSucceeded(xenditPaymentRequestId: string) {

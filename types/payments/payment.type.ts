@@ -104,13 +104,61 @@ export type PaymentSocketPayload = PaymentApiRecord;
 
 
 export interface PaymentHistoryItem {
+    id: number;
   paymentCode: string;
   amount: number | string;
   status: PaymentStatus;
   createdAt: string;
-  xenditPaymentRequestId?: string;
-  paidAt : Date;
+    xenditPaymentRequestId?: string | null;
+    paidAt: string | null;
   paymentType: PaymentType;
+    vehicleAssignment?: {
+        id: number;
+        vehicleId: number;
+        routeId: number;
+        driverId: number;
+        conductorId: number;
+        direction: string;
+        currentPassengers: number;
+        assignmentDate: string;
+        startTime: string;
+        endTime: string;
+        status: string;
+        vehicle?: {
+            id: number;
+            plateNumber: string;
+            vehicleCode: string;
+            capacity: number;
+            currentOdometer: number;
+            type: string;
+            status: string;
+            createdAt: string;
+            updatedAt: string;
+            deletedAt: string | null;
+        } | null;
+        route?: {
+            id: number;
+            routeCode: string;
+            routeName: string;
+            createdAt: string;
+            updatedAt: string;
+            deletedAt: string | null;
+        } | null;
+        driver?: {
+            id: number;
+            name: string;
+            phone: string;
+        } | null;
+        conductor?: {
+            id: number;
+            name: string;
+            phone: string;
+        } | null;
+        feedback?: {
+            rating: number;
+            description: string | null;
+        } | null;
+    } | null;
 }
 
 // Response pembungkus dari NestJS
