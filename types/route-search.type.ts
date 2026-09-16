@@ -49,6 +49,7 @@ export interface UpcomingVehicle {
   vehicleFraction: number;
   driverName?: string | null;
   vehicleCode?: string | null;
+  capacity?: number | null;
   vehicleCapacity?: number | null;
   currentPassengers?: number | null;
   driver?: { name?: string | null } | null;

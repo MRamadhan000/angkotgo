@@ -234,6 +234,11 @@ export function useVehicleSockets(
       return () => window.clearTimeout(resetTimer);
     }
 
+    const resetTimer = window.setTimeout(() => {
+      setData({});
+      setJoinedAssignmentIds([]);
+    }, 0);
+
     const socket = vehicleSocket.connect();
     const handleConnect = () => {
       setConnected(true);
@@ -257,6 +262,7 @@ export function useVehicleSockets(
           currentPassenger?: number | null;
           passengers?: number | null;
           passengerCount?: number | null;
+          capacity?: number | null;
         };
       };
       const payloadData = (
@@ -271,8 +277,10 @@ export function useVehicleSockets(
         currentPassenger?: number | null;
         passengers?: number | null;
         passengerCount?: number | null;
+        capacity?: number | null;
       };
       const payloadAssignmentId = Number(
+        rawPayload.vehicleAssignmentId ??
         payloadData.vehicleAssignmentId ??
         payloadData.assignmentId ??
         payloadData.id,
@@ -285,6 +293,7 @@ export function useVehicleSockets(
         payloadData.currentPassenger ??
         payloadData.passengers ??
         payloadData.passengerCount;
+      const capacity = payloadData.capacity;
 
       setData((current) => ({
         ...current,
@@ -295,11 +304,15 @@ export function useVehicleSockets(
           ...(currentPassengers !== undefined
             ? { currentPassengers: Number(currentPassengers) }
             : {}),
+          ...(capacity !== undefined && capacity !== null
+            ? { capacity: Number(capacity) }
+            : {}),
         },
       }));
     };
     const handleDisconnect = () => {
       setConnected(false);
+      setData({});
       setJoinedAssignmentIds([]);
     };
 
@@ -315,6 +328,7 @@ export function useVehicleSockets(
       vehicleSocket.offJoined(handleJoined);
       vehicleSocket.offUpdated(handleUpdated);
       vehicleSocket.offDisconnect(handleDisconnect);
+      window.clearTimeout(resetTimer);
     };
   }, [vehicleAssignmentIds.join(",")]);
 

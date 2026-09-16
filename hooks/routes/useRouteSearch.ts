@@ -34,6 +34,9 @@ export function useUpcomingVehicles(
 
       return getUpcomingVehicles(params);
     },
-    enabled: false,
+    // Fetch ulang saat route/koordinat tersedia agar cache synthetic lama tidak
+    // menjadi sumber data utama setelah restore perjalanan.
+    enabled: Boolean(params),
+    staleTime: 0,
   });
 }

@@ -30,6 +30,7 @@ export function buildSyntheticUpcomingVehicles(
 ): UpcomingVehiclesResponse {
   const vehicles: UpcomingVehicle[] = (sinyal.details ?? []).map((detail) => {
     const va = detail.vehicleAssignment;
+    const capacity = va.capacity ?? va.vehicle?.capacity ?? null;
     return {
       assignmentId: va.id,
       vehicleId: va.vehicleId,
@@ -46,11 +47,11 @@ export function buildSyntheticUpcomingVehicles(
       vehicleFraction: 0,
       driverName: va.driver?.name ?? null,
       vehicleCode: va.vehicle?.vehicleCode ?? null,
-      vehicleCapacity: va.vehicle?.capacity ?? null,
+      vehicleCapacity: capacity,
       currentPassengers: va.currentPassengers ?? null,
       driver: va.driver ? { name: va.driver.name } : null,
       vehicle: va.vehicle
-        ? { vehicleCode: va.vehicle.vehicleCode, capacity: va.vehicle.capacity }
+        ? { vehicleCode: va.vehicle.vehicleCode, capacity }
         : null,
     };
   });

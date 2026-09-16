@@ -185,18 +185,26 @@ export default function CariRuteAngkot() {
         routePathService.getRoutePathByRouteIdandDirection(routeId, direction),
     });
 
-    // [3] Set synthetic upcoming vehicles dari details[]
-    const syntheticVehicles = buildSyntheticUpcomingVehicles(sinyalHistory);
+    // [3] Ambil data upcoming vehicles terbaru agar jumlah penumpang tidak
+    // memakai snapshot lama dari details[] pada riwayat sinyal.
     const vehicleParams = {
       routeId,
       direction,
       latitude: sinyalHistory.latitude,
       longitude: sinyalHistory.longitude,
     };
-    queryClient.setQueryData(
-      ["upcoming-vehicles", vehicleParams],
-      syntheticVehicles,
-    );
+    void queryClient
+      .fetchQuery({
+        queryKey: ["upcoming-vehicles", vehicleParams],
+        queryFn: () => getUpcomingVehicles(vehicleParams),
+      })
+      .catch(() => {
+        // Sinyal lama tetap bisa dipulihkan bila endpoint upcoming sedang gagal.
+        queryClient.setQueryData(
+          ["upcoming-vehicles", vehicleParams],
+          buildSyntheticUpcomingVehicles(sinyalHistory),
+        );
+      });
 
     // [4] Transisi ke Skenario 2
     setSelectedRoute({ routeId, direction });

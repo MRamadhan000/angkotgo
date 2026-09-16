@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN}
+
+    container_name: angkot-go-prod-frontend
+
+    restart: always
+
+    ports:
+      - "3000:3000"
+
+    networks:
+      - angkot_go_prod_network
+
+
+networks:
+  angkot_go_prod_network:
+    name: angkot-go-prod-network
+    driver: bridge

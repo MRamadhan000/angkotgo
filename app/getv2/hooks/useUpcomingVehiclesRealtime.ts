@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import type { Coordinates } from "@/types/mapbox.type";
-import type { UpcomingVehicle } from "@/types/route-search.type";
 import {
   useUpcomingVehicles,
 } from "@/hooks/routes/useRouteSearch";
@@ -61,53 +60,48 @@ export function useUpcomingVehiclesRealtime(
   const realtimeUpcomingVehicles = (upcomingVehicles?.vehicles ?? []).map(
     (vehicle) => {
       const realtime = realtimeVehicles[vehicle.assignmentId];
-      const responseVehicle = vehicle as UpcomingVehicle & {
-        current_passengers?: number | null;
-        currentPassenger?: number | null;
-      };
-      const responsePassengers =
-        responseVehicle.currentPassengers ??
-        responseVehicle.current_passengers ??
-        responseVehicle.currentPassenger ??
-        null;
-      const realtimePassengers =
-        realtime?.currentPassengers ??
-        (realtime as any)?.current_passengers ??
-        (realtime as any)?.passengers ??
-        (realtime as any)?.passengerCount;
 
-      const currentPassengers =
-        realtimePassengers !== undefined && realtimePassengers !== null
-          ? Number(realtimePassengers)
-          : responsePassengers !== null && responsePassengers !== undefined
-          ? Number(responsePassengers)
-          : null;
+      // Passenger count is intentionally sourced only from upcomingVehicles.
+      // WebSocket data must not override the API value here.
+      const currentPassengers = vehicle.currentPassengers ?? null;
+      const vehicleCapacity =
+        vehicle.capacity ??
+        vehicle.vehicleCapacity ??
+        vehicle.vehicle?.capacity ??
+        null;
+      const hasRealtimeLocation =
+        realtime?.latitude !== undefined &&
+        realtime?.latitude !== null &&
+        realtime?.longitude !== undefined &&
+        realtime?.longitude !== null;
 
       return {
         ...vehicle,
         currentPassengers,
-        ...(realtime
+        ...(hasRealtimeLocation
           ? {
-              vehicleLat: realtime.latitude,
-              vehicleLng: realtime.longitude,
+              vehicleLat: realtime!.latitude,
+              vehicleLng: realtime!.longitude,
               hasLocationData: true,
-              lastLocationAt: realtime.createdAt,
+              lastLocationAt: realtime!.createdAt,
               lastLocationAgeSeconds: 0,
               distanceToUserMeters: originCoords
                 ? distanceInMeters(
                     originCoords.lat,
                     originCoords.lng,
-                    realtime.latitude,
-                    realtime.longitude,
+                    realtime!.latitude,
+                    realtime!.longitude,
                   )
                 : vehicle.distanceToUserMeters,
             }
           : {}),
         driverName: vehicle.driverName,
         vehicleCode: vehicle.vehicleCode,
-        vehicleCapacity: vehicle.vehicleCapacity,
+        vehicleCapacity,
         driver: vehicle.driver,
-        vehicle: vehicle.vehicle,
+        vehicle: vehicle.vehicle
+          ? { ...vehicle.vehicle, capacity: vehicleCapacity }
+          : vehicle.vehicle,
         osrmEstimate: osrmEstimates[vehicle.assignmentId] ?? null,
       };
     },

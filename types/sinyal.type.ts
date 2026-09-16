@@ -20,6 +20,7 @@ export interface SinyalVehicleAssignment {
     capacity?: number | null;
     [key: string]: unknown;
   } | null;
+  capacity?: number | null;
   currentPassengers?: number | null;
   [key: string]: unknown;
 }
