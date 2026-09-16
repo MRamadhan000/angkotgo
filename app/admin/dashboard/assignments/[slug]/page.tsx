@@ -151,13 +151,16 @@ export default function AssignmentIncomeDetailPage() {
   }, [financial, assignmentDate]);
 
   const relevantSummary = useMemo(() => {
-    const paidPayments = relevantPayments.filter((payment) =>
+    const paidPayments = relevantPayments.filter(
+      (payment) => String(payment.status || "").toUpperCase() === "PAID",
+    );
+    const successfulPayments = relevantPayments.filter((payment) =>
       ["PAID", "SUCCEEDED"].includes(
         String(payment.status || "").toUpperCase(),
       ),
     );
 
-    return paidPayments.reduce(
+    return successfulPayments.reduce(
       (summary, payment) => {
         const amount = Number(payment.amount || 0);
         const type = String(payment.paymentType || "").toUpperCase();
@@ -170,6 +173,7 @@ export default function AssignmentIncomeDetailPage() {
       },
       {
         totalTransactions: relevantPayments.length,
+        totalPassengers: paidPayments.length,
         totalPaid: 0,
         totalOnline: 0,
         totalCash: 0,
@@ -180,7 +184,8 @@ export default function AssignmentIncomeDetailPage() {
   const summaryCards = useMemo(
     () =>
       [
-        ["Total Transaksi", relevantSummary.totalTransactions, "count"],
+        // ["Total Transaksi", relevantSummary.totalTransactions, "count"],
+        ["Total Penumpang", relevantSummary.totalPassengers, "count"],
         ["Total Paid", relevantSummary.totalPaid, "currency"],
         ["Total Online", relevantSummary.totalOnline, "currency"],
         ["Total Cash", relevantSummary.totalCash, "currency"],
