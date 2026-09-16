@@ -287,7 +287,7 @@ export default function UpcomingVehicleCard({
             <FiCheckCircle />
             {isFeedbackSubmitted
               ? "Feedback terkirim"
-              : "Apakah Anda sudah naik?"}
+              : "Selesikan Perjalanan ?"}
           </>
         ) : isSelected ? (
           <>

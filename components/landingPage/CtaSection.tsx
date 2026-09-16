@@ -45,7 +45,7 @@ export default function CTASection() {
             </p>
 
             <Link
-              href="/rute"
+              href="/getv2"
               className="inline-flex items-center justify-center gap-3 rounded-2xl px-8 py-3.5 shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] hover:shadow-2xl"
               style={{
                 backgroundColor: COLORS.white,

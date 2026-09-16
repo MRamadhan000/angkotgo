@@ -44,13 +44,13 @@ export default function HeroSection() {
             {/* Buttons */}
             <div className="flex flex-wrap gap-4 pt-2">
               <Link
-                href="/list-rute"
+                href="/getv2"
                 className="group flex items-center gap-2.5 rounded-full px-8 py-[15px] text-white transition hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   backgroundColor: COLORS.accent,
                 }}
               >
-                <span className={TYPOGRAPHY.button}>Lihat Rute</span>
+                <span className={TYPOGRAPHY.button}>Cari Angkot</span>
 
                 <FaArrowRight className="transition-transform group-hover:translate-x-1" />
               </Link>

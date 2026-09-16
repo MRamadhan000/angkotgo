@@ -378,7 +378,7 @@ export default function OperationalBoardPage() {
 
                           <div className="min-w-0">
                             <p className="font-mono font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                              {item.vehicle?.vehicleCode || "UNIT-XX"}
+                              {item.vehicle?.vehicleCode || "UNIT-XX"} {item.id}
                             </p>
 
                             <p className="text-xs text-gray-500">
