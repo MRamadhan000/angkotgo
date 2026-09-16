@@ -61,9 +61,13 @@ export function useUpcomingVehiclesRealtime(
     (vehicle) => {
       const realtime = realtimeVehicles[vehicle.assignmentId];
 
-      // Passenger count is intentionally sourced only from upcomingVehicles.
-      // WebSocket data must not override the API value here.
-      const currentPassengers = vehicle.currentPassengers ?? null;
+      // The upcoming API seeds the card; the matching assignment channel can
+      // replace the passenger count as soon as a vehicle:updated event arrives.
+      const currentPassengers =
+        realtime?.currentPassengers !== undefined &&
+        realtime?.currentPassengers !== null
+          ? Number(realtime.currentPassengers)
+          : vehicle.currentPassengers ?? null;
       const vehicleCapacity =
         vehicle.capacity ??
         vehicle.vehicleCapacity ??
