@@ -260,17 +260,36 @@ function IconCircle({
   tone = "blue",
 }: {
   children: ReactNode;
-  // "green" = status sukses (menambah badge centang); warna tetap biru.
-  tone?: "blue" | "green" | "orange";
+  // "green" = sukses biasa (biru + badge centang),
+  // "success" = sukses akhir (hijau penuh).
+  tone?: "blue" | "green" | "orange" | "success";
 }) {
+  const isSuccess = tone === "success";
+
   return (
-    <div className="relative mx-auto mb-5 flex h-28 w-28 items-center justify-center rounded-full bg-blue-50">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-700 text-white shadow-lg shadow-blue-700/30">
+    <div
+      className={`relative mx-auto mb-5 flex h-28 w-28 items-center justify-center rounded-full ${
+        isSuccess ? "bg-green-50" : "bg-blue-50"
+      }`}
+    >
+      <div
+        className={`flex h-20 w-20 items-center justify-center rounded-full text-white shadow-lg ${
+          isSuccess
+            ? "bg-green-600 shadow-green-600/30"
+            : "bg-blue-700 shadow-blue-700/30"
+        }`}
+      >
         {children}
       </div>
 
-      {tone === "green" && (
-        <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-blue-700 shadow ring-1 ring-blue-100">
+      {(tone === "green" || isSuccess) && (
+        <span
+          className={`absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white shadow ring-1 ${
+            isSuccess
+              ? "text-green-600 ring-green-100"
+              : "text-blue-700 ring-blue-100"
+          }`}
+        >
           <CheckCircle2 size={20} />
         </span>
       )}
@@ -1166,7 +1185,10 @@ function RouteCard({
 
 function RouteCardSkeleton() {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5" aria-hidden>
+    <div
+      className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+      aria-hidden
+    >
       <div className="mb-3 flex items-center justify-between">
         <Skeleton className="h-6 w-20 rounded-full" />
         <Skeleton className="h-4 w-24" />
@@ -1293,13 +1315,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
 ========================================================= */
 
 // Header "Konfirmasi Angkot Pilihan" dengan tombol kembali.
-function TripHeader({
-  title,
-  onBack,
-}: {
-  title: string;
-  onBack: () => void;
-}) {
+function TripHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="flex items-center gap-2 rounded-[24px] border border-white/80 bg-white/95 px-3 py-2.5 shadow-[0_8px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl">
       <button
@@ -2299,9 +2315,7 @@ function FeedbackModal({
         <div className="space-y-1.5">
           {segments.map((segment) => (
             <div key={segment.id} className="flex justify-between text-[13px]">
-              <span className="text-blue-700">
-                Angkot {segment.angkotCode}
-              </span>
+              <span className="text-blue-700">Angkot {segment.angkotCode}</span>
               <span className="font-bold text-blue-700">
                 {formatRupiah(segment.fare)} ✓
               </span>
@@ -2402,7 +2416,7 @@ function CompletedModal({
   return (
     <Modal>
       <div className="text-center">
-        <IconCircle tone="green">
+        <IconCircle tone="success">
           <CheckCircle2 size={36} />
         </IconCircle>
         <h2 className="text-[24px] font-bold tracking-tight">
@@ -2413,10 +2427,12 @@ function CompletedModal({
           berhasil diselesaikan.
         </p>
 
-        <div className="my-5 rounded-2xl bg-slate-50 p-4 text-left">
+        <div className="my-5 rounded-2xl bg-green-50 p-4 text-left">
           <div className="flex items-center justify-between">
             <span className="text-[14px] text-slate-500">Total perjalanan</span>
-            <span className="font-bold">{formatRupiah(totalFare)}</span>
+            <span className="font-bold text-green-700">
+              {formatRupiah(totalFare)}
+            </span>
           </div>
 
           <div className="mt-3 flex items-center justify-between">
@@ -2432,7 +2448,7 @@ function CompletedModal({
               {selectedTags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded-full bg-blue-50 px-2.5 py-1 text-[12px] font-medium text-blue-700"
+                  className="rounded-full bg-green-50 px-2.5 py-1 text-[12px] font-medium text-green-700"
                 >
                   {tag}
                 </span>
@@ -2441,7 +2457,10 @@ function CompletedModal({
           )}
         </div>
 
-        <button onClick={onFinish} className={PRIMARY_BTN}>
+        <button
+          onClick={onFinish}
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-green-600 text-[16px] font-semibold text-white shadow-lg shadow-green-600/30 transition active:scale-[0.98] active:bg-green-700"
+        >
           Selesai
         </button>
       </div>
@@ -2774,7 +2793,10 @@ export default function HomePage() {
       {/* ===== ATAS: form pencarian / ringkasan / header konfirmasi ===== */}
       <header className="absolute inset-x-0 top-0 z-20 mx-auto w-full max-w-md px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         {selectedRoute ? (
-          <TripHeader title="Konfirmasi Angkot Pilihan" onBack={backToResults} />
+          <TripHeader
+            title="Konfirmasi Angkot Pilihan"
+            onBack={backToResults}
+          />
         ) : isSearching ? (
           <SearchCard
             originQuery={originQuery}
