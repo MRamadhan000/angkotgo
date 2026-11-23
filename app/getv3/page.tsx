@@ -849,9 +849,13 @@ function TripSummaryBar({
 
 function RouteCard({
   route,
+  originName,
+  destinationName,
   onSelect,
 }: {
   route: AngkotRoute;
+  originName?: string;
+  destinationName?: string;
   onSelect: (route: AngkotRoute) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -865,12 +869,11 @@ function RouteCard({
       maximumFractionDigits: 0,
     }).format(value);
 
-  // Menyamakan format durasi, misalnya "3 mnt" menjadi "3 menit".
   const formatDuration = (value: string | number) => {
-    const normalized = String(value).trim();
-    const number = normalized.match(/\d+/)?.[0];
+    const normalized = String(value ?? "").trim();
+    const number = normalized.match(/\d+(?:[.,]\d+)?/)?.[0];
 
-    return number ? `${number} menit` : normalized;
+    return number ? `${number.replace(",", ".")} menit` : normalized;
   };
 
   const seatStatus =
@@ -915,6 +918,7 @@ function RouteCard({
           </div>
         </div>
 
+        {/* KETERSEDIAAN KURSI */}
         <div
           className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-2 text-[11px] font-semibold ${seatStatus.className}`}
         >
@@ -924,7 +928,7 @@ function RouteCard({
       </div>
 
       <div className="px-4 pb-4">
-        {/* RINGKASAN */}
+        {/* RINGKASAN PERJALANAN */}
         <div className="rounded-xl bg-slate-50 p-3.5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -934,6 +938,7 @@ function RouteCard({
 
               <div className="mt-1 flex items-center gap-2">
                 <Clock size={15} className="text-slate-600" />
+
                 <span className="text-sm font-bold text-slate-900">
                   {route.duration} menit
                 </span>
@@ -942,6 +947,7 @@ function RouteCard({
 
             <div className="text-right">
               <p className="text-xs font-medium text-slate-600">Total tarif</p>
+
               <p className="mt-1 text-lg font-bold text-blue-700">
                 {formatRupiah(route.fare)}
               </p>
@@ -953,6 +959,7 @@ function RouteCard({
               <p className="text-xs font-medium text-slate-600">
                 Angkot tiba sekitar
               </p>
+
               <p className="mt-0.5 text-sm font-semibold text-blue-700">
                 {formatDuration(route.etaToPickup)}
               </p>
@@ -962,6 +969,7 @@ function RouteCard({
               <p className="text-xs font-medium text-slate-600">
                 Perkiraan tiba
               </p>
+
               <p className="mt-0.5 text-sm font-bold text-emerald-700">
                 {route.etaToDestination || route.arrivalTime}
               </p>
@@ -969,7 +977,7 @@ function RouteCard({
           </div>
         </div>
 
-        {/* TOGGLE DETAIL - BERLAKU UNTUK SEMUA RUTE */}
+        {/* TOGGLE DETAIL */}
         <button
           type="button"
           onClick={() => setExpanded((previous) => !previous)}
@@ -980,10 +988,9 @@ function RouteCard({
             <p className="text-sm font-semibold text-slate-800">
               {expanded ? "Tutup rincian rute" : "Lihat rincian rute"}
             </p>
+
             <p className="mt-0.5 text-xs text-slate-600">
-              {isTransit
-                ? `${route.segments.length} angkot dalam perjalanan`
-                : "Lihat informasi angkot dan jalur perjalanan"}
+              {route.segments.length} perjalanan angkot
             </p>
           </div>
 
@@ -995,150 +1002,170 @@ function RouteCard({
           />
         </button>
 
-        {/* RINCIAN RUTE */}
+        {/* TIMELINE RUTE */}
         {expanded && (
           <div className="mt-5">
-            <p className="mb-4 text-sm font-bold text-slate-900">
-              Rincian rute
+            <p className="mb-5 text-sm font-bold text-slate-900">
+              Rincian perjalanan
             </p>
 
             <div className="relative">
-              {/* Garis timeline utama */}
-              <div className="absolute bottom-5 left-[11px] top-5 border-l-2 border-dashed border-slate-300" />
+              {/* GARIS TIMELINE */}
+              <div className="absolute left-[13px] top-3 bottom-5 w-0.5 bg-slate-200" />
 
-              {/* PENJEMPUTAN */}
+              {/* LOKASI AWAL */}
               <div className="relative flex gap-3 pb-5">
-                <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                  <UserRound size={13} />
+                <div className="z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 ring-4 ring-white">
+                  <MapPin size={14} />
                 </div>
 
-                <div className="flex-1 pt-0.5">
-                  <p className="text-sm font-semibold text-slate-800">
-                    Lokasi penjemputan
+                <div className="min-w-0 flex-1 pt-1">
+                  <p className="text-xs font-medium text-slate-500">
+                    Lokasi keberangkatan
+                  </p>
+
+                  <p className="mt-0.5 break-words text-sm font-bold text-slate-900">
+                    {originName || "Lokasi penjemputan"}
                   </p>
                 </div>
               </div>
 
-              {/* DAFTAR ANGKOT */}
+              {/* SETIAP SEGMEN ANGKOT */}
               {route.segments.map((segment, index) => {
                 const nextSegment = route.segments[index + 1];
+                const isLast = index === route.segments.length - 1;
+
+                const boardingPoint =
+                  index === 0
+                    ? originName || segment.from
+                    : route.segments[index - 1].to;
+
+                const alightingPoint = isLast
+                  ? destinationName || segment.to
+                  : segment.to;
+
+                const waitingTime = index === 0 ? route.etaToPickup : 0;
 
                 return (
                   <div key={segment.id}>
-                    {/* ANGKOT */}
-                    <div className="relative flex gap-3 pb-5">
-                      <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-700 text-white">
-                        <BusFront size={13} />
+                    {/* WAKTU MENUNGGU */}
+                    <div className="relative flex gap-3 pb-4">
+                      <div className="z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 ring-4 ring-white">
+                        <Clock size={14} />
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        {/* Identitas angkot */}
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-bold text-slate-900">
-                              Angkot {segment.angkotCode}
-                            </p>
-                            <p className="mt-0.5 text-xs font-medium text-slate-600">
-                              {index === 0 ? "Naik pertama" : "Angkot lanjutan"}
-                            </p>
-                          </div>
+                      <div className="min-w-0 flex-1 pt-1">
+                        <p className="text-xs font-medium text-slate-500">
+                          {index === 0
+                            ? "Menunggu angkot datang"
+                            : "Menunggu angkot lanjutan"}
+                        </p>
 
-                          <span className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
-                            {segment.plateNumber || "-"}
-                          </span>
-                        </div>
-
-                        {/* Asal dan tujuan */}
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          <div className="flex gap-2.5">
-                            <div className="mt-1 flex flex-col items-center">
-                              <span className="h-2.5 w-2.5 rounded-full border-2 border-blue-600 bg-white" />
-                              <span className="my-1 h-5 border-l-2 border-dashed border-slate-300" />
-                              <span className="h-2.5 w-2.5 rounded-full bg-blue-700" />
-                            </div>
-
-                            <div className="min-w-0 flex-1 space-y-3">
-                              <div>
-                                <p className="text-xs font-medium text-slate-600">
-                                  Naik dari
-                                </p>
-                                <p className="mt-0.5 break-words text-sm font-semibold text-slate-900">
-                                  {segment.from}
-                                </p>
-                              </div>
-
-                              <div>
-                                <p className="text-xs font-medium text-slate-600">
-                                  Turun di
-                                </p>
-                                <p className="mt-0.5 break-words text-sm font-semibold text-slate-900">
-                                  {segment.to}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Tarif per angkot */}
-                          <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                            <span className="text-xs font-medium text-slate-600">
-                              Tarif angkot
-                            </span>
-                            <span className="text-sm font-bold text-slate-900">
-                              {formatRupiah(segment.fare)}
-                            </span>
-                          </div>
-                        </div>
+                        <p className="mt-0.5 text-sm font-bold text-slate-900">
+                          {waitingTime
+                            ? formatDuration(waitingTime)
+                            : "Waktu tunggu belum tersedia"}
+                        </p>
                       </div>
                     </div>
 
-                    {/* TRANSIT */}
-                    {nextSegment && (
-                      <div className="relative flex gap-3 pb-5">
-                        <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-                          <ArrowDown size={14} />
-                        </div>
-
-                        <div className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-violet-50 p-3">
-                          <p className="text-sm font-bold text-violet-900">
-                            Transit di {segment.to}
-                          </p>
-
-                          <p className="mt-1 text-xs leading-relaxed text-violet-900">
-                            {segment.transitNote ||
-                              `Lanjutkan perjalanan menggunakan angkot ${nextSegment.angkotCode}.`}
-                          </p>
-
-                          <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-violet-800">
-                            <BusFront size={13} />
-                            Trayek lanjutan: {nextSegment.angkotCode}
-                          </div>
-                        </div>
+                    {/* NAIK ANGKOT */}
+                    <div className="relative flex gap-3 pb-4">
+                      <div className="z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 ring-4 ring-white">
+                        <BusFront size={14} />
                       </div>
-                    )}
+
+                      <div className="min-w-0 flex-1 pt-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-bold text-slate-900">
+                            Naik angkot {segment.angkotCode}
+                          </p>
+
+                          {segment.plateNumber && (
+                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                              {segment.plateNumber}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Naik dari {boardingPoint}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* DURASI PERJALANAN */}
+                    <div className="relative flex gap-3 pb-4">
+                      <div className="z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 ring-4 ring-white">
+                        <Clock size={14} />
+                      </div>
+
+                      <div className="min-w-0 flex-1 pt-1">
+                        <p className="text-xs font-medium text-slate-500">
+                          Waktu perjalanan
+                        </p>
+
+                        <p className="mt-0.5 text-sm font-bold text-slate-900">
+                          {formatDuration(segment.duration)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* TITIK TURUN / TRANSIT */}
+
+                    {/* TITIK TURUN / TRANSIT / TUJUAN AKHIR */}
+                    <div className="relative flex gap-3 pb-5">
+                      <div
+                        className={`z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-4 ring-white ${
+                          nextSegment
+                            ? "bg-violet-100 text-violet-700"
+                            : "bg-emerald-600 text-white"
+                        }`}
+                      >
+                        {nextSegment ? (
+                          <ArrowDown size={14} />
+                        ) : (
+                          <MapPin size={14} />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1 pt-1">
+                        <p className="text-xs font-medium text-slate-500">
+                          {nextSegment
+                            ? "Turun dan transit"
+                            : "Perjalanan selesai"}
+                        </p>
+
+                        <p
+                          className={`mt-0.5 break-words text-sm font-bold ${
+                            nextSegment ? "text-slate-900" : "text-emerald-700"
+                          }`}
+                        >
+                          {alightingPoint}
+                        </p>
+
+                        {nextSegment && (
+                          <p className="mt-1 text-xs font-medium text-violet-700">
+                            Lanjut naik angkot {nextSegment.angkotCode}
+                          </p>
+                        )}
+
+                        {!nextSegment && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            Perkiraan tiba{" "}
+                            {route.etaToDestination || route.arrivalTime}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
-
-              {/* TUJUAN AKHIR */}
-              <div className="relative flex gap-3">
-                <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                  <MapPin size={13} />
-                </div>
-
-                <div className="flex-1 pt-0.5">
-                  <p className="text-sm font-semibold text-slate-800">
-                    Tiba di tujuan
-                  </p>
-                  <p className="mt-0.5 text-xs font-medium text-emerald-700">
-                    {route.etaToDestination || route.arrivalTime}
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         )}
 
-        {/* TOMBOL AKSI UTAMA */}
+        {/* TOMBOL PILIH RUTE */}
         <button
           type="button"
           onClick={() => onSelect(route)}
@@ -1190,10 +1217,14 @@ function RouteCardSkeleton() {
 function RouteListSheet({
   routes,
   loading,
+  originName,
+  destinationName,
   onSelect,
 }: {
   routes: AngkotRoute[];
   loading: boolean;
+  originName?: string;
+  destinationName?: string;
   onSelect: (route: AngkotRoute) => void;
 }) {
   return (
@@ -1227,7 +1258,13 @@ function RouteListSheet({
           </div>
         ) : (
           routes.map((route) => (
-            <RouteCard key={route.id} route={route} onSelect={onSelect} />
+            <RouteCard
+              key={route.id}
+              route={route}
+              originName={originName}
+              destinationName={destinationName}
+              onSelect={onSelect}
+            />
           ))
         )}
       </div>
@@ -2524,6 +2561,8 @@ export default function HomePage() {
         <RouteListSheet
           routes={routes}
           loading={routesLoading}
+          originName={origin?.name}
+          destinationName={destination?.name}
           onSelect={handleSelectRoute}
         />
       )}
