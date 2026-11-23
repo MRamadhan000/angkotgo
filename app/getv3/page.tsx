@@ -4,26 +4,36 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import {
+  Armchair,
+  ArrowDown,
   ArrowLeft,
   ArrowRight,
   ArrowUpDown,
   Banknote,
+  BusFront,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  Clock,
   CreditCard,
+  Flag,
   Loader2,
   LocateFixed,
   MapPin,
   MessageCircle,
   Navigation,
+  Pencil,
   QrCode,
   Search,
   ShieldCheck,
   Star,
+  UserRound,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
+import { DUMMY_ROUTES } from "./data";
 
 /* =========================================================
    1. TYPES
@@ -36,26 +46,37 @@ type LocationData = {
   lng: number;
 };
 
-type RouteSegment = {
+export type RouteSegment = {
   id: string;
   angkotCode: string;
   angkotName: string;
+  plateNumber: string;
+
   from: string;
   to: string;
+
   duration: number;
   fare: number;
+
   boardingNote?: string;
   transitNote?: string;
 };
 
-type AngkotRoute = {
+export type AngkotRoute = {
   id: string;
   type: "direct" | "transit";
   transitCount: number;
+
   duration: number;
   arrivalTime: string;
+
+  // Estimasi kedatangan kendaraan dan tiba di tujuan akhir
+  etaToPickup: string;
+  etaToDestination: string;
+
   fare: number;
   availableSeats: number;
+
   segments: RouteSegment[];
 };
 
@@ -77,101 +98,6 @@ type Prediction = google.maps.places.PlacePrediction;
 /* =========================================================
    2. DUMMY DATA & CONSTANTS
 ========================================================= */
-
-const DUMMY_ROUTES: AngkotRoute[] = [
-  {
-    id: "route-direct",
-    type: "direct",
-    transitCount: 0,
-    duration: 28,
-    arrivalTime: "10.45",
-    fare: 5000,
-    availableSeats: 4,
-    segments: [
-      {
-        id: "segment-1",
-        angkotCode: "AL",
-        angkotName: "Arjosari - Landungsari",
-        from: "Terminal Arjosari",
-        to: "Landungsari",
-        duration: 28,
-        fare: 5000,
-        boardingNote: "Naik dari titik penjemputan terdekat.",
-      },
-    ],
-  },
-  {
-    id: "route-transit",
-    type: "transit",
-    transitCount: 1,
-    duration: 42,
-    arrivalTime: "10.59",
-    fare: 10000,
-    availableSeats: 3,
-    segments: [
-      {
-        id: "segment-2",
-        angkotCode: "AG",
-        angkotName: "Arjosari - Gadang",
-        from: "Terminal Arjosari",
-        to: "Pasar Besar",
-        duration: 22,
-        fare: 5000,
-        boardingNote: "Naik angkot AG dari titik penjemputan.",
-        transitNote:
-          "Turun di Pasar Besar dan lakukan pembayaran kepada sopir AG. Selanjutnya berganti angkot AL.",
-      },
-      {
-        id: "segment-3",
-        angkotCode: "AL",
-        angkotName: "Arjosari - Landungsari",
-        from: "Pasar Besar",
-        to: "Landungsari",
-        duration: 20,
-        fare: 5000,
-        boardingNote: "Lanjutkan perjalanan menggunakan angkot AL.",
-      },
-    ],
-  },
-  {
-    id: "route-transit-2",
-    type: "transit",
-    transitCount: 2,
-    duration: 55,
-    arrivalTime: "11.12",
-    fare: 15000,
-    availableSeats: 5,
-    segments: [
-      {
-        id: "segment-4",
-        angkotCode: "AG",
-        angkotName: "Arjosari - Gadang",
-        from: "Terminal Arjosari",
-        to: "Pasar Besar",
-        duration: 20,
-        fare: 5000,
-      },
-      {
-        id: "segment-5",
-        angkotCode: "GL",
-        angkotName: "Gadang - Landungsari",
-        from: "Pasar Besar",
-        to: "Alun-Alun Kota",
-        duration: 18,
-        fare: 5000,
-      },
-      {
-        id: "segment-6",
-        angkotCode: "AL",
-        angkotName: "Arjosari - Landungsari",
-        from: "Alun-Alun Kota",
-        to: "Landungsari",
-        duration: 17,
-        fare: 5000,
-      },
-    ],
-  },
-];
 
 const FEEDBACK_TAGS = [
   "Driver ramah",
@@ -641,20 +567,23 @@ function SuggestionList({
 type SearchCardProps = {
   originQuery: string;
   destinationQuery: string;
-  activeField: Field | null;
+  activeField: "origin" | "destination" | null;
   suggestions: Prediction[];
   suggestionsLoading: boolean;
-  resolvingField: Field | null;
+  resolvingField: "origin" | "destination" | null;
   locating: boolean;
   canSearch: boolean;
+
   onOriginChange: (value: string) => void;
   onDestinationChange: (value: string) => void;
-  onFocusField: (field: Field) => void;
-  onClear: (field: Field) => void;
+  onFocusField: (field: "origin" | "destination") => void;
+  onClear: (field: "origin" | "destination") => void;
   onUseCurrentLocation: () => void;
   onSwap: () => void;
   onSelectSuggestion: (prediction: Prediction, field: Field) => void;
   onSearch: () => void;
+
+  onBack?: () => void;
 };
 
 function SearchCard({
@@ -674,115 +603,161 @@ function SearchCard({
   onSwap,
   onSelectSuggestion,
   onSearch,
+  onBack,
 }: SearchCardProps) {
-  return (
-    <div className="rounded-3xl bg-white/95 p-4 shadow-xl backdrop-blur-xl">
-      {/* BRAND */}
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-[18px] font-bold tracking-tight text-blue-700">
-            AngkotGo
-          </h1>
-          <p className="text-[12px] text-slate-500">
-            Transportasi mudah di Kota Malang
-          </p>
-        </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-blue-700">
-          Guest User
-        </span>
-      </div>
+  const quickDestinations = ["Alun-Alun", "Kampus UB", "Matos"];
 
-      {/* FIELDS */}
-      <div className="relative">
-        <div className="relative rounded-2xl bg-slate-100">
+  return (
+    <div className="absolute left-0 right-0 top-0 z-30 px-4 pt-4">
+      <div className="mx-auto max-w-xl rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-[0_8px_35px_rgba(15,23,42,0.14)] backdrop-blur-xl">
+        {/* ROUTE INPUTS */}
+        <div className="relative rounded-2xl border border-slate-200 bg-slate-50/80 p-1">
           {/* ORIGIN */}
-          <div className="flex items-center gap-3 px-4">
-            <span className="h-3 w-3 shrink-0 rounded-full border-[3px] border-blue-600 bg-white" />
-            <input
-              value={originQuery}
-              onChange={(event) => onOriginChange(event.target.value)}
-              onFocus={() => onFocusField("origin")}
-              placeholder="Lokasi awal"
-              className="h-12 min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none placeholder:text-slate-400"
-            />
+          <div
+            className={`flex items-center gap-3 rounded-xl px-3 transition ${
+              activeField === "origin" ? "bg-white shadow-sm" : ""
+            }`}
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+              <MapPin size={17} />
+            </div>
+
+            <div className="min-w-0 flex-1 py-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Lokasi penjemputan
+              </p>
+
+              <input
+                value={originQuery}
+                onChange={(event) => onOriginChange(event.target.value)}
+                onFocus={() => onFocusField("origin")}
+                placeholder="Lokasi awal"
+                className="h-7 w-full bg-transparent text-[14px] font-semibold text-slate-800 outline-none placeholder:font-medium placeholder:text-slate-400"
+              />
+            </div>
+
             {resolvingField === "origin" ? (
-              <Spinner size={16} className="text-blue-600" />
+              <Spinner size={17} className="text-blue-600" />
             ) : (
               originQuery && (
                 <button
                   onClick={() => onClear("origin")}
                   aria-label="Hapus lokasi awal"
-                  className="text-slate-400"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
                 >
                   <X size={16} />
                 </button>
               )
             )}
+          </div>
+
+          {/* CONNECTING LINE */}
+          <div className="relative ml-[29px] h-5">
+            <div className="absolute bottom-0 left-0 top-0 border-l-2 border-dashed border-slate-300" />
             <button
-              onClick={onUseCurrentLocation}
-              disabled={locating}
-              aria-label="Gunakan lokasi saya"
-              className="-mr-1 flex h-9 w-9 items-center justify-center rounded-full text-blue-600 active:bg-black/5 disabled:opacity-60"
+              onClick={onSwap}
+              aria-label="Tukar lokasi"
+              className="absolute -right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition active:scale-95"
             >
-              {locating ? <Spinner size={19} /> : <LocateFixed size={19} />}
+              <ArrowUpDown size={15} />
             </button>
           </div>
 
-          <div className="ml-10 mr-14 h-px bg-black/10" />
-
           {/* DESTINATION */}
-          <div className="flex items-center gap-3 px-4">
-            <span className="h-3 w-3 shrink-0 rounded-[3px] bg-orange-500" />
-            <input
-              value={destinationQuery}
-              onChange={(event) => onDestinationChange(event.target.value)}
-              onFocus={() => onFocusField("destination")}
-              placeholder="Lokasi tujuan"
-              className="h-12 min-w-0 flex-1 bg-transparent text-[16px] font-medium outline-none placeholder:text-slate-400"
-            />
+          <div
+            className={`flex items-center gap-3 rounded-xl px-3 transition ${
+              activeField === "destination" ? "bg-white shadow-sm" : ""
+            }`}
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+              <MapPin size={17} />
+            </div>
+
+            <div className="min-w-0 flex-1 py-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Tujuan perjalanan
+              </p>
+
+              <input
+                value={destinationQuery}
+                onChange={(event) => onDestinationChange(event.target.value)}
+                onFocus={() => onFocusField("destination")}
+                placeholder="Mau pergi ke mana?"
+                className="h-7 w-full bg-transparent text-[14px] font-semibold text-slate-800 outline-none placeholder:font-medium placeholder:text-slate-400"
+              />
+            </div>
+
             {resolvingField === "destination" ? (
-              <Spinner size={16} className="mr-10 text-blue-600" />
+              <Spinner size={17} className="text-blue-600" />
             ) : (
               destinationQuery && (
                 <button
                   onClick={() => onClear("destination")}
                   aria-label="Hapus tujuan"
-                  className="mr-10 text-slate-400"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
                 >
                   <X size={16} />
                 </button>
               )
             )}
           </div>
-
-          <button
-            onClick={onSwap}
-            aria-label="Tukar lokasi"
-            className="absolute bottom-[6px] right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm active:scale-95"
-          >
-            <ArrowUpDown size={16} />
-          </button>
         </div>
 
-        {/* SUGGESTIONS (melayang di bawah input) */}
+        {/* SUGGESTIONS */}
         {activeField && (suggestionsLoading || suggestions.length > 0) && (
-          <SuggestionList
-            field={activeField}
-            suggestions={suggestions}
-            loading={suggestionsLoading}
-            onSelect={onSelectSuggestion}
-          />
+          <div className="relative z-50">
+            <SuggestionList
+              field={activeField}
+              suggestions={suggestions}
+              loading={suggestionsLoading}
+              onSelect={onSelectSuggestion}
+            />
+          </div>
         )}
-      </div>
 
-      <button
-        onClick={onSearch}
-        disabled={!canSearch}
-        className={`${PRIMARY_BTN} mt-3`}
-      >
-        <Search size={18} />
-        Cari Angkot
-      </button>
+        {/* QUICK DESTINATIONS */}
+        <div className="mt-4">
+          <p className="mb-2 text-[11px] font-bold text-slate-500">
+            Tujuan populer
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {quickDestinations.map((destination) => (
+              <button
+                key={destination}
+                onClick={() => {
+                  onDestinationChange(destination);
+                  onFocusField("destination");
+                }}
+                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 active:scale-95"
+              >
+                {destination}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* CURRENT LOCATION */}
+        <button
+          onClick={onUseCurrentLocation}
+          disabled={locating}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 py-3.5 text-[13px] font-bold text-blue-700 transition hover:bg-blue-100 active:scale-[0.98] disabled:opacity-60"
+        >
+          {locating ? <Spinner size={17} /> : <LocateFixed size={17} />}
+
+          {locating ? "Mencari lokasi kamu..." : "Gunakan lokasi saya saat ini"}
+        </button>
+
+        {/* SEARCH BUTTON */}
+        <button
+          onClick={onSearch}
+          disabled={!canSearch}
+          className={`${PRIMARY_BTN} mt-2.5 w-full`}
+        >
+          <Search size={18} />
+          Cari Angkot
+        </button>
+      </div>
     </div>
   );
 }
@@ -803,35 +778,65 @@ function TripSummaryBar({
   onEdit: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-3xl bg-white/95 p-3 shadow-xl backdrop-blur-xl">
+    <div className="flex items-center gap-3 rounded-[24px] border border-white/80 bg-white/95 p-3.5 shadow-[0_8px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+      {/* BACK BUTTON */}
       {showBack && (
         <button
           onClick={onBack}
           aria-label="Kembali ke daftar rute"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 active:scale-95"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 active:scale-95"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={19} />
         </button>
       )}
 
-      <div className="min-w-0 flex-1 pl-1">
-        <div className="flex items-center gap-2 text-[14px]">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-600" />
-          <span className="truncate font-semibold">{origin?.name}</span>
+      {/* ROUTE INFO */}
+      <div className="min-w-0 flex-1 space-y-1">
+        {/* ORIGIN */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+            <MapPin size={15} />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              Dari
+            </p>
+            <p className="truncate text-[13px] font-semibold text-slate-800">
+              {origin?.name || "Lokasi awal"}
+            </p>
+          </div>
         </div>
-        <div className="my-0.5 ml-[4px] h-2.5 border-l border-dashed border-slate-300" />
-        <div className="flex items-center gap-2 text-[14px]">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-[3px] bg-orange-500" />
-          <span className="truncate font-semibold">{destination?.name}</span>
+
+        {/* CONNECTOR */}
+        <div className="ml-[13px] h-3 border-l-2 border-dashed border-slate-300" />
+
+        {/* DESTINATION */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600">
+            <MapPin size={15} />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              Tujuan
+            </p>
+            <p className="truncate text-[13px] font-semibold text-slate-800">
+              {destination?.name || "Lokasi tujuan"}
+            </p>
+          </div>
         </div>
       </div>
 
+      {/* EDIT BUTTON */}
       {showEdit && (
         <button
           onClick={onEdit}
-          className="shrink-0 rounded-full bg-blue-50 px-4 py-2 text-[13px] font-semibold text-blue-700 active:scale-95"
+          aria-label="Edit rute"
+          title="Edit rute"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-blue-700 transition hover:bg-blue-100 active:scale-95"
         >
-          Ubah
+          <Pencil size={17} />
         </button>
       )}
     </div>
@@ -849,63 +854,300 @@ function RouteCard({
   route: AngkotRoute;
   onSelect: (route: AngkotRoute) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const isTransit = route.type === "transit";
+
+  const formatRupiah = (value: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(value);
+
+  // Menyamakan format durasi, misalnya "3 mnt" menjadi "3 menit".
+  const formatDuration = (value: string | number) => {
+    const normalized = String(value).trim();
+    const number = normalized.match(/\d+/)?.[0];
+
+    return number ? `${number} menit` : normalized;
+  };
+
+  const seatStatus =
+    route.availableSeats === 0
+      ? {
+          label: "Penuh",
+          className: "bg-red-50 text-red-700",
+        }
+      : route.availableSeats <= 3
+        ? {
+            label: `${route.availableSeats} kursi tersedia`,
+            className: "bg-orange-50 text-orange-800",
+          }
+        : {
+            label: `${route.availableSeats} kursi tersedia`,
+            className: "bg-emerald-50 text-emerald-800",
+          };
+
   return (
-    <div className="rounded-2xl bg-slate-50 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="rounded-full bg-blue-100 px-3 py-1 text-[12px] font-semibold text-blue-700">
-          {route.transitCount === 0
-            ? "Langsung"
-            : `${route.transitCount}x Transit`}
-        </span>
-        <span className="text-[12px] text-slate-500">
-          {route.availableSeats} kursi tersedia
-        </span>
-      </div>
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* HEADER */}
+      <div className="flex items-center justify-between gap-3 p-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+            <BusFront size={22} />
+          </div>
 
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-[24px] font-bold leading-none tracking-tight">
-            {route.duration} menit
-          </p>
-          <p className="mt-1.5 text-[12px] text-slate-500">
-            Estimasi tiba {route.arrivalTime}
-          </p>
-        </div>
-
-        <div className="text-right">
-          <p className="text-[18px] font-bold text-blue-700">
-            {formatRupiah(route.fare)}
-          </p>
-          <p className="text-[11px] text-slate-400">Total semua angkot</p>
-        </div>
-      </div>
-
-      <div className="my-3 space-y-2">
-        {route.segments.map((segment) => (
-          <div
-            key={segment.id}
-            className="flex items-center gap-3 rounded-xl bg-white p-2.5"
-          >
-            <Badge code={segment.angkotCode} size={32} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold">
-                Angkot {segment.angkotCode}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-base font-bold text-slate-900">
+                {route.segments
+                  .map((segment) => segment.angkotCode)
+                  .join(" → ")}
               </p>
-              <p className="truncate text-[12px] text-slate-500">
-                {segment.from} → {segment.to}
+
+              {isTransit && (
+                <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-bold text-violet-800">
+                  {route.transitCount}x Transit
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-2 text-[11px] font-semibold ${seatStatus.className}`}
+        >
+          <Armchair size={15} />
+          {seatStatus.label}
+        </div>
+      </div>
+
+      <div className="px-4 pb-4">
+        {/* RINGKASAN */}
+        <div className="rounded-xl bg-slate-50 p-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium text-slate-600">
+                Total perjalanan
+              </p>
+
+              <div className="mt-1 flex items-center gap-2">
+                <Clock size={15} className="text-slate-600" />
+                <span className="text-sm font-bold text-slate-900">
+                  {route.duration} menit
+                </span>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <p className="text-xs font-medium text-slate-600">Total tarif</p>
+              <p className="mt-1 text-lg font-bold text-blue-700">
+                {formatRupiah(route.fare)}
               </p>
             </div>
-            <span className="text-[13px] font-bold text-blue-700">
-              {formatRupiah(segment.fare)}
-            </span>
           </div>
-        ))}
-      </div>
 
-      <button onClick={() => onSelect(route)} className={PRIMARY_BTN}>
-        Pilih Rute
-        <ArrowRight size={16} />
-      </button>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
+            <div>
+              <p className="text-xs font-medium text-slate-600">
+                Angkot tiba sekitar
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-blue-700">
+                {formatDuration(route.etaToPickup)}
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-xs font-medium text-slate-600">
+                Perkiraan tiba
+              </p>
+              <p className="mt-0.5 text-sm font-bold text-emerald-700">
+                {route.etaToDestination || route.arrivalTime}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* TOGGLE DETAIL - BERLAKU UNTUK SEMUA RUTE */}
+        <button
+          type="button"
+          onClick={() => setExpanded((previous) => !previous)}
+          aria-expanded={expanded}
+          className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
+        >
+          <div>
+            <p className="text-sm font-semibold text-slate-800">
+              {expanded ? "Tutup rincian rute" : "Lihat rincian rute"}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-600">
+              {isTransit
+                ? `${route.segments.length} angkot dalam perjalanan`
+                : "Lihat informasi angkot dan jalur perjalanan"}
+            </p>
+          </div>
+
+          <ChevronDown
+            size={19}
+            className={`shrink-0 text-slate-600 transition-transform duration-200 ${
+              expanded ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {/* RINCIAN RUTE */}
+        {expanded && (
+          <div className="mt-5">
+            <p className="mb-4 text-sm font-bold text-slate-900">
+              Rincian rute
+            </p>
+
+            <div className="relative">
+              {/* Garis timeline utama */}
+              <div className="absolute bottom-5 left-[11px] top-5 border-l-2 border-dashed border-slate-300" />
+
+              {/* PENJEMPUTAN */}
+              <div className="relative flex gap-3 pb-5">
+                <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                  <UserRound size={13} />
+                </div>
+
+                <div className="flex-1 pt-0.5">
+                  <p className="text-sm font-semibold text-slate-800">
+                    Lokasi penjemputan
+                  </p>
+                </div>
+              </div>
+
+              {/* DAFTAR ANGKOT */}
+              {route.segments.map((segment, index) => {
+                const nextSegment = route.segments[index + 1];
+
+                return (
+                  <div key={segment.id}>
+                    {/* ANGKOT */}
+                    <div className="relative flex gap-3 pb-5">
+                      <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-700 text-white">
+                        <BusFront size={13} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        {/* Identitas angkot */}
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">
+                              Angkot {segment.angkotCode}
+                            </p>
+                            <p className="mt-0.5 text-xs font-medium text-slate-600">
+                              {index === 0 ? "Naik pertama" : "Angkot lanjutan"}
+                            </p>
+                          </div>
+
+                          <span className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
+                            {segment.plateNumber || "-"}
+                          </span>
+                        </div>
+
+                        {/* Asal dan tujuan */}
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="flex gap-2.5">
+                            <div className="mt-1 flex flex-col items-center">
+                              <span className="h-2.5 w-2.5 rounded-full border-2 border-blue-600 bg-white" />
+                              <span className="my-1 h-5 border-l-2 border-dashed border-slate-300" />
+                              <span className="h-2.5 w-2.5 rounded-full bg-blue-700" />
+                            </div>
+
+                            <div className="min-w-0 flex-1 space-y-3">
+                              <div>
+                                <p className="text-xs font-medium text-slate-600">
+                                  Naik dari
+                                </p>
+                                <p className="mt-0.5 break-words text-sm font-semibold text-slate-900">
+                                  {segment.from}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs font-medium text-slate-600">
+                                  Turun di
+                                </p>
+                                <p className="mt-0.5 break-words text-sm font-semibold text-slate-900">
+                                  {segment.to}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tarif per angkot */}
+                          <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                            <span className="text-xs font-medium text-slate-600">
+                              Tarif angkot
+                            </span>
+                            <span className="text-sm font-bold text-slate-900">
+                              {formatRupiah(segment.fare)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TRANSIT */}
+                    {nextSegment && (
+                      <div className="relative flex gap-3 pb-5">
+                        <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                          <ArrowDown size={14} />
+                        </div>
+
+                        <div className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-violet-50 p-3">
+                          <p className="text-sm font-bold text-violet-900">
+                            Transit di {segment.to}
+                          </p>
+
+                          <p className="mt-1 text-xs leading-relaxed text-violet-900">
+                            {segment.transitNote ||
+                              `Lanjutkan perjalanan menggunakan angkot ${nextSegment.angkotCode}.`}
+                          </p>
+
+                          <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-violet-800">
+                            <BusFront size={13} />
+                            Trayek lanjutan: {nextSegment.angkotCode}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* TUJUAN AKHIR */}
+              <div className="relative flex gap-3">
+                <div className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                  <MapPin size={13} />
+                </div>
+
+                <div className="flex-1 pt-0.5">
+                  <p className="text-sm font-semibold text-slate-800">
+                    Tiba di tujuan
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium text-emerald-700">
+                    {route.etaToDestination || route.arrivalTime}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TOMBOL AKSI UTAMA */}
+        <button
+          type="button"
+          onClick={() => onSelect(route)}
+          disabled={route.availableSeats === 0}
+          className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {route.availableSeats === 0 ? "Angkot penuh" : "Pilih rute ini"}
+        </button>
+      </div>
     </div>
   );
 }
