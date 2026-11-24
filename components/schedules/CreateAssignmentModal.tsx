@@ -10,10 +10,9 @@ import {
   FiMapPin,
   FiCalendar,
   FiClock,
-  FiNavigation,
   FiLoader,
 } from "react-icons/fi";
-import { DirectionType, AssignmentStatus } from "@/types/vehicles/vehicle.type";
+import { AssignmentStatus } from "@/types/vehicles/vehicle.type";
 import { useVehicles } from "@/hooks/vehicles/useVehicles";
 import { useRoutes } from "@/hooks/routes/useRoutes";
 import { useDrivers } from "@/hooks/useDrivers";
@@ -45,10 +44,8 @@ export default function CreateAssignmentModal({
     driverId: 0,
     conductorId: undefined,
     routeId: 0,
-    direction: DirectionType.FORWARD,
     assignmentDate: todayString,
     startTime: "08:00",
-    endTime: "16:00",
     currentPassengers: 0,
     status: AssignmentStatus.SCHEDULED,
   });
@@ -64,10 +61,8 @@ export default function CreateAssignmentModal({
         driverId: 0,
         conductorId: undefined,
         routeId: 0,
-        direction: DirectionType.FORWARD,
         assignmentDate: todayString,
         startTime: "08:00",
-        endTime: "16:00",
         currentPassengers: 0,
         status: AssignmentStatus.SCHEDULED,
       });
@@ -239,34 +234,13 @@ export default function CreateAssignmentModal({
                 </option>
                 {routes?.map((r: any) => (
                   <option key={r.id} value={r.id}>
-                    {r.routeCode ? `${r.routeCode} - ` : ""}
-                    {r.routeName}
+                    {r.direction || ""} {r.name || ""}
                   </option>
                 ))}
               </FieldSelect>
             </div>
 
-            {/* 5. Arah Perjalanan (Direction) */}
-            <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
-                Arah (Direction)
-              </label>
-              <FieldSelect
-                icon={FiNavigation}
-                value={formData.direction || DirectionType.FORWARD}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    direction: e.target.value as DirectionType,
-                  })
-                }
-              >
-                <option value={DirectionType.FORWARD}>Forward (Pergi)</option>
-                <option value={DirectionType.RETURN}>Return (Pulang)</option>
-              </FieldSelect>
-            </div>
-
-            {/* 6. Tanggal Penugasan */}
+            {/* 5. Tanggal Penugasan */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Tanggal Operasional
@@ -285,7 +259,7 @@ export default function CreateAssignmentModal({
               </div>
             </div>
 
-            {/* 7. Status Awal */}
+            {/* 6. Status Awal */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Status Penugasan
@@ -307,7 +281,7 @@ export default function CreateAssignmentModal({
               </select>
             </div>
 
-            {/* 8. Jam Mulai (Start Time) */}
+            {/* 7. Jam Mulai (Start Time) */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Jam Mulai (Start Time)
@@ -319,25 +293,6 @@ export default function CreateAssignmentModal({
                   value={formData.startTime}
                   onChange={(e) =>
                     setFormData({ ...formData, startTime: e.target.value })
-                  }
-                  className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* 9. Jam Selesai (End Time) */}
-            <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
-                Jam Selesai (End Time)
-              </label>
-              <div className="relative">
-                <FiClock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="time"
-                  value={formData.endTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endTime: e.target.value })
                   }
                   className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
                   required

@@ -65,7 +65,7 @@ export const vehicleAssignmentService = {
 
   async getSchedulesByDate(date: string): Promise<VehicleSchedule[]> {
     const response = await fetch(
-      `${API_URL}/vehicle-assignments/schedules?date=${date}`,
+      `${API_URL}/vehicle-assignments/date/${date}`,
       {
         method: "GET",
         headers: {

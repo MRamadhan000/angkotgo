@@ -15,7 +15,6 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
   Clock,
   CreditCard,
   Footprints,
@@ -27,11 +26,9 @@ import {
   Navigation,
   Pencil,
   Phone,
-  QrCode,
   Search,
-  ShieldCheck,
   Star,
-  Wallet,
+  Tablet,
   X,
 } from "lucide-react";
 import { DUMMY_ROUTES } from "./data";
@@ -81,41 +78,17 @@ export type AngkotRoute = {
   segments: RouteSegment[];
 };
 
-type PaymentMethod = "cash" | "qris";
-
-type ModalType =
-  | "near-destination"
-  | "payment"
-  | "qris"
-  | "leg-paid"
-  | "feedback"
-  | "completed"
-  | null;
+// Hanya dua modal: "dekat tujuan/transit" dan "perjalanan selesai".
+// Pembayaran dilakukan lewat iPad di angkot, bukan di aplikasi.
+type ModalType = "near-destination" | "completed" | null;
 
 type Field = "origin" | "destination";
 
 type Prediction = google.maps.places.PlacePrediction;
 
 /* =========================================================
-   2. DUMMY DATA & CONSTANTS
+   2. CONSTANTS
 ========================================================= */
-
-const FEEDBACK_TAGS = [
-  "Driver ramah",
-  "Tepat waktu",
-  "Berkendara aman",
-  "Perjalanan nyaman",
-  "Membantu penumpang",
-];
-
-const RATING_LABEL = [
-  "Ketuk bintang untuk memberi rating",
-  "Sangat Kurang",
-  "Kurang Memuaskan",
-  "Cukup Baik",
-  "Memuaskan",
-  "Sangat Memuaskan!",
-];
 
 const MALANG_CENTER = { lat: -7.9666, lng: 112.6326 };
 
@@ -134,12 +107,6 @@ const GHOST_BTN =
 
 // Kartu putih di atas latar abu-abu (dipakai di sheet perjalanan aktif).
 const CARD = "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5";
-
-const BADGE_COLOR: Record<string, string> = {
-  AL: "bg-blue-600",
-  AG: "bg-indigo-500",
-  GL: "bg-orange-500",
-};
 
 /* =========================================================
    4. HELPERS
@@ -166,7 +133,7 @@ const wait = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /* =========================================================
-   5. UI PRIMITIVES (dipakai di semua skenario)
+   5. UI PRIMITIVES
 ========================================================= */
 
 function Spinner({
@@ -187,29 +154,6 @@ function Skeleton({ className = "" }: { className?: string }) {
       aria-hidden
       className={`animate-pulse rounded-lg bg-slate-200 ${className}`}
     />
-  );
-}
-
-function Badge({
-  code,
-  done = false,
-  dim = false,
-  size = 28,
-}: {
-  code: string;
-  done?: boolean;
-  dim?: boolean;
-  size?: number;
-}) {
-  return (
-    <span
-      style={{ width: size, height: size }}
-      className={`flex shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${
-        done ? "bg-green-500" : (BADGE_COLOR[code] ?? "bg-slate-500")
-      } ${dim ? "opacity-40" : ""}`}
-    >
-      {done ? <Check size={size * 0.55} strokeWidth={3} /> : code}
-    </span>
   );
 }
 
@@ -262,7 +206,7 @@ function IconCircle({
   children: ReactNode;
   // "green" = sukses biasa (biru + badge centang),
   // "success" = sukses akhir (hijau penuh).
-  tone?: "blue" | "green" | "orange" | "success";
+  tone?: "blue" | "green" | "success";
 }) {
   const isSuccess = tone === "success";
 
@@ -470,50 +414,31 @@ function usePlaceSuggestions(
   return { suggestions, loading };
 }
 
-/* ---------- 6c. Progres perjalanan & pembayaran per angkot ---------- */
+/* ---------- 6c. Progres perjalanan (leg aktif) ---------- */
 
 function useTripProgress(segments: RouteSegment[]) {
   const [activeLeg, setActiveLeg] = useState(0);
-  const [paidLegs, setPaidLegs] = useState<Record<string, PaymentMethod>>({});
 
   const currentSegment = segments[activeLeg] ?? null;
   const nextSegment = segments[activeLeg + 1] ?? null;
+  const previousSegment = activeLeg > 0 ? segments[activeLeg - 1] : null;
 
   const totalFare = segments.reduce((sum, s) => sum + s.fare, 0);
-  const totalPaid = segments.reduce(
-    (sum, s) => sum + (paidLegs[s.id] ? s.fare : 0),
-    0,
-  );
-  const paidCount = segments.filter((s) => !!paidLegs[s.id]).length;
   const isLastLeg = activeLeg === segments.length - 1;
-  const isCurrentLegPaid = currentSegment
-    ? !!paidLegs[currentSegment.id]
-    : false;
 
-  const markCurrentPaid = (method: PaymentMethod) => {
-    if (!currentSegment) return;
-    setPaidLegs((previous) => ({ ...previous, [currentSegment.id]: method }));
-  };
+  const goToNextLeg = () =>
+    setActiveLeg((previous) => Math.min(previous + 1, segments.length - 1));
 
-  const goToNextLeg = () => setActiveLeg((previous) => previous + 1);
-
-  const resetProgress = () => {
-    setActiveLeg(0);
-    setPaidLegs({});
-  };
+  const resetProgress = () => setActiveLeg(0);
 
   return {
     segments,
     activeLeg,
-    paidLegs,
     currentSegment,
     nextSegment,
+    previousSegment,
     totalFare,
-    totalPaid,
-    paidCount,
     isLastLeg,
-    isCurrentLegPaid,
-    markCurrentPaid,
     goToNextLeg,
     resetProgress,
   };
@@ -521,31 +446,8 @@ function useTripProgress(segments: RouteSegment[]) {
 
 type TripProgress = ReturnType<typeof useTripProgress>;
 
-/* ---------- 6d. Feedback ---------- */
-
-function useFeedback() {
-  const [rating, setRating] = useState(0);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags((previous) =>
-      previous.includes(tag)
-        ? previous.filter((item) => item !== tag)
-        : [...previous, tag],
-    );
-  };
-
-  const resetFeedback = () => {
-    setRating(0);
-    setSelectedTags([]);
-  };
-
-  return { rating, setRating, selectedTags, toggleTag, resetFeedback };
-}
-
 /* =========================================================
    SKENARIO 1 — PENCARIAN LOKASI
-   (form input, saran lokasi, ringkasan saat hasil tampil)
 ========================================================= */
 
 function SuggestionList({
@@ -803,9 +705,7 @@ function TripSummaryBar({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-[24px] border border-white/80 bg-white/95 p-3.5 shadow-[0_8px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl">
-      {/* ROUTE INFO */}
       <div className="min-w-0 flex-1 space-y-1">
-        {/* ORIGIN */}
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
             <MapPin size={15} />
@@ -821,10 +721,8 @@ function TripSummaryBar({
           </div>
         </div>
 
-        {/* CONNECTOR */}
         <div className="ml-[13px] h-3 border-l-2 border-dashed border-slate-300" />
 
-        {/* DESTINATION */}
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600">
             <MapPin size={15} />
@@ -841,7 +739,6 @@ function TripSummaryBar({
         </div>
       </div>
 
-      {/* EDIT BUTTON */}
       <button
         onClick={onEdit}
         aria-label="Edit rute"
@@ -1016,7 +913,6 @@ function RouteCard({
             </p>
 
             <div className="relative">
-              {/* GARIS TIMELINE */}
               <div className="absolute left-[13px] top-3 bottom-5 w-0.5 bg-slate-200" />
 
               {/* LOKASI AWAL */}
@@ -1281,40 +1177,9 @@ function RouteListSheet({
 }
 
 /* =========================================================
-   SKENARIO 3 — LOGIN (muncul setelah pilih rute)
+   SKENARIO 4 — PERJALANAN AKTIF / DETAIL PERJALANAN
 ========================================================= */
 
-function LoginModal({ onClose }: { onClose: () => void }) {
-  return (
-    <Modal onClose={onClose}>
-      <div className="text-center">
-        <IconCircle tone="orange">
-          <ShieldCheck size={32} />
-        </IconCircle>
-        <h2 className="text-[22px] font-bold tracking-tight">
-          Waduh, Anda Belum Login!
-        </h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
-          Login dulu, yuk! Dengan akun AngkotGo, Anda bisa melihat riwayat
-          perjalanan dan menyimpan rute favorit.
-        </p>
-        <button onClick={onClose} className={`${PRIMARY_BTN} mt-6`}>
-          Login Sekarang
-        </button>
-        <button onClick={onClose} className={`${GHOST_BTN} mt-1`}>
-          Nanti Saja
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-/* =========================================================
-   SKENARIO 4 — PERJALANAN AKTIF / KONFIRMASI ANGKOT
-   (header, chip peta, kartu sopir, ringkasan rute, pembayaran)
-========================================================= */
-
-// Header "Konfirmasi Angkot Pilihan" dengan tombol kembali.
 function TripHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="flex items-center gap-2 rounded-[24px] border border-white/80 bg-white/95 px-3 py-2.5 shadow-[0_8px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl">
@@ -1337,29 +1202,33 @@ function TripMapChips({
   etaToPickup,
   segment,
   originName,
+  isTransitLeg,
 }: {
   etaToPickup: string;
   segment: RouteSegment;
   originName?: string;
+  isTransitLeg: boolean;
 }) {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-[calc(5.25rem+env(safe-area-inset-top))] z-10 mx-auto flex w-full max-w-md flex-col gap-2 px-4">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 shadow-md">
           <span className="h-2 w-2 rounded-full bg-blue-600" />
-          Armada mendekat ke halte
+          {isTransitLeg ? "Menuju angkot lanjutan" : "Armada mendekat ke halte"}
         </span>
 
-        <span className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-[12px] font-bold text-white shadow-md">
-          <Clock size={13} />~{formatDuration(etaToPickup)}
-        </span>
+        {!isTransitLeg && (
+          <span className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-[12px] font-bold text-white shadow-md">
+            <Clock size={13} />~{formatDuration(etaToPickup)}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 shadow-md">
           <span className="h-2 w-2 rounded-full bg-blue-600" />
           <span className="max-w-[170px] truncate">
-            Anda di {originName || "halte"}
+            Anda di {isTransitLeg ? segment.from : originName || "halte"}
           </span>
         </span>
 
@@ -1386,14 +1255,38 @@ function DriverSkeleton() {
   );
 }
 
+// Banner setelah transit: pengguna kembali ke halaman detail untuk leg berikutnya.
+function TransitBanner({
+  previous,
+  current,
+}: {
+  previous: RouteSegment;
+  current: RouteSegment;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-700 text-white">
+        <Navigation size={17} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[14px] font-bold text-blue-800">
+          Transit berhasil di {previous.to}
+        </p>
+        <p className="mt-0.5 text-[12px] leading-relaxed text-blue-700">
+          Silakan naik angkot <b>{current.angkotCode}</b> untuk melanjutkan
+          perjalanan ke tujuan akhir.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // Kartu utama: tarif, sopir, kendaraan, dan aksi cepat.
 function DriverCard({
   segment,
-  isPaid,
   loadingDriver,
 }: {
   segment: RouteSegment;
-  isPaid: boolean;
   loadingDriver: boolean;
 }) {
   return (
@@ -1405,16 +1298,9 @@ function DriverCard({
           Pilihan Anda • Rekomendasi
         </span>
 
-        <div className="text-right">
-          <p className="text-[19px] font-bold leading-none text-blue-700">
-            {formatRupiah(segment.fare)}
-          </p>
-          {isPaid && (
-            <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-              LUNAS
-            </span>
-          )}
-        </div>
+        <p className="text-[19px] font-bold leading-none text-blue-700">
+          {formatRupiah(segment.fare)}
+        </p>
       </div>
 
       {/* SOPIR & KENDARAAN */}
@@ -1479,11 +1365,8 @@ function DriverCard({
       {/* INFO PEMBAYARAN */}
       <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5">
         <span className="flex items-center gap-2 text-[12px] text-slate-600">
-          <Banknote size={16} className="text-green-600" />
-          Bayar QRIS atau Tunai saat turun
-        </span>
-        <span className="shrink-0 text-[12px] font-bold text-blue-600">
-          Tarif Tetap
+          <Tablet size={16} className="shrink-0 text-blue-600" />
+          Bayar lewat iPad di belakang kursi sopir
         </span>
       </div>
     </div>
@@ -1526,7 +1409,6 @@ function RouteSummaryCard({
       </div>
 
       <div className="relative">
-        {/* GARIS TIMELINE */}
         <div className="absolute left-[13px] top-3 bottom-5 w-0.5 bg-slate-200" />
 
         {/* LOKASI AWAL */}
@@ -1702,69 +1584,25 @@ function RouteSummaryCard({
   );
 }
 
-function PaymentSummaryCard({ trip }: { trip: TripProgress }) {
-  const { totalFare, totalPaid, paidCount, segments } = trip;
-
-  return (
-    <div className="rounded-2xl bg-blue-50 p-4 ring-1 ring-blue-100">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[12px] font-medium text-blue-600">
-            Total estimasi seluruh perjalanan
-          </p>
-          <p className="mt-1 text-[22px] font-bold text-blue-800">
-            {formatRupiah(totalFare)}
-          </p>
-        </div>
-        <div className="rounded-xl bg-white p-3 text-blue-600">
-          <Wallet size={22} />
-        </div>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-blue-100 pt-3">
-        <div>
-          <p className="text-[12px] text-slate-500">Sudah dibayar</p>
-          <p className="mt-0.5 font-bold text-green-700">
-            {formatRupiah(totalPaid)}
-          </p>
-        </div>
-        <div>
-          <p className="text-[12px] text-slate-500">Belum dibayar</p>
-          <p className="mt-0.5 font-bold text-orange-600">
-            {formatRupiah(totalFare - totalPaid)}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between text-[12px] text-blue-700">
-        <span>Pembayaran angkot</span>
-        <span className="font-bold">
-          {paidCount}/{segments.length} selesai
-        </span>
-      </div>
-      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-blue-100">
-        <div
-          className="h-full rounded-full bg-green-500 transition-all"
-          style={{ width: `${(paidCount / segments.length) * 100}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function PaymentHistoryCard({ trip }: { trip: TripProgress }) {
-  const { segments, paidLegs, totalFare } = trip;
+// Rincian tarif per angkot + status leg (tanpa pembayaran di aplikasi).
+function FareSummaryCard({ trip }: { trip: TripProgress }) {
+  const { segments, activeLeg, totalFare } = trip;
 
   return (
     <div className={CARD}>
       <div className="mb-3 flex items-center gap-2">
         <CreditCard size={18} className="text-blue-600" />
-        <h3 className="text-[15px] font-bold">Rincian Pembayaran Per Angkot</h3>
+        <h3 className="text-[15px] font-bold">Rincian Tarif Per Angkot</h3>
       </div>
 
       <div className="space-y-2">
         {segments.map((segment, index) => {
-          const method = paidLegs[segment.id];
+          const status =
+            index < activeLeg
+              ? { label: "Sudah turun", className: "text-green-600" }
+              : index === activeLeg
+                ? { label: "Sedang dinaiki", className: "text-blue-600" }
+                : { label: "Menunggu", className: "text-slate-500" };
 
           return (
             <div
@@ -1778,10 +1616,8 @@ function PaymentHistoryCard({ trip }: { trip: TripProgress }) {
                 <p className="truncate text-[12px] text-slate-500">
                   Leg {index + 1} • {segment.from} - {segment.to}
                 </p>
-                <p className="text-[12px] text-slate-500">
-                  {method
-                    ? `Dibayar dengan ${method === "cash" ? "Tunai" : "QRIS"}`
-                    : "Menunggu pembayaran"}
+                <p className={`text-[12px] font-semibold ${status.className}`}>
+                  {status.label}
                 </p>
               </div>
 
@@ -1789,15 +1625,6 @@ function PaymentHistoryCard({ trip }: { trip: TripProgress }) {
                 <p className="text-[14px] font-bold">
                   {formatRupiah(segment.fare)}
                 </p>
-                {method ? (
-                  <span className="text-[10px] font-bold text-green-600">
-                    ✓ LUNAS
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold text-orange-500">
-                    BELUM BAYAR
-                  </span>
-                )}
               </div>
             </div>
           );
@@ -1823,7 +1650,6 @@ function ActiveTripSheet({
   destinationName,
   loadingDriver,
   onSimulateNearDestination,
-  onContinue,
 }: {
   trip: TripProgress;
   route: AngkotRoute;
@@ -1831,9 +1657,8 @@ function ActiveTripSheet({
   destinationName?: string;
   loadingDriver: boolean;
   onSimulateNearDestination: () => void;
-  onContinue: () => void;
 }) {
-  const { currentSegment, nextSegment, isCurrentLegPaid, isLastLeg } = trip;
+  const { currentSegment, previousSegment } = trip;
 
   if (!currentSegment) return null;
 
@@ -1842,51 +1667,37 @@ function ActiveTripSheet({
       <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-black/15" />
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pt-4 pb-4">
-        <DriverCard
-          segment={currentSegment}
-          isPaid={isCurrentLegPaid}
-          loadingDriver={loadingDriver}
-        />
+        {previousSegment && (
+          <TransitBanner previous={previousSegment} current={currentSegment} />
+        )}
+
+        <DriverCard segment={currentSegment} loadingDriver={loadingDriver} />
         <RouteSummaryCard
           trip={trip}
           route={route}
           originName={originName}
           destinationName={destinationName}
         />
-        <PaymentSummaryCard trip={trip} />
-        <PaymentHistoryCard trip={trip} />
+        <FareSummaryCard trip={trip} />
       </div>
 
       {/* STICKY CTA */}
       <div className="shrink-0 border-t border-black/5 bg-white px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        {isCurrentLegPaid ? (
-          <button
-            onClick={onContinue}
-            disabled={loadingDriver}
-            className={PRIMARY_BTN}
-          >
-            {isLastLeg
-              ? "Berikan Feedback"
-              : `Lanjut ke Angkot ${nextSegment?.angkotCode}`}
-          </button>
-        ) : (
-          <button
-            onClick={onSimulateNearDestination}
-            disabled={loadingDriver}
-            className={`${PRIMARY_BTN} disabled:opacity-50`}
-          >
-            <MapPin size={18} />
-            Simulasikan Dekat Tujuan
-          </button>
-        )}
+        <button
+          onClick={onSimulateNearDestination}
+          disabled={loadingDriver}
+          className={`${PRIMARY_BTN} disabled:opacity-50`}
+        >
+          <MapPin size={18} />
+          Simulasikan Dekat Tujuan
+        </button>
       </div>
     </section>
   );
 }
 
 /* =========================================================
-   SKENARIO 5 — PEMBAYARAN PER ANGKOT
-   (dekat tujuan → pilih metode → QRIS → berhasil/transit)
+   SKENARIO 5 — DEKAT TUJUAN / TRANSIT → TURUN
 ========================================================= */
 
 function NearDestinationModal({
@@ -1894,14 +1705,14 @@ function NearDestinationModal({
   nextSegment,
   isLastLeg,
   destinationName,
-  onProceed,
+  onGetOff,
   onClose,
 }: {
   segment: RouteSegment;
   nextSegment: RouteSegment | null;
   isLastLeg: boolean;
   destinationName?: string;
-  onProceed: () => void;
+  onGetOff: () => void;
   onClose: () => void;
 }) {
   const stopName = isLastLeg ? destinationName || segment.to : segment.to;
@@ -1965,17 +1776,24 @@ function NearDestinationModal({
           </div>
 
           <div className="shrink-0 text-right">
-            <p className="text-[11px] font-medium text-slate-500">
-              Tarif Tunai / QRIS
-            </p>
+            <p className="text-[11px] font-medium text-slate-500">Tarif</p>
             <p className="text-[18px] font-bold text-blue-700">
               {formatRupiah(segment.fare)}
             </p>
           </div>
         </div>
 
+        {/* PENGINGAT BAYAR */}
+        <div className="mb-5 flex gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-3.5 text-left">
+          <Tablet size={20} className="mt-0.5 shrink-0 text-orange-600" />
+          <p className="text-[12px] leading-relaxed text-orange-700">
+            Bayar tarif angkot {segment.angkotCode} lewat iPad di belakang kursi
+            sopir sebelum turun.
+          </p>
+        </div>
+
         <button
-          onClick={onProceed}
+          onClick={onGetOff}
           className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-blue-700 text-[16px] font-semibold text-white shadow-lg shadow-blue-700/30 transition active:scale-[0.98] active:bg-blue-800"
         >
           Klik Jika Sudah Turun
@@ -1989,428 +1807,15 @@ function NearDestinationModal({
   );
 }
 
-function PaymentMethodModal({
-  segment,
-  activeLeg,
-  totalLegs,
-  payingMethod,
-  onPayCash,
-  onPayQris,
-  onBack,
-  onClose,
-}: {
-  segment: RouteSegment;
-  activeLeg: number;
-  totalLegs: number;
-  payingMethod: PaymentMethod | null;
-  onPayCash: () => void;
-  onPayQris: () => void;
-  onBack: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <Modal onClose={onClose}>
-      <div className="mb-5 text-center">
-        <IconCircle>
-          <Wallet size={30} />
-        </IconCircle>
-        <h2 className="text-[22px] font-bold tracking-tight">
-          Bayar Angkot {segment.angkotCode}
-        </h2>
-        <p className="mt-1 text-[14px] text-slate-500">
-          Pembayaran dilakukan kepada sopir angkot yang sedang Anda naiki.
-        </p>
-      </div>
-
-      <div className="mb-4 rounded-2xl bg-blue-50 p-4">
-        <p className="text-[12px] text-blue-600">
-          Tarif angkot {segment.angkotCode}
-        </p>
-        <p className="mt-0.5 text-[26px] font-bold text-blue-800">
-          {formatRupiah(segment.fare)}
-        </p>
-        <p className="mt-1 text-[12px] text-blue-600">
-          Leg {activeLeg + 1} dari {totalLegs}
-        </p>
-      </div>
-
-      <div className="space-y-2.5">
-        <button
-          onClick={onPayCash}
-          disabled={!!payingMethod}
-          className="flex w-full items-center gap-4 rounded-2xl bg-blue-50/60 p-4 text-left ring-1 ring-blue-100 transition active:scale-[0.98] disabled:opacity-60"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-            <Banknote size={22} />
-          </span>
-          <span className="flex-1">
-            <span className="block text-[16px] font-semibold">Uang Tunai</span>
-            <span className="block text-[12px] text-slate-500">
-              {payingMethod === "cash"
-                ? "Mencatat pembayaran..."
-                : "Bayar langsung kepada sopir."}
-            </span>
-          </span>
-          {payingMethod === "cash" ? (
-            <Spinner size={18} className="text-blue-700" />
-          ) : (
-            <ChevronRight size={18} className="text-slate-400" />
-          )}
-        </button>
-
-        <button
-          onClick={onPayQris}
-          disabled={!!payingMethod}
-          className="flex w-full items-center gap-4 rounded-2xl bg-blue-50/60 p-4 text-left ring-1 ring-blue-100 transition active:scale-[0.98] disabled:opacity-60"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-            <QrCode size={22} />
-          </span>
-          <span className="flex-1">
-            <span className="block text-[16px] font-semibold">QRIS</span>
-            <span className="block text-[12px] text-slate-500">
-              Bayar menggunakan scan QR.
-            </span>
-          </span>
-          <ChevronRight size={18} className="text-slate-400" />
-        </button>
-      </div>
-
-      <button
-        onClick={onBack}
-        disabled={!!payingMethod}
-        className={`${GHOST_BTN} mt-2 disabled:opacity-50`}
-      >
-        Kembali
-      </button>
-    </Modal>
-  );
-}
-
-function QrisModal({
-  segment,
-  paying,
-  onConfirm,
-  onChangeMethod,
-  onClose,
-}: {
-  segment: RouteSegment;
-  paying: boolean;
-  onConfirm: () => void;
-  onChangeMethod: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <Modal onClose={onClose}>
-      <div className="text-center">
-        <h2 className="text-[22px] font-bold tracking-tight">
-          Pembayaran QRIS
-        </h2>
-        <p className="mt-1 text-[14px] text-slate-500">
-          Scan kode QR untuk membayar angkot {segment.angkotCode}.
-        </p>
-
-        <div className="mx-auto my-5 flex h-52 w-52 flex-col items-center justify-center rounded-3xl bg-blue-50 ring-1 ring-blue-100">
-          <QrCode size={110} className="text-slate-800" />
-          <span className="mt-2 text-[10px] font-bold tracking-widest text-slate-500">
-            DUMMY QRIS
-          </span>
-        </div>
-
-        <div className="rounded-2xl bg-blue-50 p-4">
-          <p className="text-[12px] text-blue-600">
-            Pembayaran angkot {segment.angkotCode}
-          </p>
-          <p className="mt-0.5 text-[26px] font-bold text-blue-800">
-            {formatRupiah(segment.fare)}
-          </p>
-        </div>
-
-        <button
-          onClick={onConfirm}
-          disabled={paying}
-          className={`${PRIMARY_BTN} mt-5 disabled:opacity-70`}
-        >
-          {paying ? (
-            <>
-              <Spinner />
-              Memverifikasi pembayaran...
-            </>
-          ) : (
-            "Simulasikan Pembayaran Berhasil"
-          )}
-        </button>
-        <button
-          onClick={onChangeMethod}
-          disabled={paying}
-          className={`${GHOST_BTN} mt-1 disabled:opacity-50`}
-        >
-          Ganti Metode Pembayaran
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-function LegPaidModal({
-  trip,
-  segment,
-  onContinue,
-}: {
-  trip: TripProgress;
-  segment: RouteSegment;
-  onContinue: () => void;
-}) {
-  const { paidLegs, totalPaid, totalFare, isLastLeg, nextSegment } = trip;
-
-  return (
-    <Modal>
-      <div className="mb-4 text-center">
-        <IconCircle tone="green">
-          <CheckCircle2 size={34} />
-        </IconCircle>
-        <h2 className="text-[22px] font-bold tracking-tight">
-          Pembayaran Berhasil!
-        </h2>
-        <p className="mt-1 text-[14px] text-slate-500">
-          Pembayaran angkot {segment.angkotCode} telah dikonfirmasi.
-        </p>
-      </div>
-
-      <div className="mb-3 rounded-2xl bg-blue-50 p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-[14px] text-blue-700">
-            Angkot {segment.angkotCode}
-          </span>
-          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-            LUNAS
-          </span>
-        </div>
-        <p className="mt-1 text-[24px] font-bold text-blue-800">
-          {formatRupiah(segment.fare)}
-        </p>
-        <p className="text-[12px] text-blue-700">
-          Metode: {paidLegs[segment.id] === "cash" ? "Uang Tunai" : "QRIS"}
-        </p>
-      </div>
-
-      <div className="mb-4 flex items-center justify-between rounded-xl bg-slate-50 p-3">
-        <div>
-          <p className="text-[12px] text-slate-500">Total yang sudah dibayar</p>
-          <p className="font-bold">{formatRupiah(totalPaid)}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[12px] text-slate-500">Sisa pembayaran</p>
-          <p className="font-bold text-blue-700">
-            {formatRupiah(totalFare - totalPaid)}
-          </p>
-        </div>
-      </div>
-
-      {isLastLeg ? (
-        <>
-          <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
-            <p className="font-bold text-blue-800">
-              Semua Angkot Sudah Dibayar!
-            </p>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-blue-700">
-              Seluruh pembayaran selesai. Silakan berikan penilaian untuk
-              perjalanan Anda.
-            </p>
-          </div>
-          <button onClick={onContinue} className={PRIMARY_BTN}>
-            Berikan Feedback
-          </button>
-        </>
-      ) : (
-        nextSegment && (
-          <>
-            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
-              <p className="flex items-center gap-2 font-bold text-blue-800">
-                <Navigation size={16} />
-                Lanjutkan Transit
-              </p>
-
-              <div className="mt-2 rounded-xl bg-white p-3">
-                <p className="text-[11px] text-slate-500">TURUN DI</p>
-                <p className="font-bold">{segment.to}</p>
-
-                <div className="my-2.5 border-t border-dashed border-slate-200" />
-
-                <p className="text-[11px] text-slate-500">ANGKOT SELANJUTNYA</p>
-                <div className="mt-1.5 flex items-center gap-3">
-                  <Badge code={nextSegment.angkotCode} size={36} />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-blue-700">
-                      Angkot {nextSegment.angkotCode}
-                    </p>
-                    <p className="truncate text-[12px] text-slate-500">
-                      {nextSegment.angkotName}
-                    </p>
-                  </div>
-                  <span className="text-[13px] font-bold">
-                    {formatRupiah(nextSegment.fare)}
-                  </span>
-                </div>
-              </div>
-
-              <p className="mt-2 text-[12px] leading-relaxed text-blue-700">
-                Silakan turun, lalu naik angkot berikutnya. Pembayaran dilakukan
-                terpisah.
-              </p>
-            </div>
-
-            <button onClick={onContinue} className={PRIMARY_BTN}>
-              Lanjut ke Angkot Berikutnya
-              <ArrowRight size={16} />
-            </button>
-          </>
-        )
-      )}
-    </Modal>
-  );
-}
-
 /* =========================================================
-   SKENARIO 6 — FEEDBACK & PERJALANAN SELESAI
+   SKENARIO 6 — PERJALANAN SELESAI (hanya leg terakhir)
 ========================================================= */
-
-function FeedbackModal({
-  trip,
-  rating,
-  selectedTags,
-  onRate,
-  onToggleTag,
-  submitting,
-  onSubmit,
-  onClose,
-}: {
-  trip: TripProgress;
-  rating: number;
-  selectedTags: string[];
-  onRate: (star: number) => void;
-  onToggleTag: (tag: string) => void;
-  submitting: boolean;
-  onSubmit: () => void;
-  onClose: () => void;
-}) {
-  const { segments, totalPaid, paidCount } = trip;
-
-  return (
-    <Modal onClose={onClose}>
-      <div className="mb-4 text-center">
-        <IconCircle tone="green">
-          <CheckCircle2 size={32} />
-        </IconCircle>
-        <h2 className="text-[22px] font-bold tracking-tight">
-          Bagaimana Perjalanan Anda?
-        </h2>
-        <p className="mt-1 text-[14px] text-slate-500">
-          Semua pembayaran angkot berhasil. Yuk, berikan penilaian!
-        </p>
-      </div>
-
-      {/* Ringkasan pembayaran */}
-      <div className="mb-5 rounded-xl bg-blue-50 p-3">
-        <div className="space-y-1.5">
-          {segments.map((segment) => (
-            <div key={segment.id} className="flex justify-between text-[13px]">
-              <span className="text-blue-700">Angkot {segment.angkotCode}</span>
-              <span className="font-bold text-blue-700">
-                {formatRupiah(segment.fare)} ✓
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-2.5 flex justify-between border-t border-blue-200 pt-2.5 text-[14px] font-bold text-blue-800">
-          <span>Total dibayar</span>
-          <span>{formatRupiah(totalPaid)}</span>
-        </div>
-      </div>
-
-      {/* Rating bintang */}
-      <div className="mb-5 text-center">
-        <p className="mb-2 text-[14px] font-semibold text-slate-700">
-          Berikan rating perjalanan
-        </p>
-        <div className="flex justify-center gap-1.5">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              onClick={() => onRate(star)}
-              aria-label={`${star} bintang`}
-              className="p-1 transition active:scale-110"
-            >
-              <Star
-                size={36}
-                className={
-                  star <= rating
-                    ? "fill-yellow-400 text-yellow-400"
-                    : "text-slate-300"
-                }
-              />
-            </button>
-          ))}
-        </div>
-        <p className="mt-1 text-[12px] font-medium text-slate-500">
-          {RATING_LABEL[rating]}
-        </p>
-      </div>
-
-      {/* Tag */}
-      <div className="mb-5">
-        <p className="mb-2 text-[14px] font-semibold text-slate-700">
-          Apa yang Anda sukai?
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {FEEDBACK_TAGS.map((tag) => {
-            const selected = selectedTags.includes(tag);
-
-            return (
-              <button
-                key={tag}
-                onClick={() => onToggleTag(tag)}
-                className={`flex items-center gap-1 rounded-full px-3.5 py-2 text-[13px] font-medium transition ${
-                  selected
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {selected && <Check size={12} />}
-                {tag}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <button
-        onClick={onSubmit}
-        disabled={submitting || rating === 0 || paidCount !== segments.length}
-        className={PRIMARY_BTN}
-      >
-        {submitting ? (
-          <>
-            <Spinner />
-            Mengirim feedback...
-          </>
-        ) : (
-          "Kirim Feedback dan Akhiri Perjalanan"
-        )}
-      </button>
-    </Modal>
-  );
-}
 
 function CompletedModal({
   totalFare,
-  rating,
-  selectedTags,
   onFinish,
 }: {
   totalFare: number;
-  rating: number;
-  selectedTags: string[];
   onFinish: () => void;
 }) {
   return (
@@ -2419,42 +1824,41 @@ function CompletedModal({
         <IconCircle tone="success">
           <CheckCircle2 size={36} />
         </IconCircle>
-        <h2 className="text-[24px] font-bold tracking-tight">
-          Perjalanan Selesai!
+
+        <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-[11px] font-bold text-green-700">
+          SIMULASI PERJALANAN SELESAI
+        </span>
+
+        <h2 className="mt-3 text-[24px] font-bold tracking-tight text-slate-900">
+          Selamat, Perjalanan Anda Sudah Selesai!
         </h2>
+
         <p className="mt-2 text-[14px] leading-relaxed text-slate-500">
-          Terima kasih telah menggunakan AngkotGo. Seluruh pembayaran angkot
-          berhasil diselesaikan.
+          Anda telah sampai di lokasi tujuan. Terima kasih telah menggunakan
+          AngkotGo.
         </p>
 
-        <div className="my-5 rounded-2xl bg-green-50 p-4 text-left">
-          <div className="flex items-center justify-between">
-            <span className="text-[14px] text-slate-500">Total perjalanan</span>
-            <span className="font-bold text-green-700">
-              {formatRupiah(totalFare)}
-            </span>
-          </div>
+        <div className="my-5 rounded-2xl bg-blue-50 p-4 text-left">
+          <p className="text-[12px] font-medium text-blue-700">
+            Estimasi total tarif perjalanan
+          </p>
+          <p className="mt-1 text-[25px] font-bold text-blue-800">
+            {formatRupiah(totalFare)}
+          </p>
+        </div>
 
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-[14px] text-slate-500">Rating Anda</span>
-            <span className="flex items-center gap-1 font-bold">
-              <Star size={15} className="fill-yellow-400 text-yellow-400" />
-              {rating}/5
-            </span>
+        <div className="mb-5 flex gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-left">
+          <Banknote size={22} className="mt-0.5 shrink-0 text-orange-600" />
+          <div>
+            <p className="text-[14px] font-bold text-orange-800">
+              Pastikan Anda sudah membayar
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed text-orange-700">
+              Pembayaran dilakukan melalui iPad yang berada di belakang kursi
+              sopir, dengan metode tunai (cash) maupun non-tunai (QRIS).
+              Pastikan tarif setiap angkot yang Anda gunakan sudah dibayarkan.
+            </p>
           </div>
-
-          {selectedTags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selectedTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-green-50 px-2.5 py-1 text-[12px] font-medium text-green-700"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         <button
@@ -2462,6 +1866,7 @@ function CompletedModal({
           className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-green-600 text-[16px] font-semibold text-white shadow-lg shadow-green-600/30 transition active:scale-[0.98] active:bg-green-700"
         >
           Selesai
+          <Check size={18} />
         </button>
       </div>
     </Modal>
@@ -2492,11 +1897,8 @@ export default function HomePage() {
 
   /* ----- State rute & modal ----- */
   const [selectedRoute, setSelectedRoute] = useState<AngkotRoute | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [loadingDriver, setLoadingDriver] = useState(false);
-  const [payingMethod, setPayingMethod] = useState<PaymentMethod | null>(null);
-  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   /* ----- Hooks domain ----- */
   const { suggestions, loading: suggestionsLoading } = usePlaceSuggestions(
@@ -2505,7 +1907,6 @@ export default function HomePage() {
     destinationQuery,
   );
   const trip = useTripProgress(selectedRoute?.segments ?? []);
-  const feedback = useFeedback();
 
   const { currentSegment } = trip;
   const isSearching = !showResults && !selectedRoute;
@@ -2653,22 +2054,17 @@ export default function HomePage() {
   const resetTrip = () => {
     setSelectedRoute(null);
     setShowResults(false);
-    setShowLoginModal(false);
     setActiveModal(null);
     trip.resetProgress();
-    feedback.resetFeedback();
     searchId.current += 1; // batalkan pencarian yang sedang berjalan
     setRoutes([]);
     setRoutesLoading(false);
     setLoadingDriver(false);
-    setPayingMethod(null);
-    setSubmittingFeedback(false);
   };
 
   // Kembali ke daftar rute.
   const backToResults = () => {
     setSelectedRoute(null);
-    setShowLoginModal(false);
     setActiveModal(null);
     trip.resetProgress();
   };
@@ -2708,58 +2104,39 @@ export default function HomePage() {
   const handleSelectRoute = (route: AngkotRoute) => {
     setSelectedRoute(route);
     trip.resetProgress();
-    setShowLoginModal(true);
     void loadDriver();
   };
 
   /* =======================================================
-     SKENARIO 5 — Handler pembayaran per angkot
+     SKENARIO 5 — Dekat tujuan → sudah turun
+     - Leg terakhir  : tampilkan modal "perjalanan selesai"
+     - Masih transit : tutup modal, kembali ke halaman detail
+                       perjalanan untuk angkot berikutnya
   ======================================================= */
 
   // Simulasi: penumpang mendekati titik turun angkot aktif.
   const handleNearDestination = () => {
-    if (!currentSegment || trip.isCurrentLegPaid) return;
+    if (!currentSegment) return;
     setActiveModal("near-destination");
   };
 
-  const confirmLegPayment = async (method: PaymentMethod) => {
-    if (!currentSegment || payingMethod) return;
-
-    setPayingMethod(method);
-    await wait(method === "qris" ? 1200 : 700); // ganti dengan request API
-    trip.markCurrentPaid(method);
-    setPayingMethod(null);
-    setActiveModal("leg-paid");
-  };
-
-  // Lanjut ke angkot berikutnya, atau ke penilaian jika sudah angkot terakhir.
-  const continueAfterPayment = () => {
-    if (!currentSegment || !trip.paidLegs[currentSegment.id]) return;
+  const handleGetOff = () => {
+    if (!currentSegment) return;
 
     if (trip.isLastLeg) {
-      setActiveModal("feedback");
+      setActiveModal("completed");
       return;
     }
 
-    trip.goToNextLeg();
+    // Transit: modal tertutup, pindah ke leg berikutnya, tetap di halaman detail.
     setActiveModal(null);
+    trip.goToNextLeg();
     void loadDriver();
   };
 
   /* =======================================================
-     SKENARIO 6 — Handler feedback & selesai
+     SKENARIO 6 — Selesai
   ======================================================= */
-
-  const submitFeedback = async () => {
-    if (feedback.rating === 0 || trip.paidCount !== trip.segments.length) {
-      return;
-    }
-
-    setSubmittingFeedback(true);
-    await wait(1000); // ganti dengan request API
-    setSubmittingFeedback(false);
-    setActiveModal("completed");
-  };
 
   const finishTrip = () => {
     resetTrip();
@@ -2836,18 +2213,14 @@ export default function HomePage() {
         />
       )}
 
-      {/* ===== SKENARIO 3: login ===== */}
-      {showLoginModal && selectedRoute && (
-        <LoginModal onClose={() => setShowLoginModal(false)} />
-      )}
-
-      {/* ===== SKENARIO 4: konfirmasi & perjalanan aktif ===== */}
+      {/* ===== PERJALANAN AKTIF (tanpa login) ===== */}
       {selectedRoute && currentSegment && (
         <>
           <TripMapChips
             etaToPickup={selectedRoute.etaToPickup}
             segment={currentSegment}
             originName={origin?.name}
+            isTransitLeg={trip.activeLeg > 0}
           />
           <ActiveTripSheet
             trip={trip}
@@ -2856,75 +2229,25 @@ export default function HomePage() {
             destinationName={destination?.name}
             loadingDriver={loadingDriver}
             onSimulateNearDestination={handleNearDestination}
-            onContinue={continueAfterPayment}
           />
         </>
       )}
 
-      {/* ===== SKENARIO 5: pembayaran per angkot ===== */}
+      {/* ===== MODAL DEKAT TUJUAN / TRANSIT ===== */}
       {activeModal === "near-destination" && currentSegment && (
         <NearDestinationModal
           segment={currentSegment}
           nextSegment={trip.nextSegment}
           isLastLeg={trip.isLastLeg}
           destinationName={destination?.name}
-          onProceed={() => setActiveModal("payment")}
+          onGetOff={handleGetOff}
           onClose={() => setActiveModal(null)}
         />
       )}
 
-      {activeModal === "payment" && currentSegment && (
-        <PaymentMethodModal
-          segment={currentSegment}
-          activeLeg={trip.activeLeg}
-          totalLegs={trip.segments.length}
-          payingMethod={payingMethod}
-          onPayCash={() => confirmLegPayment("cash")}
-          onPayQris={() => setActiveModal("qris")}
-          onBack={() => setActiveModal("near-destination")}
-          onClose={() => setActiveModal(null)}
-        />
-      )}
-
-      {activeModal === "qris" && currentSegment && (
-        <QrisModal
-          segment={currentSegment}
-          paying={payingMethod === "qris"}
-          onConfirm={() => confirmLegPayment("qris")}
-          onChangeMethod={() => setActiveModal("payment")}
-          onClose={() => setActiveModal(null)}
-        />
-      )}
-
-      {activeModal === "leg-paid" && currentSegment && (
-        <LegPaidModal
-          trip={trip}
-          segment={currentSegment}
-          onContinue={continueAfterPayment}
-        />
-      )}
-
-      {/* ===== SKENARIO 6: feedback & selesai ===== */}
-      {activeModal === "feedback" && (
-        <FeedbackModal
-          trip={trip}
-          rating={feedback.rating}
-          selectedTags={feedback.selectedTags}
-          onRate={feedback.setRating}
-          onToggleTag={feedback.toggleTag}
-          submitting={submittingFeedback}
-          onSubmit={submitFeedback}
-          onClose={() => !submittingFeedback && setActiveModal(null)}
-        />
-      )}
-
+      {/* ===== MODAL PERJALANAN SELESAI (hanya leg terakhir) ===== */}
       {activeModal === "completed" && (
-        <CompletedModal
-          totalFare={trip.totalFare}
-          rating={feedback.rating}
-          selectedTags={feedback.selectedTags}
-          onFinish={finishTrip}
-        />
+        <CompletedModal totalFare={trip.totalFare} onFinish={finishTrip} />
       )}
     </main>
   );

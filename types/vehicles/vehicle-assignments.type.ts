@@ -18,11 +18,9 @@ export interface VehicleAssignment {
   driver?: Driver;
   routeId: number;
   route?: Route;
-  direction: DirectionType;
   currentPassengers: number;
   assignmentDate: string; 
   startTime: string; 
-  endTime: string; 
   status: AssignmentStatus;
   conductorId?: number;
   conductor?: Conductor;
@@ -35,11 +33,9 @@ export interface CreateVehicleAssignmentInput {
   driverId: number;
   conductorId?: number;
   routeId: number;
-  direction?: DirectionType;
   assignmentDate: string;
   startTime: string;
   currentPassengers?: number;
-  endTime: string;
   status?: AssignmentStatus;
 }
 
