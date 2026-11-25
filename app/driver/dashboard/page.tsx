@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -17,6 +17,7 @@ import {
   FiLoader,
   FiAlertCircle,
   FiRefreshCw,
+  FiList,
 } from "react-icons/fi";
 import { useAuth } from "@/context/AuthContext";
 
@@ -136,7 +137,7 @@ export default function DriverDashboardPage() {
   const [navigatingKey, setNavigatingKey] = useState<string | null>(null);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
-  /* 1. Fetch Penugasan Mendatang dari API Backend */
+  /* 1. Fetch Seluruh Penugasan Mendatang dari API Backend */
   const {
     data: assignments = [],
     isLoading: isAssignmentsLoading,
@@ -182,6 +183,23 @@ export default function DriverDashboardPage() {
     retry: 1,
   });
 
+  /* FILTERING DASHBOARD UTAMA: PENUGASAN KHUSUS HARI INI (TODAY ONLY) */
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+
+  const todayAssignments = useMemo(() => {
+    return assignments.filter((item) => {
+      const itemDate = item.assignmentDate
+        ? item.assignmentDate.split("T")[0]
+        : "";
+      return itemDate === todayStr;
+    });
+  }, [assignments, todayStr]);
+
+  /* Filter Penugasan Berjalan (ONGOING) Pertama Hari Ini */
+  const activeTrip = useMemo(() => {
+    return todayAssignments.find((a) => a.status === AssignmentStatus.ONGOING);
+  }, [todayAssignments]);
+
   /* Profil driver: utamakan hasil endpoint profil, fallback ke data penugasan */
   const driverProfile: DriverData | null =
     fetchedDriverProfile ?? assignments[0]?.driver ?? null;
@@ -203,11 +221,6 @@ export default function DriverDashboardPage() {
     refetchDriverProfile();
   };
 
-  /* Filter Penugasan Berjalan (ONGOING) Pertama */
-  const activeTrip = assignments.find(
-    (a) => a.status === AssignmentStatus.ONGOING,
-  );
-
   /* Handler Navigasi Halaman */
   const goToProfile = () => {
     router.push("/driver/profile");
@@ -217,10 +230,14 @@ export default function DriverDashboardPage() {
     router.push("/driver/history");
   };
 
+  const goToScheduleList = () => {
+    router.push("/driver/upcoming");
+  };
+
   const openMap = (key: string) => {
     if (navigatingKey) return;
     setNavigatingKey(key);
-    router.push("/d2");
+    router.push(`/driver/now?assignmentId=${key}`);
   };
 
   const handleLogout = async () => {
@@ -311,24 +328,36 @@ export default function DriverDashboardPage() {
             </div>
           </div>
 
-          {/* Baris 2: aksi navigasi ke halaman terpisah */}
-          <div className="grid grid-cols-2 gap-0.5 rounded-xl bg-slate-100/80 p-0.5">
-            <button
-              onClick={goToHistory}
-              disabled={isLoading}
-              className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold text-slate-600 transition active:scale-95 active:bg-white disabled:opacity-50"
-            >
-              <FiActivity size={13} className="text-blue-700" />
-              Riwayat Perjalanan
-            </button>
-            <button
-              onClick={goToProfile}
-              disabled={isLoading}
-              className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold text-slate-600 transition active:scale-95 active:bg-white disabled:opacity-50"
-            >
-              <FiEdit3 size={13} className="text-slate-500" />
-              Edit Profil
-            </button>
+          {/* Baris 2: aksi navigasi (Jadwal Lengkap, Riwayat & Profil) */}
+          <div className="mt-2.5 pt-1 border-t border-slate-100">
+            <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-200/60 p-1">
+              <button
+                onClick={goToScheduleList}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-white py-2 text-[10px] font-bold text-blue-700 shadow-xs border border-slate-200/80 transition active:scale-95 disabled:opacity-50"
+              >
+                <FiList size={13} className="text-blue-700" />
+                <span>Jadwal Lengkap</span>
+              </button>
+
+              <button
+                onClick={goToHistory}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-white/70 py-2 text-[10px] font-bold text-slate-700 transition hover:bg-white active:scale-95 active:bg-white disabled:opacity-50"
+              >
+                <FiActivity size={13} className="text-slate-600" />
+                <span>Riwayat</span>
+              </button>
+
+              <button
+                onClick={goToProfile}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-white/70 py-2 text-[10px] font-bold text-slate-700 transition hover:bg-white active:scale-95 active:bg-white disabled:opacity-50"
+              >
+                <FiEdit3 size={13} className="text-slate-500" />
+                <span>Edit Profil</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -406,28 +435,53 @@ export default function DriverDashboardPage() {
             </button>
           </div>
         ) : (
-          /* ============ KONTEN HASIL FETCH API ============ */
+          /* ============ KONTEN HASIL FETCH API (TODAY ONLY) ============ */
           <div className="grid grid-cols-1 items-start gap-3 animate-in fade-in duration-300 md:grid-cols-12">
-            {/* KIRI: RINGKASAN */}
-            <div className="md:col-span-4">
-              <div className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white p-3 shadow-md">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white shadow-md shadow-blue-700/30">
-                  <FiCalendar size={18} />
+            {/* KIRI: RINGKASAN PENUGASAN HARI INI & AKSES JADWAL MULTI-HARI */}
+            <div className="md:col-span-4 space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/80 bg-white p-3 shadow-md">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white shadow-md shadow-blue-700/30">
+                    <FiCalendar size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500">
+                      Penugasan Hari Ini
+                    </p>
+                    <p className="text-lg font-black leading-tight text-blue-900">
+                      {todayAssignments.length} Trayek
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-slate-500">
-                    Penugasan Mendatang
-                  </p>
-                  <p className="text-lg font-black leading-tight text-blue-900">
-                    {assignments.length} Trayek
-                  </p>
+
+                <button
+                  onClick={goToScheduleList}
+                  title="Lihat Semua Jadwal"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition active:scale-95 hover:bg-blue-100"
+                >
+                  <FiChevronRight size={16} />
+                </button>
+              </div>
+
+              {/* CARD BANNER LINK KEU JADWAL BESOK / MULTI-HARI */}
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-blue-900">
+                    Semua Jadwal Penugasan
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
+                    {assignments.length} Total
+                  </span>
                 </div>
+                <p className="text-[10px] text-slate-600 leading-tight">
+                  Lihat agenda operasional mendatang untuk besok dan lusa.
+                </p>
               </div>
             </div>
 
-            {/* KANAN: PENUGASAN & JADWAL */}
+            {/* KANAN: PENUGASAN & JADWAL HARI INI */}
             <div className="space-y-3 md:col-span-8">
-              {/* TRAYEK BERLANGSUNG (ONGOING) */}
+              {/* TRAYEK BERLANGSUNG (ONGOING) HARI INI */}
               {activeTrip && (
                 <div className="rounded-2xl border border-blue-100 bg-white p-3 shadow-lg">
                   <div className="flex items-center justify-between gap-2">
@@ -466,8 +520,7 @@ export default function DriverDashboardPage() {
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] font-semibold text-slate-500">
                     <span className="flex items-center gap-1">
                       <FiClock size={11} />
-                      Jam Mulai: {activeTrip.startTime} WIB (
-                      {formatAssignmentDate(activeTrip.assignmentDate)})
+                      Jam Mulai: {activeTrip.startTime} WIB (Hari Ini)
                     </span>
                     {activeTrip.conductor && (
                       <span className="font-bold text-blue-700">
@@ -477,11 +530,11 @@ export default function DriverDashboardPage() {
                   </div>
 
                   <button
-                    onClick={() => openMap("active")}
+                    onClick={() => openMap(String(activeTrip.id))}
                     disabled={navigatingKey !== null}
                     className="mt-2.5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 text-xs font-bold text-white shadow-lg shadow-blue-700/30 transition active:scale-95 disabled:opacity-80"
                   >
-                    {navigatingKey === "active" ? (
+                    {navigatingKey === String(activeTrip.id) ? (
                       <>
                         <FiLoader size={14} className="animate-spin" />
                         Membuka peta...
@@ -489,32 +542,47 @@ export default function DriverDashboardPage() {
                     ) : (
                       <>
                         <FiNavigation size={14} />
-                        Buka Peta & Kursi
+                        Buka Peta & Kursi Real-Time
                       </>
                     )}
                   </button>
                 </div>
               )}
 
-              {/* DAFTAR PENUGASAN HASIL API */}
+              {/* DAFTAR PENUGASAN HARI INI */}
               <div className="rounded-2xl border border-white/80 bg-white p-3 shadow-md">
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Daftar Penugasan Driver
+                    Penugasan Hari Ini
                   </h2>
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+                  <button
+                    onClick={goToScheduleList}
+                    className="flex items-center gap-1 text-[10px] font-bold text-blue-700 hover:underline"
+                  >
                     <FiCalendar size={11} />
-                    Total {assignments.length} Jadwal
-                  </span>
+                    Lihat Semua ({assignments.length})
+                  </button>
                 </div>
 
-                {assignments.length === 0 ? (
-                  <div className="py-8 text-center text-xs font-medium text-slate-400">
-                    Belum ada penugasan mendatang untuk Anda.
+                {todayAssignments.length === 0 ? (
+                  <div className="py-8 text-center text-xs font-medium text-slate-400 space-y-2">
+                    <p>
+                      Belum ada penugasan operasional untuk hari ini (
+                      {formatAssignmentDate(todayStr)}).
+                    </p>
+                    {assignments.length > 0 && (
+                      <button
+                        onClick={goToScheduleList}
+                        className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700 border border-blue-100 active:scale-95"
+                      >
+                        <FiList size={12} />
+                        Lihat Jadwal Besok / Mendatang
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {assignments.map((item) => {
+                    {todayAssignments.map((item) => {
                       const isOngoing =
                         item.status === AssignmentStatus.ONGOING;
                       const isCompleted =
@@ -575,10 +643,8 @@ export default function DriverDashboardPage() {
                             </p>
                             <p className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400">
                               <FiClock size={10} />
-                              {item.startTime} WIB (
-                              {formatAssignmentDate(item.assignmentDate)}) •{" "}
-                              {item.vehicle.plateNumber} (
-                              {item.vehicle.vehicleCode})
+                              {item.startTime} WIB • {item.vehicle.plateNumber}{" "}
+                              ({item.vehicle.vehicleCode})
                             </p>
                           </div>
 
