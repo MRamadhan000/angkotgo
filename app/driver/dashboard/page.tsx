@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   FiTruck,
   FiClock,
@@ -11,7 +12,6 @@ import {
   FiMapPin,
   FiNavigation,
   FiActivity,
-  FiX,
   FiLogOut,
   FiUser,
   FiLoader,
@@ -129,96 +129,79 @@ const formatAssignmentDate = (dateStr: string) => {
 
 export default function DriverDashboardPage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading: isAuthLoading } = useAuth();
 
-  // State Data backend
-  const [assignments, setAssignments] = useState<ApiVehicleAssignment[]>([]);
-  const [driverProfile, setDriverProfile] = useState<DriverData | null>(null);
-
-  // Loading States
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Navigation & Logout Modal State
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  // Errors & Navigation State
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [navigatingKey, setNavigatingKey] = useState<string | null>(null);
-
-  // Logout Modal State
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   /* 1. Fetch Penugasan Mendatang dari API Backend */
-  const fetchUpcomingAssignments = useCallback(
-    async (userId: number | string) => {
-      try {
-        setFetchError(null);
-        const res = await fetch(
-          `http://localhost:3001/vehicle-assignments/upcoming?role=DRIVER&userId=${userId}`,
-        );
+  const {
+    data: assignments = [],
+    isLoading: isAssignmentsLoading,
+    isFetching: isAssignmentsFetching,
+    isError: isAssignmentsError,
+    error: assignmentsError,
+    refetch: refetchAssignments,
+  } = useQuery<ApiVehicleAssignment[]>({
+    queryKey: ["driver-upcoming-assignments", user?.id],
+    queryFn: async () => {
+      const res = await fetch(
+        `http://localhost:3001/vehicle-assignments/upcoming?role=DRIVER&userId=${user?.id}`,
+      );
 
-        if (!res.ok) {
-          throw new Error(`Gagal mengambil data penugasan (${res.status})`);
-        }
-
-        const responseData = await res.json();
-        const listData: ApiVehicleAssignment[] = responseData.data || [];
-        setAssignments(listData);
-
-        // Ambil data profil driver riil dari item penugasan pertama jika tersedia
-        if (listData.length > 0 && listData[0].driver) {
-          setDriverProfile(listData[0].driver);
-        }
-      } catch (err: any) {
-        console.error("Error fetching assignments:", err);
-        setFetchError(err.message || "Terjadi kesalahan jaringan ke backend.");
+      if (!res.ok) {
+        throw new Error(`Gagal mengambil data penugasan (${res.status})`);
       }
+
+      const responseData = await res.json();
+      return responseData.data || [];
     },
-    [],
-  );
+    enabled: !!user?.id,
+    retry: 1,
+  });
 
-  /* 2. Fetch Profil Detail Driver dari API Backend jika penugasan kosong */
-  const fetchDriverProfile = useCallback(async (userId: number | string) => {
-    try {
-      const res = await fetch(`http://localhost:3001/drivers/${userId}`);
-      if (res.ok) {
-        const responseData = await res.json();
-        const data: DriverData = responseData.data || responseData;
-        setDriverProfile(data);
-      }
-    } catch (err) {
-      console.error("Error fetching driver profile:", err);
-    }
-  }, []);
+  /* 2. Fetch Profil Detail Driver dari API Backend */
+  const {
+    data: fetchedDriverProfile = null,
+    isLoading: isProfileLoading,
+    isFetching: isProfileFetching,
+    refetch: refetchDriverProfile,
+  } = useQuery<DriverData | null>({
+    queryKey: ["driver-profile", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:3001/drivers/${user?.id}`);
 
-  /* Load Data saat User Auth Tersedia */
-  useEffect(() => {
-    let isMounted = true;
-    const initFetch = async () => {
-      setIsLoading(true);
-      if (user?.id) {
-        await Promise.all([
-          fetchUpcomingAssignments(user.id),
-          fetchDriverProfile(user.id),
-        ]);
-      }
-      if (isMounted) setIsLoading(false);
-    };
+      if (!res.ok) return null;
 
-    initFetch();
-    return () => {
-      isMounted = false;
-    };
-  }, [user, fetchUpcomingAssignments, fetchDriverProfile]);
+      const responseData = await res.json();
+      return responseData.data || responseData;
+    },
+    enabled: !!user?.id,
+    retry: 1,
+  });
+
+  /* Profil driver: utamakan hasil endpoint profil, fallback ke data penugasan */
+  const driverProfile: DriverData | null =
+    fetchedDriverProfile ?? assignments[0]?.driver ?? null;
+
+  /* Loading & Refresh States */
+  const isLoading =
+    isAuthLoading || isAssignmentsLoading || isProfileLoading;
+  const isRefreshing = isAssignmentsFetching || isProfileFetching;
+
+  const fetchError = isAssignmentsError
+    ? assignmentsError instanceof Error
+      ? assignmentsError.message
+      : "Terjadi kesalahan jaringan ke backend."
+    : null;
 
   /* Refresh Manual */
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     if (!user?.id) return;
-    setIsRefreshing(true);
-    await Promise.all([
-      fetchUpcomingAssignments(user.id),
-      fetchDriverProfile(user.id),
-    ]);
-    setIsRefreshing(false);
+    refetchAssignments();
+    refetchDriverProfile();
   };
 
   /* Filter Penugasan Berjalan (ONGOING) Pertama */

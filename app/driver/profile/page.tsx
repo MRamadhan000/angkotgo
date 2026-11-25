@@ -19,7 +19,8 @@ import {
   FiAward,
 } from "react-icons/fi";
 import { useAuth } from "@/context/AuthContext";
-import { useDriverDetail } from "@/hooks/useDrivers";
+import { useDriverDetail, useUpdateDriver } from "@/hooks/useDrivers";
+import type { UpdateDriverInput } from "@/types/driver.type";
 
 export interface BankAccountInfo {
   bankName: string;
@@ -72,13 +73,16 @@ export default function EditDriverProfilePage() {
     data: driver,
     isLoading: loading,
     error: driverError,
+    refetch,
+    isFetching,
   } = useDriverDetail(user?.id ?? null);
+
+  const updateDriverMutation = useUpdateDriver();
 
   const router = useRouter();
 
   const [formData, setFormData] =
     useState<DriverProfileFormData>(INITIAL_FORM_STATE);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -141,14 +145,30 @@ export default function EditDriverProfilePage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  /* Submit Form (Connect to NestJS PATCH /drivers/profile) */
+  /* Submit Form (PATCH /drivers/:id via TanStack Query) */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    if (!user?.id) {
+      showToast("ID driver tidak tersedia. Silakan login ulang.", "error");
+      return;
+    }
+
+    const payload: UpdateDriverInput = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      licenseNumber: formData.licenseNumber,
+      licenseExpiryDate: formData.licenseExpiryDate,
+      address: formData.address,
+      photoUrl: formData.photoUrl,
+      bankAccountInfo: formData.bankAccountInfo,
+    };
 
     try {
-      // API integration call (e.g., updateDriverProfile(formData))
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await updateDriverMutation.mutateAsync({
+        id: user.id,
+        data: payload,
+      });
 
       showToast("Profil Driver berhasil diperbarui!", "success");
       setTimeout(() => {
@@ -156,11 +176,16 @@ export default function EditDriverProfilePage() {
       }, 1200);
     } catch (err) {
       console.error(err);
-      showToast("Gagal mengupdate profil. Periksa jaringan Anda.", "error");
-    } finally {
-      setIsSubmitting(false);
+      showToast(
+        err instanceof Error
+          ? err.message
+          : "Gagal mengupdate profil. Periksa jaringan Anda.",
+        "error",
+      );
     }
   };
+
+  const isSubmitting = updateDriverMutation.isPending;
 
   /* Handling State Loading & Error */
   if (loading) {
@@ -181,11 +206,21 @@ export default function EditDriverProfilePage() {
             Gagal Memuat Data
           </h2>
           <p className="text-xs text-slate-500">
-            Terjadi kesalahan saat mengambil profil driver.
+            {driverError instanceof Error
+              ? driverError.message
+              : "Terjadi kesalahan saat mengambil profil driver."}
           </p>
           <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white transition active:scale-95 hover:bg-slate-800 disabled:opacity-60"
+          >
+            {isFetching && <FiLoader size={13} className="animate-spin" />}
+            {isFetching ? "Memuat..." : "Coba Lagi"}
+          </button>
+          <button
             onClick={() => router.back()}
-            className="w-full rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white transition active:scale-95 hover:bg-slate-800"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 transition active:scale-95 hover:bg-slate-50"
           >
             Kembali
           </button>

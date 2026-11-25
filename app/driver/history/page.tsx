@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   FiArrowLeft,
   FiClock,
@@ -170,11 +171,7 @@ export default function TripHistoryPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [trips, setTrips] = useState<ApiVehicleAssignmentHistory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<StatusFilter>("ALL");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -182,49 +179,41 @@ export default function TripHistoryPage() {
     useState<ApiVehicleAssignmentHistory | null>(null);
 
   /* Fetch Riwayat Penugasan dari API Backend */
-  const fetchAssignmentHistory = useCallback(
-    async (userId: number | string) => {
-      try {
-        setFetchError(null);
-        const res = await fetch(
-          `http://localhost:3001/vehicle-assignments/history?role=DRIVER&userId=${userId}`,
-        );
+  const {
+    data: trips = [],
+    isLoading,
+    isFetching: isRefreshing,
+    isError,
+    error,
+    refetch,
+  } = useQuery<ApiVehicleAssignmentHistory[]>({
+    queryKey: ["driver-trip-history", user?.id],
+    queryFn: async () => {
+      const res = await fetch(
+        `http://localhost:3001/vehicle-assignments/history?role=DRIVER&userId=${user?.id}`,
+      );
 
-        if (!res.ok) {
-          throw new Error(`Gagal mengambil data riwayat (${res.status})`);
-        }
-
-        const responseData = await res.json();
-        setTrips(responseData.data || []);
-      } catch (err: any) {
-        console.error("Error fetching trip history:", err);
-        setFetchError(err.message || "Terjadi kesalahan koneksi ke server.");
+      if (!res.ok) {
+        throw new Error(`Gagal mengambil data riwayat (${res.status})`);
       }
+
+      const responseData = await res.json();
+      return responseData.data || [];
     },
-    [],
-  );
+    enabled: !!user?.id,
+    retry: 1,
+  });
 
-  useEffect(() => {
-    let isMounted = true;
-    const initFetch = async () => {
-      setIsLoading(true);
-      if (user?.id) {
-        await fetchAssignmentHistory(user.id);
-      }
-      if (isMounted) setIsLoading(false);
-    };
+  const fetchError =
+    isError && error
+      ? error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan koneksi ke server."
+      : null;
 
-    initFetch();
-    return () => {
-      isMounted = false;
-    };
-  }, [user, fetchAssignmentHistory]);
-
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     if (!user?.id) return;
-    setIsRefreshing(true);
-    await fetchAssignmentHistory(user.id);
-    setIsRefreshing(false);
+    refetch();
   };
 
   /* Filter Data */
