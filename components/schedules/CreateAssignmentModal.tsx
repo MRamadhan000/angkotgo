@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   FiPlus,
   FiX,
@@ -26,6 +26,19 @@ interface CreateAssignmentModalProps {
   onSuccess: (data: CreateVehicleAssignmentInput) => Promise<void> | void;
 }
 
+/**
+ * Mendapatkan string tanggal hari ini (YYYY-MM-DD) berdasarkan zona waktu Malang / Asia/Jakarta (WIB)
+ */
+function getTodayMalangDateKey(): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(new Date());
+}
+
 export default function CreateAssignmentModal({
   isOpen,
   onClose,
@@ -37,7 +50,8 @@ export default function CreateAssignmentModal({
   const { data: conductors = [], isLoading: loadingConductors } =
     useConductors();
 
-  const todayString = new Date().toISOString().split("T")[0];
+  // Tanggal hari ini menggunakan Zona Waktu Malang (WIB)
+  const todayString = useMemo(() => getTodayMalangDateKey(), []);
 
   const [formData, setFormData] = useState<CreateVehicleAssignmentInput>({
     vehicleId: 0,
@@ -205,7 +219,7 @@ export default function CreateAssignmentModal({
                 <option value="">
                   {loadingConductors
                     ? "Memuat kondektur..."
-                    : "-- Pilih Kondektur (Opsional) --"}
+                    : "-- Pilih Kondektur --"}
                 </option>
                 {conductors.map((c) => (
                   <option key={c.id} value={c.id}>

@@ -10,6 +10,18 @@ export enum AssignmentStatus {
   CANCELLED = "CANCELLED",
 }
 
+export type PersonnelAssignmentRole = "DRIVER" | "CONDUCTOR";
+
+export interface UpcomingVehicleAssignment {
+  id: number;
+  assignmentDate: string;
+  startTime: string;
+  status: AssignmentStatus;
+  direction?: DirectionType;
+  route?: Pick<Route, "code" | "name" | "direction">;
+  vehicle?: Pick<Vehicle, "plateNumber" | "vehicleCode">;
+}
+
 export interface VehicleAssignment {
   id: number;
   vehicleId: number;

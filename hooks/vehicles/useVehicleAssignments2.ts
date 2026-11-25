@@ -6,6 +6,7 @@ import { vehicleAssignmentService } from "@/services/vehicles/vehicleAssignmentS
 
 import {
   CreateVehicleAssignmentInput,
+  PersonnelAssignmentRole,
   UpdateVehicleAssignmentInput,
 } from "@/types/vehicles/vehicle-assignments.type";
 
@@ -31,6 +32,11 @@ export const vehicleAssignmentKeys = {
   // Key untuk daftar assignment/schedule berbasis tanggal
   byDate: (date: string) =>
     [...vehicleAssignmentKeys.all, "by-date", date] as const,
+
+  upcoming: (
+    userId: string | number | undefined,
+    role: PersonnelAssignmentRole | null,
+  ) => [...vehicleAssignmentKeys.all, "upcoming", userId ?? null, role] as const,
 
   detail: (id: number) => [...vehicleAssignmentKeys.all, "detail", id] as const,
 
@@ -67,8 +73,25 @@ export function useVehicleAssignmentsByDate(date?: string) {
 
   return useQuery({
     queryKey: vehicleAssignmentKeys.byDate(targetDate),
-    queryFn: () => vehicleAssignmentService.getSchedulesByDate(targetDate),
+    queryFn: () => vehicleAssignmentService.getByDate(targetDate),
     enabled: !!targetDate,
+  });
+}
+
+export function useUpcomingVehicleAssignments(
+  userId: string | number | undefined,
+  role: PersonnelAssignmentRole | null,
+) {
+  return useQuery({
+    queryKey: vehicleAssignmentKeys.upcoming(userId, role),
+    queryFn: () => {
+      if (!userId || !role) {
+        throw new Error("ID pengguna dan role wajib diisi.");
+      }
+
+      return vehicleAssignmentService.getUpcomingAssignments(userId, role);
+    },
+    enabled: Boolean(userId && role),
   });
 }
 
