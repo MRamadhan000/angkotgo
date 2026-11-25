@@ -187,8 +187,7 @@ export default function DriverDashboardPage() {
     fetchedDriverProfile ?? assignments[0]?.driver ?? null;
 
   /* Loading & Refresh States */
-  const isLoading =
-    isAuthLoading || isAssignmentsLoading || isProfileLoading;
+  const isLoading = isAuthLoading || isAssignmentsLoading || isProfileLoading;
   const isRefreshing = isAssignmentsFetching || isProfileFetching;
 
   const fetchError = isAssignmentsError
