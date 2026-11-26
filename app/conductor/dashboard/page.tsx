@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import {
   FaMapMarkedAlt,
@@ -8,16 +8,17 @@ import {
   FaUserAlt,
   FaArrowRight,
   FaCalendarAlt,
-  FaClock,
-  FaBus,
   FaSignOutAlt,
 } from "react-icons/fa";
 import { HiOutlineCalendar, HiOutlineCash } from "react-icons/hi";
 
 import { useAuth } from "@/context/AuthContext";
-import { usePersonnelSchedule } from "@/hooks/vehicles/usePersonalSchedules";
-import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
+import { useUpcomingVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments2";
 import { AssignmentStatus } from "@/types/vehicles/vehicle.type";
+import {
+  PersonnelAssignmentRole,
+  UpcomingVehicleAssignment,
+} from "@/types/vehicles/vehicle-assignments.type";
 
 function getTodayDateKey(): string {
   const now = new Date();
@@ -35,53 +36,46 @@ function getDateKey(value: string | Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function CurrentScheduleWidget({ userId }: { userId: string | number }) {
-  const {
-    activeSchedule,
-    activeLoading,
-    activeError,
-    fetchActiveScheduleByPersonnel,
-  } = usePersonnelSchedule();
+function TodayScheduleWidget({
+  schedules,
+  isLoading,
+  error,
+}: {
+  schedules: UpcomingVehicleAssignment[];
+  isLoading: boolean;
+  error: Error | null;
+}) {
+  const sortedSchedules = useMemo(
+    () => [...schedules].sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [schedules],
+  );
 
-  useEffect(() => {
-    if (userId) {
-      const getTodayDateString = () => new Date().toISOString().split("T")[0];
-      fetchActiveScheduleByPersonnel({
-        targetDate: getTodayDateString(),
-        conductorId: Number(userId),
-      });
-    }
-  }, [userId, fetchActiveScheduleByPersonnel]);
-
-  if (activeLoading) {
+  if (isLoading) {
     return (
       <div className="mb-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-xs animate-pulse text-sm text-gray-400">
-        Memuat jadwal saat ini...
+        Memuat jadwal hari ini...
       </div>
     );
   }
 
-  if (activeError) {
+  if (error) {
     return (
       <div className="mb-6 rounded-3xl border border-rose-100 bg-rose-50 p-6 text-sm text-rose-600">
-        {activeError}
+        {error.message}
       </div>
     );
   }
 
-  const schedule =
-    activeSchedule && activeSchedule.length > 0 ? activeSchedule[0] : null;
-
-  if (!schedule) {
+  if (sortedSchedules.length === 0) {
     return (
       <div className="mb-6 rounded-3xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm font-medium text-gray-400">
-        Tidak ada jadwal penugasan aktif untuk hari ini.
+        Tidak ada jadwal penugasan untuk hari ini.
       </div>
     );
   }
 
   return (
-    <div className="group mb-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-xs transition-all duration-300 hover:border-blue-300 hover:shadow-lg">
+    <div className="mb-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-xs">
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
@@ -89,47 +83,48 @@ function CurrentScheduleWidget({ userId }: { userId: string | number }) {
           </span>
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              Jadwal Saat Ini
+              Jadwal Hari Ini
             </h2>
             <p className="text-xs text-gray-400">
-              Sinkronisasi status penugasan kondektur secara real-time
+              Jadwal penugasan dan status perjalanan Anda
             </p>
           </div>
         </div>
-        <span className="self-start sm:self-auto rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-blue-600 border border-blue-100">
-          ● {schedule.status}
-        </span>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-gray-50/60 border border-gray-100 p-4">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
-              RUTE AKTIF
-            </span>
-            <span className="text-sm font-bold text-slate-900">
-              {schedule.routeCode} - {schedule.routeName}
+      <div className="space-y-3">
+        {sortedSchedules.map((schedule) => (
+          <div
+            key={schedule.id}
+            className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="space-y-1">
+              <p className="font-bold text-slate-900">
+                {schedule.route?.name || "Rute belum ditentukan"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {schedule.route?.code || "-"} · {schedule.startTime} ·{" "}
+                {schedule.vehicle?.plateNumber || "Kendaraan belum ditentukan"}
+                {schedule.vehicle?.vehicleCode
+                  ? ` (${schedule.vehicle.vehicleCode})`
+                  : ""}
+              </p>
+            </div>
+            <span
+              className={`self-start rounded-full border px-3 py-1 text-xs font-bold sm:self-auto ${
+                schedule.status === AssignmentStatus.SCHEDULED
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : schedule.status === AssignmentStatus.ONGOING
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                    : schedule.status === AssignmentStatus.COMPLETED
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-rose-200 bg-rose-50 text-rose-700"
+              }`}
+            >
+              {schedule.status}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
-            <span className="flex items-center gap-1.5">
-              <FaClock className="text-gray-400" /> Waktu: {schedule.startTime}{" "}
-              - {schedule.endTime}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <FaBus className="text-gray-400" /> Kendaraan:{" "}
-              {schedule.vehicle?.plateNumber || "-"}
-            </span>
-          </div>
-        </div>
-
-        <Link
-          href={`/conductor/dashboard/now/${schedule.assignmentId}`}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white transition-all duration-300 hover:bg-blue-700 hover:shadow-md"
-        >
-          Lihat Detail
-          <FaArrowRight className="text-[10px] transition-transform duration-300 group-hover:translate-x-1" />
-        </Link>
+        ))}
       </div>
     </div>
   );
@@ -205,66 +200,33 @@ export default function ConductorDashboardPage({ user, logout }: any) {
   const currentUser = user || authUser;
   const handleLogout = logout || authLogout;
 
+  const assignmentRole: PersonnelAssignmentRole | null =
+    currentUser?.role === "driver"
+      ? "DRIVER"
+      : currentUser?.role === "conductor"
+        ? "CONDUCTOR"
+        : null;
   const {
-    historySchedule,
-    fetchConductorTripHistory: fetchPersonnelTripHistory,
-  } = usePersonnelSchedule() as any;
-
-  // Menggunakan method khusus kondektur dari useVehicleAssignments (atau fallback universal jika ada)
-  const assignmentHook = useVehicleAssignments({ fetchOnMount: false }) as any;
-  const fetchAssignmentHistory =
-    assignmentHook.fetchConductorTripHistory ||
-    assignmentHook.fetchDriverTripHistory;
-  const historyData =
-    assignmentHook.conductorHistory ||
-    assignmentHook.driverHistory ||
-    assignmentHook.history;
-
-  useEffect(() => {
-    if (currentUser?.id) {
-      const numericId = Number(currentUser.id);
-      if (typeof fetchPersonnelTripHistory === "function") {
-        void fetchPersonnelTripHistory(numericId);
-      }
-      if (typeof fetchAssignmentHistory === "function") {
-        fetchAssignmentHistory(numericId);
-      }
-    }
-  }, [currentUser?.id, fetchPersonnelTripHistory, fetchAssignmentHistory]);
-
-  const upcomingCount = useMemo(() => {
-    const list = historyData ?? historySchedule ?? [];
+    data: upcomingAssignments = [],
+    isLoading: upcomingLoading,
+    error: upcomingError,
+  } = useUpcomingVehicleAssignments(currentUser?.id, assignmentRole);
+  const todayAssignments = useMemo(() => {
     const today = getTodayDateKey();
-
-    return list.filter((item: any) => {
-      return (
-        getDateKey(item.date) >= today &&
-        (item.status === AssignmentStatus.SCHEDULED ||
-          item.status === "ONGOING")
-      );
-    }).length;
-  }, [historyData, historySchedule]);
-
-  const tripSummary = useMemo(() => {
-    const list = historyData ?? [];
-    const completed = list.filter(
-      (t: any) => t.status === AssignmentStatus.COMPLETED,
-    ).length;
-    const cancelled = list.filter(
-      (t: any) => t.status === AssignmentStatus.CANCELLED,
-    ).length;
-    const totalIncome = list.reduce(
-      (sum: number, t: any) => sum + Number(t.totalAmount ?? 0),
-      0,
+    return upcomingAssignments.filter(
+      (assignment) => getDateKey(assignment.assignmentDate) === today,
     );
+  }, [upcomingAssignments]);
 
+  // Data dummy sementara untuk statistik pendapatan & trip
+  const tripSummary = useMemo(() => {
     return {
-      total: list.length,
-      completed,
-      cancelled,
-      totalIncome,
+      total: 18,
+      completed: 15,
+      cancelled: 3,
+      totalIncome: 2450000,
     };
-  }, [historyData]);
+  }, []);
 
   // Membersihkan nama agar jika tertulis "Driver X" secara keliru dari state login, otomatis diganti menjadi Kondektur
   const rawName = currentUser?.name || "Kondektur 1";
@@ -320,12 +282,12 @@ export default function ConductorDashboardPage({ user, logout }: any) {
                       <span>Agenda Trip Mendatang</span>
                     </div>
                     <span className="font-bold text-white bg-blue-600/60 px-2 py-0.5 rounded-md">
-                      {upcomingCount} Agenda
+                      {todayAssignments.length} Agenda
                     </span>
                   </div>
                 </div>
 
-                {/* Widget 2: Total Pendapatan Bersih */}
+                {/* Widget 2: Total Pendapatan Bersih (Dummy Data) */}
                 <div className="rounded-2xl bg-blue-950/40 border border-white/10 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -383,9 +345,11 @@ export default function ConductorDashboardPage({ user, logout }: any) {
 
           {/* Right Column: Active Schedule & Main Menu */}
           <div className="lg:col-span-8 space-y-6">
-            {currentUser?.id && (
-              <CurrentScheduleWidget userId={currentUser.id} />
-            )}
+            <TodayScheduleWidget
+              schedules={todayAssignments}
+              isLoading={upcomingLoading}
+              error={upcomingError}
+            />
             <DashboardBody />
           </div>
         </div>

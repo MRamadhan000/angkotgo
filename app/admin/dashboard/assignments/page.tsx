@@ -15,18 +15,22 @@ import {
   FiEdit2,
   FiTrash2,
   FiUserPlus,
+  FiMessageSquare,
+  FiDollarSign,
 } from "react-icons/fi";
-import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
+import {
+  useVehicleAssignmentsByDate,
+  useCreateVehicleAssignment,
+  useUpdateVehicleAssignmentv2,
+  useDeleteVehicleAssignment,
+} from "@/hooks/vehicles/useVehicleAssignments2";
 import DateDropdownModal from "@/components/schedules/DateDropdownModal";
 import CreateAssignmentModal from "@/components/schedules/CreateAssignmentModal";
 import UpdateAssignmentModal from "@/components/schedules/UpdateAssignmentModal";
 import { renderStatusBadge } from "@/components/schedules/StatusBadge";
 import { formatDateLabel } from "@/utils/format-date";
 import { AssignmentStatus, DirectionType } from "@/types/vehicles/vehicle.type";
-import {
-  filterAndSortAssignments,
-  getAvailableAssignmentDates,
-} from "@/utils/assignment.util";
+import { filterAndSortAssignments } from "@/utils/assignment.util";
 import ErrorAlert from "@/components/common/ErrorAlert";
 import {
   CreateVehicleAssignmentInput,
@@ -42,9 +46,24 @@ const ASSIGNMENT_STATUS_FILTERS = [
   { key: AssignmentStatus.CANCELLED, label: "Cancelled" },
 ] as const;
 
+/**
+ * Mendapatkan string tanggal hari ini (YYYY-MM-DD) berdasarkan zona waktu Malang / Asia/Jakarta
+ */
+function getTodayMalangDateKey(): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(new Date());
+}
+
 export default function OperationalBoardPage() {
   const router = useRouter();
-  const todayString = useMemo(() => new Date().toISOString().split("T")[0], []);
+
+  // Menggunakan tanggal hari ini berdasarkan zona waktu Asia/Jakarta (Malang)
+  const todayString = useMemo(() => getTodayMalangDateKey(), []);
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
@@ -60,25 +79,31 @@ export default function OperationalBoardPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const {
-    assignments,
-    loading,
+    data: assignmentsData,
+    isLoading: loading,
     error,
-    fetchAssignments,
-    createAssignment,
-    updateAssignment,
-    deleteAssignment,
-  } = useVehicleAssignments();
+    refetch,
+  } = useVehicleAssignmentsByDate(selectedDate);
+
+  const createAssignmentMutation = useCreateVehicleAssignment();
+  const updateAssignmentMutation = useUpdateVehicleAssignmentv2();
+  const deleteAssignmentMutation = useDeleteVehicleAssignment();
+
+  // Type assertion ke VehicleAssignment[]
+  const assignments = useMemo(
+    () => (assignmentsData || []) as unknown as VehicleAssignment[],
+    [assignmentsData],
+  );
 
   const handleRefresh = () => {
-    fetchAssignments();
+    refetch();
   };
 
   const handleCreateAssignment = async (
     newAssignmentData: CreateVehicleAssignmentInput,
   ) => {
     try {
-      await createAssignment(newAssignmentData);
-      fetchAssignments();
+      await createAssignmentMutation.mutateAsync(newAssignmentData);
     } catch (err: any) {
       throw new Error(
         err?.message || "Gagal menyimpan data penugasan kendaraan.",
@@ -102,8 +127,10 @@ export default function OperationalBoardPage() {
     };
 
     try {
-      await updateAssignment(numericId, payload);
-      fetchAssignments();
+      await updateAssignmentMutation.mutateAsync({
+        id: numericId,
+        data: payload,
+      });
     } catch (err: any) {
       throw new Error(
         err?.message || "Gagal memperbarui data penugasan kendaraan.",
@@ -131,8 +158,7 @@ export default function OperationalBoardPage() {
     }
 
     try {
-      await deleteAssignment(numericId);
-      fetchAssignments();
+      await deleteAssignmentMutation.mutateAsync(numericId);
     } catch (err: any) {
       alert(err?.message || "Gagal menghapus data penugasan kendaraan.");
     }
@@ -143,11 +169,7 @@ export default function OperationalBoardPage() {
     setIsUpdateModalOpen(true);
   };
 
-  const availableDates = useMemo(
-    () => getAvailableAssignmentDates(assignments ?? [], todayString),
-    [assignments, todayString],
-  );
-
+  // Filter & Sort Flat List
   const processedAssignments = useMemo(() => {
     return filterAndSortAssignments({
       assignments,
@@ -195,7 +217,6 @@ export default function OperationalBoardPage() {
             setSelectedDate={setSelectedDate}
             isDropdownOpen={isDropdownOpen}
             setIsDropdownOpen={setIsDropdownOpen}
-            availableDates={availableDates}
             assignments={assignments}
             todayString={todayString}
           />
@@ -218,7 +239,13 @@ export default function OperationalBoardPage() {
         </div>
       </div>
 
-      {error && <ErrorAlert message={`Gagal memuat data: ${error}`} />}
+      {error && (
+        <ErrorAlert
+          message={`Gagal memuat data: ${
+            error instanceof Error ? error.message : "Terjadi kesalahan"
+          }`}
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:grid-cols-2 lg:items-center">
         <div className="relative w-full">
@@ -248,14 +275,14 @@ export default function OperationalBoardPage() {
       {/* TABLE CONTAINER */}
       <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-center border-collapse">
             <thead>
               <tr className="bg-gray-50/70 border-b border-gray-200 text-gray-500 text-xs font-bold uppercase tracking-wider">
                 <th
                   onClick={() => handleSortChange("vehicle")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                  className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-center gap-1.5">
                     <span>Unit Kendaraan</span>
                     {sortField === "vehicle" &&
                       (sortDirection === "asc" ? (
@@ -267,10 +294,10 @@ export default function OperationalBoardPage() {
                 </th>
                 <th
                   onClick={() => handleSortChange("time")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                  className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
                 >
-                  <div className="flex items-center gap-1.5">
-                    <span>Waktu / Sesi</span>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span>Jam Keberangkatan</span>
                     {sortField === "time" &&
                       (sortDirection === "asc" ? (
                         <FiArrowUp className="w-3.5 h-3.5 text-gray-800" />
@@ -281,9 +308,9 @@ export default function OperationalBoardPage() {
                 </th>
                 <th
                   onClick={() => handleSortChange("driver")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                  className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-center gap-1.5">
                     <span>Pengemudi (Driver)</span>
                     {sortField === "driver" &&
                       (sortDirection === "asc" ? (
@@ -295,9 +322,9 @@ export default function OperationalBoardPage() {
                 </th>
                 <th
                   onClick={() => handleSortChange("conductor")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                  className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-center gap-1.5">
                     <span>Conductor</span>
                     {sortField === "conductor" &&
                       (sortDirection === "asc" ? (
@@ -307,12 +334,12 @@ export default function OperationalBoardPage() {
                       ))}
                   </div>
                 </th>
-                <th className="py-4 px-6">Rute Perjalanan</th>
+                <th className="py-4 px-6 text-center">Rute Perjalanan</th>
                 <th
                   onClick={() => handleSortChange("direction")}
-                  className="py-4 px-6 cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
+                  className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-center gap-1.5">
                     <span>Arah (Direction)</span>
                     {sortField === "direction" &&
                       (sortDirection === "asc" ? (
@@ -322,7 +349,7 @@ export default function OperationalBoardPage() {
                       ))}
                   </div>
                 </th>
-                <th className="py-4 px-6 text-center">Pemasukan</th>
+                <th className="py-4 px-6 text-center">Laporan & Ulasan</th>
                 <th
                   onClick={() => handleSortChange("status")}
                   className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
@@ -343,14 +370,14 @@ export default function OperationalBoardPage() {
             <tbody className="divide-y divide-gray-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center text-gray-400">
+                  <td colSpan={9} className="py-20 text-center text-gray-400">
                     Memuat data operasional...
                   </td>
                 </tr>
               ) : processedAssignments.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="py-20 text-center text-gray-400 italic"
                   >
                     Tidak ada jadwal penugasan operasional yang cocok dengan
@@ -361,178 +388,182 @@ export default function OperationalBoardPage() {
                   </td>
                 </tr>
               ) : (
-                processedAssignments.map((item) => {
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => handleRowClick(item)}
-                      className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
-                      title="Klik untuk mengedit penugasan"
-                    >
-                      {/* Vehicle */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 group-hover:bg-blue-100 group-hover:text-blue-700 text-gray-700 shrink-0 transition-colors">
-                            <FiTruck className="h-5 w-5" />
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="font-mono font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                              {item.vehicle?.vehicleCode || "UNIT-XX"} {item.id}
-                            </p>
-
-                            <p className="text-xs text-gray-500">
-                              {item.vehicle?.plateNumber || "-"}
-                            </p>
-
-                            <span
-                              className={`mt-1 inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                                item.vehicle?.type === "PREMIUM"
-                                  ? "bg-amber-100 text-amber-800 border-amber-300"
-                                  : "bg-emerald-100 text-emerald-700 border-emerald-200"
-                              }`}
-                            >
-                              {item.vehicle?.type || "-"}
-                            </span>
-                          </div>
+                processedAssignments.map((item) => (
+                  <tr
+                    key={item.id}
+                    onClick={() => handleRowClick(item)}
+                    className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                    title="Klik untuk mengedit penugasan"
+                  >
+                    {/* Vehicle */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 group-hover:bg-blue-100 group-hover:text-blue-700 text-gray-700 shrink-0 transition-colors">
+                          <FiTruck className="h-5 w-5" />
                         </div>
-                      </td>
 
-                      {/* Schedule */}
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          <span className="inline-flex rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-medium text-gray-700">
-                            {item.startTime || "--:--"} -{" "}
-                            {item.endTime || "--:--"}
-                          </span>
+                        <div className="min-w-0 text-center">
+                          <p className="font-mono font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {item.vehicle?.vehicleCode || "UNIT-XX"} {item.id}
+                          </p>
 
                           <p className="text-xs text-gray-500">
-                            {item.assignmentDate}
+                            {item.vehicle?.plateNumber || "-"}
                           </p>
                         </div>
-                      </td>
+                      </div>
+                    </td>
 
-                      {/* Driver */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
-                            <FiUser className="h-4 w-4 text-gray-500" />
-                          </div>
+                    {/* Schedule */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <span className="inline-flex rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-medium text-gray-700">
+                          {item.startTime || "--:--"}
+                        </span>
+                      </div>
+                    </td>
 
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900">
-                              {item.driver?.name || "Driver"}
-                            </p>
-
-                            <p className="text-xs text-gray-500">
-                              {item.driver?.phone || item.driver?.nik || "-"}
-                            </p>
-                          </div>
+                    {/* Driver */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center justify-center gap-1.5">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
+                          <FiUser className="h-4 w-4 text-gray-500" />
                         </div>
-                      </td>
 
-                      <td className="px-6 py-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
-                            <FiUserPlus className="h-4 w-4 text-gray-500" />
-                          </div>
+                        <div className="min-w-0 text-center">
+                          <p className="font-medium text-gray-900">
+                            {item.driver?.name || "Driver"}
+                          </p>
 
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900">
-                              {item.conductor?.name || "Conductor"}
-                            </p>
-
-                            <p className="text-xs text-gray-500">
-                              {item.conductor?.phone ||
-                                item.conductor?.nik ||
-                                "-"}
-                            </p>
-                          </div>
+                          <p className="text-xs text-gray-500">
+                            {item.driver?.phone || item.driver?.nik || "-"}
+                          </p>
                         </div>
-                      </td>
+                      </div>
+                    </td>
 
-                      {/* Route */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-start gap-2 max-w-xs">
-                          <FiMapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-gray-800">
-                              {item.route?.routeName || "Rute Perjalanan"}
-                            </p>
-
-                            <p className="text-xs text-gray-500">
-                              {item.route?.routeCode || "-"}
-                            </p>
-                          </div>
+                    {/* Conductor */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center justify-center gap-1.5">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
+                          <FiUserPlus className="h-4 w-4 text-gray-500" />
                         </div>
-                      </td>
 
-                      {/* Direction */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <FiNavigation className="h-4 w-4 text-gray-400" />
+                        <div className="min-w-0 text-center">
+                          <p className="font-medium text-gray-900">
+                            {item.conductor?.name || "Conductor"}
+                          </p>
 
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              item.direction === DirectionType.FORWARD
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-orange-50 text-orange-700"
-                            }`}
-                          >
-                            {item.direction}
-                          </span>
+                          <p className="text-xs text-gray-500">
+                            {item.conductor?.phone ||
+                              item.conductor?.nik ||
+                              "-"}
+                          </p>
                         </div>
-                      </td>
+                      </div>
+                    </td>
 
-                      {/* Income */}
-                      <td
-                        className="px-6 py-4 text-center"
-                        onClick={(event) => event.stopPropagation()}
-                      >
+                    {/* Route */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center justify-center gap-1 max-w-xs mx-auto text-center">
+                        <FiMapPin className="h-4 w-4 shrink-0 text-gray-400" />
+
+                        <div className="min-w-0 text-center">
+                          <p className="truncate font-medium text-gray-800">
+                            {item.route?.name || "Rute Perjalanan"}
+                          </p>
+
+                          <p className="text-xs text-gray-500">
+                            {item.route?.code || "-"}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Direction */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <FiNavigation className="h-4 w-4 text-gray-400" />
+
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            item.route?.direction === DirectionType.FORWARD
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-orange-50 text-orange-700"
+                          }`}
+                        >
+                          {item.route?.direction || "-"}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Reports & Feedbacks Buttons */}
+                    <td
+                      className="px-6 py-4 text-center"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        {/* Keuangan / Pemasukan */}
                         <button
                           type="button"
                           onClick={() =>
                             router.push(
-                              `/admin/dashboard/assignments/${item.id}?date=${encodeURIComponent(item.assignmentDate)}&vehicle=${encodeURIComponent(item.vehicle?.vehicleCode || "")}`,
+                              `/admin/dashboard/assignments/${item.id}/payment`,
                             )
                           }
-                          className="inline-flex items-center justify-center rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                          title="Lihat Keuangan Penugasan"
                         >
-                          Detail
+                          <FiDollarSign className="w-3.5 h-3.5" />
+                          <span>Keuangan</span>
                         </button>
-                      </td>
 
-                      {/* Status */}
-                      <td className="px-6 py-4 text-center">
-                        {renderStatusBadge(item.status)}
-                      </td>
+                        {/* Ulasan / Feedbacks */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/admin/dashboard/assignments/${item.id}/feedbacks`,
+                            )
+                          }
+                          className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                          title="Lihat Ulasan Penumpang"
+                        >
+                          <FiMessageSquare className="w-3.5 h-3.5" />
+                          <span>Ulasan</span>
+                        </button>
+                      </div>
+                    </td>
 
-                      {/* Actions */}
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRowClick(item);
-                            }}
-                            className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                            title="Edit"
-                          >
-                            <FiEdit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteAssignment(e, item.id)}
-                            className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                            title="Hapus"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                    {/* Status */}
+                    <td className="px-6 py-4 text-center">
+                      {renderStatusBadge(item.status)}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRowClick(item);
+                          }}
+                          className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                          title="Edit"
+                        >
+                          <FiEdit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteAssignment(e, item.id)}
+                          className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                          title="Hapus"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
