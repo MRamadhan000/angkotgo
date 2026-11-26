@@ -63,6 +63,25 @@ interface ApiPayment {
   updatedAt: string;
 }
 
+/* ---- ADD: halte dari response ---- */
+interface ApiHalte {
+  id: number;
+  name: string;
+  latitude: string; // dari API berupa string
+  longitude: string;
+  isTransit: boolean;
+  description: string | null;
+}
+
+interface ApiRouteHalte {
+  id: number;
+  routeId: number;
+  halteId: number;
+  polylineIndex: number;
+  stopSequence: number;
+  halte: ApiHalte;
+}
+
 interface ApiRoute {
   id: number;
   code: string;
@@ -72,7 +91,21 @@ interface ApiRoute {
   encodedPolyline: string;
   totalDistanceMeters: number;
   isActive: boolean;
+  routeHaltes?: ApiRouteHalte[]; // ADD
 }
+
+// ADD: view model halte yang sudah dirapikan
+interface HalteView {
+  id: number;
+  seq: number;
+  polylineIndex: number;
+  name: string;
+  isTransit: boolean;
+  description: string | null;
+  lat: number;
+  lng: number;
+}
+type HalteStatus = "passed" | "next" | "upcoming";
 
 interface ApiVehicle {
   id: number;
@@ -194,6 +227,9 @@ const postVehicleLocation = (body: CreateVehicleLocationBody) =>
 
 const LOCATION_POST_INTERVAL_MS = 5000;
 
+/* ---- ADD: mode simulasi (dev only) ---- */
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 /* ---- ADD: trim polyline sesuai posisi driver ---- */
 const PASS_RADIUS_M = 25; // titik dianggap terlewati jika driver <= 25 m
 const OFF_ROUTE_M = 60; // jika > 60 m dari rute, jangan trim (menyimpang / GPS noise)
@@ -228,6 +264,23 @@ function distanceMeters(a: LatLngLit, b: LatLngLit) {
 
 const vertexKey = (lat: number, lng: number) =>
   `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+/* ---- ADD: icon marker halte sesuai status ---- */
+function halteIcon(status: HalteStatus): google.maps.Symbol {
+  const style = {
+    passed: { fill: "#94a3b8", scale: 11 },
+    next: { fill: "#f59e0b", scale: 15 },
+    upcoming: { fill: "#7c3aed", scale: 12 },
+  }[status];
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    scale: style.scale,
+    fillColor: style.fill,
+    fillOpacity: 1,
+    strokeColor: "#ffffff",
+    strokeWeight: 3,
+  };
+}
 
 /* =========================================================
 3. HOOKS TANSTACK QUERY
@@ -320,6 +373,8 @@ function DriverObservationContent() {
   const [isLocating, setIsLocating] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [position, setPosition] = useState(DEFAULT_CENTER);
+  // ADD: mode simulasi — posisi ditentukan dengan tap di peta (dev)
+  const [isSimMode, setIsSimMode] = useState(false);
 
   // Status Change Modal
   const [pendingStatus, setPendingStatus] = useState<AssignmentStatus | null>(
@@ -361,6 +416,11 @@ function DriverObservationContent() {
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null); // ✅ feedback error map
 
+  // ADD: marker halte, info window, & progres segmen rute yang sudah dilewati
+  const halteMarkers = useRef<Map<number, google.maps.Marker>>(new Map());
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const [passedSeg, setPassedSeg] = useState(0);
+
   /* ---------------------------------------------------------
      DERIVED DATA
   --------------------------------------------------------- */
@@ -375,6 +435,12 @@ function DriverObservationContent() {
   useEffect(() => {
     freeLookRef.current = isDrivingMode && !isFocusMode;
   }, [isDrivingMode, isFocusMode]);
+
+  // ADD: ref agar callback GPS & listener peta tahu mode simulasi terbaru
+  const simModeRef = useRef(false);
+  useEffect(() => {
+    simModeRef.current = isSimMode;
+  }, [isSimMode]);
 
   const maxCapacity = data?.vehicle.capacity ?? 0;
   const currentPassengers = data?.currentPassengers ?? 0;
@@ -405,6 +471,41 @@ function DriverObservationContent() {
       totalSeatsPaid: Math.round(total / FIXED_FARE),
     };
   }, [payments]);
+
+  // ADD: daftar halte berurutan
+  const haltes = useMemo<HalteView[]>(
+    () =>
+      (data?.route.routeHaltes ?? [])
+        .map((rh) => ({
+          id: rh.halteId,
+          seq: rh.stopSequence,
+          polylineIndex: rh.polylineIndex,
+          name: rh.halte.name,
+          isTransit: rh.halte.isTransit,
+          description: rh.halte.description,
+          lat: Number(rh.halte.latitude),
+          lng: Number(rh.halte.longitude),
+        }))
+        .filter((h) => Number.isFinite(h.lat) && Number.isFinite(h.lng))
+        .sort((a, b) => a.seq - b.seq),
+    [data?.route.routeHaltes],
+  );
+
+  const trackProgress = isGpsActive && isDrivingMode;
+
+  const nextHalte = useMemo(
+    () =>
+      trackProgress
+        ? haltes.find((h) => h.polylineIndex > passedSeg)
+        : undefined,
+    [haltes, passedSeg, trackProgress],
+  );
+
+  const getHalteStatus = (h: HalteView): HalteStatus => {
+    if (!trackProgress) return "upcoming";
+    if (h.polylineIndex <= passedSeg) return "passed";
+    return h.seq === nextHalte?.seq ? "next" : "upcoming";
+  };
 
   /* ---------------------------------------------------------
      TOAST
@@ -631,6 +732,7 @@ function DriverObservationContent() {
         strokeColor: routeColor,
         strokeOpacity: 0.9,
         strokeWeight: 5,
+        clickable: false, // ADD: agar tap di atas rute tetap tembus ke peta (mode simulasi)
       });
 
       if (!isGpsActive && path.length > 0) {
@@ -655,6 +757,13 @@ function DriverObservationContent() {
     markerInstance.current?.setPosition(newPos);
     // ADD: jika fokus dimatikan saat jalan, peta tidak mengikuti otomatis
     if (!freeLookRef.current) mapInstance.current?.panTo(newPos);
+  };
+
+  // ADD: set posisi manual (mode simulasi)
+  const applySimPosition = (lat: number, lng: number) => {
+    if (!simModeRef.current) return;
+    setPosition({ lat, lng });
+    markerInstance.current?.setPosition({ lat, lng });
   };
 
   /* ---------------------------------------------------------
@@ -683,6 +792,7 @@ function DriverObservationContent() {
         }
         watchPositionId.current = navigator.geolocation.watchPosition(
           (watchPos) => {
+            if (simModeRef.current) return; // ADD: abaikan GPS saat simulasi
             const { latitude: wLat, longitude: wLng } = watchPos.coords;
             setPosition({ lat: wLat, lng: wLng });
             updateMapPosition(wLat, wLng);
@@ -776,23 +886,26 @@ function DriverObservationContent() {
     const step = Math.max(1, Math.ceil(coords.length / 150));
     coords.forEach((c, i) => {
       if (i % step !== 0 || i === 0 || i === coords.length - 1) return;
-      markers.push(
-        new google.maps.Marker({
-          map,
-          position: c,
-          clickable: true,
-          title: `${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`,
-          zIndex: 1,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 3.5,
-            fillColor: "#ffffff",
-            fillOpacity: 1,
-            strokeColor: routeColor,
-            strokeWeight: 2,
-          },
-        }),
-      );
+      const dot = new google.maps.Marker({
+        map,
+        position: c,
+        clickable: true,
+        title: `${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`,
+        zIndex: 1,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 3.5,
+          fillColor: "#ffffff",
+          fillOpacity: 1,
+          strokeColor: routeColor,
+          strokeWeight: 2,
+        },
+      });
+      // ADD: tap di titik rute juga memindahkan posisi saat simulasi
+      dot.addListener("click", (e: google.maps.MapMouseEvent) => {
+        if (e.latLng) applySimPosition(e.latLng.lat(), e.latLng.lng());
+      });
+      markers.push(dot);
     });
 
     // Marker awal (A) & akhir (B)
@@ -851,6 +964,82 @@ function DriverObservationContent() {
   }, [mapReady, encodedPolyline, routeColor]);
 
   /* ---------------------------------------------------------
+     ADD: MARKER HALTE (bernomor sesuai urutan)
+  --------------------------------------------------------- */
+  const focusHalte = (h: HalteView) => {
+    const map = mapInstance.current;
+    const marker = halteMarkers.current.get(h.id);
+    if (!map || !marker) return;
+
+    map.panTo({ lat: h.lat, lng: h.lng });
+    map.setZoom(17);
+
+    // DOM + textContent → aman dari XSS
+    const box = document.createElement("div");
+    box.style.cssText = "font-family:sans-serif;max-width:200px";
+    const title = document.createElement("strong");
+    title.style.fontSize = "12px";
+    title.textContent = `${h.seq}. ${h.name}`;
+    box.appendChild(title);
+    if (h.isTransit) {
+      const badge = document.createElement("div");
+      badge.style.cssText = "font-size:10px;color:#7c3aed;margin-top:2px";
+      badge.textContent = "Halte transit";
+      box.appendChild(badge);
+    }
+    infoWindowRef.current?.setContent(box);
+    infoWindowRef.current?.open({ map, anchor: marker });
+  };
+
+  // Buat marker halte
+  useEffect(() => {
+    if (!mapReady || !mapInstance.current || haltes.length === 0) return;
+
+    const map = mapInstance.current;
+    const infoWindow = new google.maps.InfoWindow();
+    infoWindowRef.current = infoWindow;
+
+    const created = new Map<number, google.maps.Marker>();
+    haltes.forEach((h) => {
+      const marker = new google.maps.Marker({
+        map,
+        position: { lat: h.lat, lng: h.lng },
+        title: `${h.seq}. ${h.name}`,
+        zIndex: 10, // di atas marker A/B & titik rute
+        label: {
+          text: String(h.seq),
+          color: "#ffffff",
+          fontWeight: "bold",
+          fontSize: "12px",
+        },
+        icon: halteIcon("upcoming"),
+      });
+      marker.addListener("click", () => focusHalte(h));
+      created.set(h.id, marker);
+    });
+    halteMarkers.current = created;
+
+    return () => {
+      created.forEach((m) => m.setMap(null));
+      halteMarkers.current = new Map();
+      infoWindow.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, haltes]);
+
+  // Update warna marker: terlewati (abu) / berikutnya (kuning, besar) / akan datang (ungu)
+  useEffect(() => {
+    haltes.forEach((h) => {
+      const m = halteMarkers.current.get(h.id);
+      if (!m) return;
+      const s = getHalteStatus(h);
+      m.setIcon(halteIcon(s));
+      m.setZIndex(s === "next" ? 20 : 10);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [haltes, mapReady, passedSeg, trackProgress]);
+
+  /* ---------------------------------------------------------
      ADD: TRIM POLYLINE — hanya tampilkan rute yang belum dilewati
   --------------------------------------------------------- */
   const pathRef = useRef<LatLngLit[]>([]);
@@ -860,6 +1049,7 @@ function DriverObservationContent() {
   // Decode sekali per rute, reset progres
   useEffect(() => {
     progressRef.current = { seg: 0, t: 0 };
+    setPassedSeg(0); // ADD
     if (!mapReady || !encodedPolyline) {
       pathRef.current = [];
       return;
@@ -898,6 +1088,7 @@ function DriverObservationContent() {
       const prog = progressRef.current;
       if (prog.seg !== 0 || prog.t !== 0) {
         progressRef.current = { seg: 0, t: 0 };
+        setPassedSeg(0); // ADD
         poly.setPath(path);
         applyMarkers(0, 0);
       }
@@ -943,10 +1134,59 @@ function DriverObservationContent() {
     if (seg === prog.seg && t < prog.t) return;
 
     progressRef.current = { seg, t };
+    setPassedSeg(seg); // ADD
     poly.setPath([snap, ...path.slice(seg + 1)]);
     applyMarkers(seg, t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position, isGpsActive, isDrivingMode, mapReady, encodedPolyline]);
+
+  /* ---------------------------------------------------------
+     ADD: MODE SIMULASI (dev) — tap di peta untuk pindah posisi
+  --------------------------------------------------------- */
+  const toggleSimMode = () => {
+    if (!isSimMode) {
+      if (watchPositionId.current !== null) {
+        navigator.geolocation.clearWatch(watchPositionId.current);
+        watchPositionId.current = null;
+      }
+      simModeRef.current = true;
+      setIsSimMode(true);
+      setIsGpsActive(true); // lolos gate "GPS wajib" & aktifkan kirim lokasi
+      setGpsError(null);
+      setIsGpsModalOpen(false);
+
+      // mulai dari titik awal rute
+      const start = pathRef.current[0];
+      if (start) {
+        setPosition(start);
+        markerInstance.current?.setPosition(start);
+        mapInstance.current?.panTo(start);
+      }
+      showToast("Mode simulasi aktif. Tap peta untuk pindah posisi.", "info");
+    } else {
+      simModeRef.current = false;
+      setIsSimMode(false);
+      setIsGpsActive(false);
+      setIsGpsModalOpen(true);
+      showToast("Simulasi dimatikan. Aktifkan GPS lagi.", "warning");
+    }
+  };
+
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!mapReady || !map) return;
+    map.setOptions({ draggableCursor: isSimMode ? "crosshair" : null });
+    if (!isSimMode) return;
+
+    const listener = map.addListener(
+      "click",
+      (e: google.maps.MapMouseEvent) => {
+        if (e.latLng) applySimPosition(e.latLng.lat(), e.latLng.lng());
+      },
+    );
+    return () => listener.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, isSimMode]);
 
   /* ---------------------------------------------------------
      STATUS CHANGE
@@ -1231,7 +1471,7 @@ function DriverObservationContent() {
               <FiCompass
                 className={`h-3 w-3 ${isGpsActive ? "text-emerald-600" : "text-rose-600"}`}
               />
-              {isGpsActive ? "GPS On" : "GPS Off"}
+              {isSimMode ? "Simulasi" : isGpsActive ? "GPS On" : "GPS Off"}
             </button>
           </div>
 
@@ -1325,6 +1565,24 @@ function DriverObservationContent() {
         </button>
       )}
 
+      {/* ADD: BADGE MODE SIMULASI */}
+      {isSimMode && !isSheetFull && (
+        <button
+          type="button"
+          onClick={() => setIsGpsModalOpen(true)}
+          className="fixed left-2.5 z-20 flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/95 px-3 py-2 text-[11px] font-bold text-violet-700 shadow-lg backdrop-blur-xl active:scale-95"
+          style={{
+            bottom: sheetH + 10,
+            transition: isDragging
+              ? "none"
+              : "bottom 260ms cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+        >
+          <FiTarget size={13} />
+          Simulasi: tap peta
+        </button>
+      )}
+
       {/* BOTTOM SHEET */}
       <section
         className="absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-md flex-col rounded-t-3xl border-t border-slate-100 bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.16)]"
@@ -1413,10 +1671,12 @@ function DriverObservationContent() {
                 <FiMapPin className="h-4 w-4 shrink-0 text-blue-700" />
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold text-slate-500">
-                    Sedang jalan
+                    {nextHalte ? "Halte berikutnya" : "Sedang jalan"}
                   </p>
                   <p className="truncate text-xs font-bold text-blue-900">
-                    {data.route.name}
+                    {nextHalte
+                      ? `${nextHalte.seq}. ${nextHalte.name}`
+                      : data.route.name}
                   </p>
                 </div>
               </div>
@@ -1500,6 +1760,96 @@ function DriverObservationContent() {
                   value={data.conductor?.name ?? "-"}
                 />
               </div>
+
+              {/* ADD: URUTAN HALTE (timeline) */}
+              {haltes.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Urutan Halte
+                    </h3>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {haltes.length} halte
+                    </span>
+                  </div>
+
+                  <ol className="rounded-xl border border-slate-100 bg-slate-50 p-2.5">
+                    {haltes.map((h, i) => {
+                      const s = getHalteStatus(h);
+                      const isLast = i === haltes.length - 1;
+                      return (
+                        <li key={h.id} className="relative">
+                          {/* garis penghubung */}
+                          {!isLast && (
+                            <span
+                              className={`absolute left-[13px] top-7 h-[calc(100%-1.25rem)] w-0.5 ${
+                                s === "passed"
+                                  ? "bg-slate-300"
+                                  : "bg-violet-200"
+                              }`}
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              focusHalte(h);
+                              setSheetH(SHEET_COLLAPSED_H); // tutup sheet agar peta terlihat
+                            }}
+                            className="flex w-full items-start gap-2.5 rounded-lg py-1.5 text-left transition active:scale-[0.98]"
+                          >
+                            <span
+                              className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-white text-[11px] font-black text-white shadow ${
+                                s === "passed"
+                                  ? "bg-slate-400"
+                                  : s === "next"
+                                    ? "bg-amber-500 ring-2 ring-amber-200"
+                                    : "bg-violet-600"
+                              }`}
+                            >
+                              {s === "passed" ? (
+                                <FiCheckCircle size={13} />
+                              ) : (
+                                h.seq
+                              )}
+                            </span>
+
+                            <span className="min-w-0 flex-1 pt-0.5">
+                              <span
+                                className={`block truncate text-xs font-bold ${
+                                  s === "passed"
+                                    ? "text-slate-400 line-through"
+                                    : "text-slate-900"
+                                }`}
+                              >
+                                {h.name}
+                              </span>
+                              <span className="mt-0.5 flex flex-wrap items-center gap-1">
+                                {h.isTransit && (
+                                  <span className="rounded bg-violet-100 px-1.5 py-px text-[9px] font-extrabold uppercase text-violet-700">
+                                    Transit
+                                  </span>
+                                )}
+                                {s === "next" && (
+                                  <span className="rounded bg-amber-100 px-1.5 py-px text-[9px] font-extrabold uppercase text-amber-800">
+                                    Berikutnya
+                                  </span>
+                                )}
+                                {s === "passed" && (
+                                  <span className="text-[9px] font-bold text-slate-400">
+                                    Terlewati
+                                  </span>
+                                )}
+                              </span>
+                            </span>
+
+                            <FiMapPin className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-300" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              )}
 
               <button
                 type="button"
@@ -1856,6 +2206,22 @@ function DriverObservationContent() {
                 </>
               )}
             </button>
+
+            {/* ADD: mode simulasi (dev only) */}
+            {IS_DEV && (
+              <button
+                type="button"
+                onClick={toggleSimMode}
+                className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border text-[11px] font-bold transition active:scale-95 ${
+                  isSimMode
+                    ? "border-violet-300 bg-violet-100 text-violet-700"
+                    : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}
+              >
+                <FiTarget size={13} />
+                {isSimMode ? "Matikan Simulasi" : "Mode Simulasi (Dev)"}
+              </button>
+            )}
 
             {/* ✅ Tombol tutup hanya muncul setelah GPS aktif */}
             {isGpsActive ? (
