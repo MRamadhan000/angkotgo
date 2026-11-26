@@ -67,6 +67,14 @@ export default function AdminDashboardPage() {
   const [isHalteModalOpen, setIsHalteModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
+  // Listener event dari lonceng notifikasi di TopBar atas
+  React.useEffect(() => {
+    const handleOpenReviews = () => setIsReviewModalOpen(true);
+    window.addEventListener("open-admin-reviews", handleOpenReviews);
+    return () =>
+      window.removeEventListener("open-admin-reviews", handleOpenReviews);
+  }, []);
+
   const reviews = reviewsResponse?.data || [];
 
   // Helper format tanggal lengkap untuk header
@@ -322,13 +330,20 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Status Server Dishub */}
+          <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-600 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="hidden sm:inline text-slate-500">Status:</span>
+            <span className="font-semibold text-slate-700">Server Dishub</span>
+          </div>
+
           {/* Tanggal Picker / Info Popover */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setIsCalendarOpen((prev) => !prev)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 hover:bg-blue-50/70 border border-slate-200/80 hover:border-blue-300 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-700 shadow-sm transition-all group cursor-pointer"
+              className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-blue-50/70 border border-slate-200/80 hover:border-blue-300 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-700 shadow-xs transition-all group cursor-pointer"
               title="Klik untuk memilih tanggal operasional"
             >
               <FaCalendarCheck className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
@@ -348,31 +363,11 @@ export default function AdminDashboardPage() {
             />
           </div>
 
-          {/* Notifikasi Bell */}
-          <button
-            onClick={() => setIsReviewModalOpen(true)}
-            className="relative p-2.5 bg-white border border-slate-200/80 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-sm transition-all"
-            title="Keluhan & Notifikasi"
-          >
-            <FaBell className="w-4 h-4" />
-            {lowReviews.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-bounce">
-                {lowReviews.length}
-              </span>
-            )}
-          </button>
-
-          {/* Status Server Dishub */}
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-600 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="hidden md:inline">Server Dishub</span> Terhubung
-          </div>
-
           {/* Tombol Refresh */}
           <button
             onClick={handleRefresh}
-            className="p-2.5 bg-white border border-slate-200/80 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-all"
-            title="Segarkan Data"
+            className="p-2.5 bg-white border border-slate-200/80 hover:border-blue-300 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50/50 shadow-xs transition-all cursor-pointer"
+            title="Segarkan Data Operasional"
           >
             <FaSync className={`w-3.5 h-3.5 ${statsLoading || assignmentsLoading ? "animate-spin text-blue-600" : ""}`} />
           </button>
