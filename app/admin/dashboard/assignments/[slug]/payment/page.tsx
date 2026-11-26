@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   QueryClient,
@@ -12,7 +12,6 @@ import {
   FiRefreshCw,
   FiDollarSign,
   FiCreditCard,
-  FiUsers,
   FiTrendingUp,
   FiDownload,
   FiCalendar,
@@ -27,6 +26,16 @@ import {
   FiUserCheck,
   FiMapPin,
   FiUser,
+  FiBarChart2,
+  FiCopy,
+  FiCheck,
+  FiChevronLeft,
+  FiChevronRight,
+  FiChevronUp,
+  FiChevronDown,
+  FiX,
+  FiAward,
+  FiInbox,
 } from "react-icons/fi";
 
 /* =========================================================
@@ -117,6 +126,9 @@ export interface ApiResponse<T> {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const TICKET_PRICE = 5000;
 
+const QRIS_COLOR = "#2563EB";
+const CASH_COLOR = "#F59E0B";
+
 async function fetchAssignmentPayments(
   assignmentId: number,
 ): Promise<ApiPayment[]> {
@@ -165,16 +177,28 @@ export default function AssignmentFinanceAnalyticsPage() {
    4. MAIN DASHBOARD CONTENT
    ========================================================= */
 
+type SortKey = "paidAt" | "amount";
+type SortDir = "asc" | "desc";
+
 function FinanceAnalyticsContent() {
   const router = useRouter();
   const params = useParams<{ id?: string }>();
   const assignmentId = Number(params?.id ?? 10);
 
-  // States Filter & Search
+  // States Filter, Search, Sort & Pagination
   const [searchTerm, setSearchTerm] = useState("");
   const [methodFilter, setMethodFilter] = useState<"ALL" | PaymentMethod>(
     "ALL",
   );
+  const [selectedBucket, setSelectedBucket] = useState<number | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("paidAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // UI States
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // TanStack Query
   const {
@@ -184,10 +208,12 @@ function FinanceAnalyticsContent() {
     error,
     refetch,
     isFetching,
+    dataUpdatedAt,
   } = useQuery({
     queryKey: ["assignment-payments", assignmentId],
     queryFn: () => fetchAssignmentPayments(assignmentId),
     enabled: Number.isFinite(assignmentId),
+    refetchInterval: autoRefresh ? 10_000 : false,
   });
 
   /* ---------------------------------------------------------
@@ -234,28 +260,121 @@ function FinanceAnalyticsContent() {
       totalPaidSeats,
       qrisPercentage,
       cashPercentage,
+      averageTicket:
+        totalTransactions > 0 ? totalIncome / totalTransactions : 0,
     };
   }, [payments]);
 
-  // Filtered Payments Table Data
-  const filteredPayments = useMemo(() => {
-    return payments.filter((p) => {
+  // Bucket waktu untuk grafik
+  const { buckets, bucketMs } = useMemo(
+    () => buildBuckets(payments),
+    [payments],
+  );
+
+  const activeBucket = useMemo(
+    () => buckets.find((b) => b.start === selectedBucket) ?? null,
+    [buckets, selectedBucket],
+  );
+
+  // Insight ringkas
+  const insights = useMemo(() => {
+    if (payments.length === 0) return null;
+    let largest = payments[0];
+    let latest = payments[0];
+    for (const p of payments) {
+      if (Number(p.amount) > Number(largest.amount)) largest = p;
+      if (new Date(p.paidAt).getTime() > new Date(latest.paidAt).getTime())
+        latest = p;
+    }
+    let peak: Bucket | null = null;
+    for (const b of buckets) {
+      if (b.total > 0 && (!peak || b.total > peak.total)) peak = b;
+    }
+    return { largest, latest, peak };
+  }, [payments, buckets]);
+
+  // Filter -> Sort
+  const sortedPayments = useMemo(() => {
+    const searchLower = searchTerm.trim().toLowerCase();
+    const digits = searchLower.replace(/\D/g, "");
+
+    const list = payments.filter((p) => {
       const matchesMethod =
         methodFilter === "ALL" || p.paymentMethod === methodFilter;
-      const searchLower = searchTerm.toLowerCase();
+
+      const t = new Date(p.paidAt).getTime();
+      const matchesBucket =
+        !activeBucket || (t >= activeBucket.start && t < activeBucket.end);
+
       const matchesSearch =
+        searchLower === "" ||
         p.id.toLowerCase().includes(searchLower) ||
-        (p.transactionId &&
-          p.transactionId.toLowerCase().includes(searchLower)) ||
-        p.amount.includes(searchLower);
+        (p.transactionId?.toLowerCase().includes(searchLower) ?? false) ||
+        (digits.length > 0 &&
+          String(Math.round(Number(p.amount))).includes(digits));
 
-      return matchesMethod && matchesSearch;
+      return matchesMethod && matchesBucket && matchesSearch;
     });
-  }, [payments, methodFilter, searchTerm]);
 
-  // Export Data to CSV
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      if (sortKey === "amount") return (Number(a.amount) - Number(b.amount)) * dir;
+      return (
+        (new Date(a.paidAt).getTime() - new Date(b.paidAt).getTime()) * dir
+      );
+    });
+  }, [payments, methodFilter, activeBucket, searchTerm, sortKey, sortDir]);
+
+  const filteredTotal = useMemo(
+    () => sortedPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0),
+    [sortedPayments],
+  );
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sortedPayments.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * pageSize;
+  const pagedPayments = sortedPayments.slice(pageStart, pageStart + pageSize);
+
+  // Reset ke halaman 1 saat filter/sort berubah
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, methodFilter, selectedBucket, sortKey, sortDir, pageSize]);
+
+  const hasActiveFilter =
+    methodFilter !== "ALL" || activeBucket !== null || searchTerm.trim() !== "";
+
+  const resetAllFilters = () => {
+    setMethodFilter("ALL");
+    setSelectedBucket(null);
+    setSearchTerm("");
+  };
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const toggleMethod = (m: PaymentMethod) =>
+    setMethodFilter((prev) => (prev === m ? "ALL" : m));
+
+  const copyRef = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedId(value);
+      setTimeout(() => setCopiedId((c) => (c === value ? null : c)), 1500);
+    } catch {
+      /* clipboard tidak tersedia */
+    }
+  };
+
+  // Export Data to CSV (mengikuti filter yang aktif)
   const exportToCSV = () => {
-    if (payments.length === 0) return;
+    if (sortedPayments.length === 0) return;
 
     const headers = [
       "Penugasan ID",
@@ -266,7 +385,7 @@ function FinanceAnalyticsContent() {
       "Waktu Pembayaran",
     ];
 
-    const rows = payments.map((p) => [
+    const rows = sortedPayments.map((p) => [
       p.vehicleAssignmentId,
       p.paymentMethod,
       Number(p.amount),
@@ -275,32 +394,28 @@ function FinanceAnalyticsContent() {
       new Date(p.paidAt).toLocaleString("id-ID"),
     ]);
 
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const csv = [headers, ...rows]
+      .map((r) => r.map(csvCell).join(","))
+      .join("\n");
 
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute(
-      "download",
-      `laporan_keuangan_assignment_${assignmentId}.csv`,
-    );
+    link.href = url;
+    link.download = `laporan_keuangan_assignment_${assignmentId}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   /* ---------------------------------------------------------
      LOADING & ERROR STATES
   --------------------------------------------------------- */
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-slate-50 text-slate-500 font-sans">
-        <FiRefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-        <p className="text-sm font-semibold">Memuat Statistik Keuangan...</p>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (isError) {
@@ -344,24 +459,56 @@ function FinanceAnalyticsContent() {
       --------------------------------------------------------- */}
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 active:scale-95"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 active:scale-95"
               title="Kembali"
             >
               <FiArrowLeft size={18} />
             </button>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-black tracking-tight text-slate-900 sm:text-lg">
-                  Statistik Keuangan Penugasan
+                <h1 className="truncate text-base font-black tracking-tight text-slate-900 sm:text-lg">
+                  Statistik Keuangan Penugasan #{assignmentId}
                 </h1>
               </div>
+              <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                <FiClock className="h-3 w-3" />
+                Diperbarui {dataUpdatedAt ? formatClock(dataUpdatedAt) : "-"}
+                {isFetching && (
+                  <span className="font-bold text-blue-600">• memuat…</span>
+                )}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex shrink-0 items-center gap-2.5">
+            <button
+              onClick={() => setAutoRefresh((v) => !v)}
+              aria-pressed={autoRefresh}
+              title="Perbarui otomatis tiap 10 detik"
+              className={`flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition active:scale-95 ${
+                autoRefresh
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                {autoRefresh && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                )}
+                <span
+                  className={`relative inline-flex h-2 w-2 rounded-full ${
+                    autoRefresh ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                />
+              </span>
+              <span className="hidden sm:inline">
+                {autoRefresh ? "Live" : "Auto"}
+              </span>
+            </button>
+
             <button
               onClick={() => refetch()}
               disabled={isFetching}
@@ -375,11 +522,16 @@ function FinanceAnalyticsContent() {
 
             <button
               onClick={exportToCSV}
-              disabled={payments.length === 0}
+              disabled={sortedPayments.length === 0}
               className="flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <FiDownload className="h-3.5 w-3.5" />
-              <span>Ekspor CSV</span>
+              <span>
+                Ekspor CSV
+                {hasActiveFilter && sortedPayments.length > 0
+                  ? ` (${sortedPayments.length})`
+                  : ""}
+              </span>
             </button>
           </div>
         </div>
@@ -476,12 +628,14 @@ function FinanceAnalyticsContent() {
         )}
 
         {/* ---------------------------------------------------------
-            EXECUTIVE STATS OVERVIEW CARDS
+            EXECUTIVE STATS OVERVIEW CARDS (QRIS & CASH BISA DIKLIK = FILTER)
         --------------------------------------------------------- */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Card Total Pemasukan */}
           <div className="relative overflow-hidden rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 text-white shadow-lg shadow-emerald-600/20">
-            <div className="flex items-center justify-between">
+            <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
+            <div className="pointer-events-none absolute -bottom-8 -right-2 h-20 w-20 rounded-full bg-white/10" />
+            <div className="relative flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-wider text-emerald-100">
                 Total Pendapatan
               </p>
@@ -489,10 +643,10 @@ function FinanceAnalyticsContent() {
                 <FiDollarSign className="h-5 w-5 text-white" />
               </div>
             </div>
-            <h3 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
-              Rp {stats.totalIncome.toLocaleString("id-ID")}
+            <h3 className="relative mt-2 text-2xl font-black tracking-tight tabular-nums sm:text-3xl">
+              <AnimatedNumber value={stats.totalIncome} prefix="Rp " />
             </h3>
-            <p className="mt-2 text-[11px] font-medium text-emerald-100 flex items-center gap-1">
+            <p className="relative mt-2 flex items-center gap-1 text-[11px] font-medium text-emerald-100">
               <FiTrendingUp className="h-3.5 w-3.5" />
               Setara {stats.totalPaidSeats} tiket terbayar (@ Rp{" "}
               {TICKET_PRICE.toLocaleString("id-ID")})
@@ -500,50 +654,32 @@ function FinanceAnalyticsContent() {
           </div>
 
           {/* Card Pendapatan QRIS */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Pendapatan QRIS
-              </p>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <FiCreditCard className="h-5 w-5" />
-              </div>
-            </div>
-            <h3 className="mt-2 text-2xl font-black text-slate-900">
-              Rp {stats.qrisIncome.toLocaleString("id-ID")}
-            </h3>
-            <div className="mt-2 flex items-center justify-between text-[11px]">
-              <span className="font-bold text-blue-600">
-                {stats.qrisPercentage}% dari Total
-              </span>
-              <span className="font-semibold text-slate-400">
-                {stats.qrisCount} Transaksi
-              </span>
-            </div>
-          </div>
+          <MethodCard
+            title="Pendapatan QRIS"
+            amount={stats.qrisIncome}
+            percentage={stats.qrisPercentage}
+            count={stats.qrisCount}
+            color={QRIS_COLOR}
+            icon={<FiCreditCard className="h-5 w-5" />}
+            iconClass="bg-blue-50 text-blue-600"
+            percentClass="text-blue-600"
+            active={methodFilter === "QRIS"}
+            onClick={() => toggleMethod("QRIS")}
+          />
 
           {/* Card Pendapatan Cash */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Pendapatan Cash (Tunai)
-              </p>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                <FiDollarSign className="h-5 w-5" />
-              </div>
-            </div>
-            <h3 className="mt-2 text-2xl font-black text-slate-900">
-              Rp {stats.cashIncome.toLocaleString("id-ID")}
-            </h3>
-            <div className="mt-2 flex items-center justify-between text-[11px]">
-              <span className="font-bold text-amber-600">
-                {stats.cashPercentage}% dari Total
-              </span>
-              <span className="font-semibold text-slate-400">
-                {stats.cashCount} Transaksi
-              </span>
-            </div>
-          </div>
+          <MethodCard
+            title="Pendapatan Cash (Tunai)"
+            amount={stats.cashIncome}
+            percentage={stats.cashPercentage}
+            count={stats.cashCount}
+            color={CASH_COLOR}
+            icon={<FiDollarSign className="h-5 w-5" />}
+            iconClass="bg-amber-50 text-amber-600"
+            percentClass="text-amber-600"
+            active={methodFilter === "CASH"}
+            onClick={() => toggleMethod("CASH")}
+          />
 
           {/* Card Total Transaksi */}
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -555,79 +691,132 @@ function FinanceAnalyticsContent() {
                 <FiPieChart className="h-5 w-5" />
               </div>
             </div>
-            <h3 className="mt-2 text-2xl font-black text-slate-900">
-              {stats.totalTransactions}{" "}
+            <h3 className="mt-2 text-2xl font-black tabular-nums text-slate-900">
+              <AnimatedNumber value={stats.totalTransactions} />{" "}
               <span className="text-sm font-bold text-slate-500">Trx</span>
             </h3>
             <p className="mt-2 text-[11px] font-medium text-slate-400">
               Rata-rata: Rp{" "}
-              {stats.totalTransactions > 0
-                ? Math.round(
-                    stats.totalIncome / stats.totalTransactions,
-                  ).toLocaleString("id-ID")
-                : 0}{" "}
-              / transaksi
+              {Math.round(stats.averageTicket).toLocaleString("id-ID")} /
+              transaksi
             </p>
           </div>
         </div>
 
         {/* ---------------------------------------------------------
-            BREAKDOWN VISUAL BAR RATIO & COMPARISON
+            GRAFIK PENDAPATAN PER WAKTU + DONUT METODE PEMBAYARAN
         --------------------------------------------------------- */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <FiPieChart className="text-blue-600" /> Rasio Metode Pembayaran
-            </h3>
-            <span className="text-xs font-bold text-slate-700">
-              Total {stats.totalTransactions} Transaksi
-            </span>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <FiBarChart2 className="text-blue-600" /> Pendapatan per{" "}
+                {bucketMs >= DAY_MS
+                  ? "Hari"
+                  : bucketMs >= HOUR_MS
+                    ? `${bucketMs / HOUR_MS} Jam`
+                    : `${bucketMs / MIN_MS} Menit`}
+              </h3>
+
+              <div className="flex items-center gap-3 text-[11px] font-bold text-slate-600">
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="h-2.5 w-2.5 rounded-sm"
+                    style={{ backgroundColor: QRIS_COLOR }}
+                  />
+                  QRIS
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="h-2.5 w-2.5 rounded-sm"
+                    style={{ backgroundColor: CASH_COLOR }}
+                  />
+                  Cash
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-0 w-4 border-t-2 border-dashed border-emerald-500" />
+                  Akumulasi
+                </span>
+              </div>
+            </div>
+
+            <p className="mt-0.5 text-[11px] text-slate-400">
+              Arahkan kursor untuk detail, klik batang untuk memfilter tabel.
+            </p>
+
+            <div className="mt-3">
+              <RevenueChart
+                buckets={buckets}
+                bucketMs={bucketMs}
+                selectedStart={activeBucket?.start ?? null}
+                onSelect={(start) =>
+                  setSelectedBucket((prev) => (prev === start ? null : start))
+                }
+                totalIncome={stats.totalIncome}
+              />
+            </div>
+
+            {insights && (
+              <div className="mt-4 grid grid-cols-1 gap-2.5 border-t border-slate-100 pt-4 sm:grid-cols-3">
+                <InsightItem
+                  icon={<FiAward className="text-amber-500" />}
+                  label="Transaksi terbesar"
+                  value={`Rp ${Number(insights.largest.amount).toLocaleString("id-ID")}`}
+                  hint={`${insights.largest.paymentMethod} • ${formatClock(insights.largest.paidAt)}`}
+                />
+                <InsightItem
+                  icon={<FiClock className="text-blue-500" />}
+                  label="Transaksi terakhir"
+                  value={formatClock(insights.latest.paidAt)}
+                  hint={`Rp ${Number(insights.latest.amount).toLocaleString("id-ID")} • ${insights.latest.paymentMethod}`}
+                />
+                <InsightItem
+                  icon={<FiTrendingUp className="text-emerald-500" />}
+                  label="Periode tersibuk"
+                  value={insights.peak ? bucketRange(insights.peak, bucketMs) : "-"}
+                  hint={
+                    insights.peak
+                      ? `Rp ${insights.peak.total.toLocaleString("id-ID")} • ${insights.peak.count} trx`
+                      : ""
+                  }
+                />
+              </div>
+            )}
           </div>
 
-          {/* Visual Progress Bar Ratio */}
-          <div className="h-3.5 w-full overflow-hidden rounded-full bg-slate-100 flex">
-            <div
-              style={{ width: `${stats.qrisPercentage}%` }}
-              className="bg-blue-600 transition-all duration-500"
-              title={`QRIS: ${stats.qrisPercentage}%`}
-            />
-            <div
-              style={{ width: `${stats.cashPercentage}%` }}
-              className="bg-amber-500 transition-all duration-500"
-              title={`Cash: ${stats.cashPercentage}%`}
-            />
-          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <FiPieChart className="text-blue-600" /> Rasio Metode Bayar
+              </h3>
+              <span className="text-[11px] font-bold text-slate-500">
+                {stats.totalTransactions} Trx
+              </span>
+            </div>
 
-          <div className="flex items-center justify-between text-xs font-bold pt-1">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-blue-600 inline-block" />
-              <span className="text-slate-700">
-                QRIS: Rp {stats.qrisIncome.toLocaleString("id-ID")} (
-                {stats.qrisPercentage}%)
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-amber-500 inline-block" />
-              <span className="text-slate-700">
-                Cash: Rp {stats.cashIncome.toLocaleString("id-ID")} (
-                {stats.cashPercentage}%)
-              </span>
-            </div>
+            <MethodDonut
+              qris={stats.qrisIncome}
+              cash={stats.cashIncome}
+              qrisCount={stats.qrisCount}
+              cashCount={stats.cashCount}
+              selected={methodFilter}
+              onToggle={toggleMethod}
+            />
           </div>
         </div>
 
         {/* ---------------------------------------------------------
             TRANSACTIONS TABLE & FILTERS (RINGKAS TANPA UUID)
         --------------------------------------------------------- */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden space-y-4">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
               <h3 className="text-sm font-black text-slate-900">
                 Daftar Riwayat Transaksi
               </h3>
               <p className="text-xs text-slate-500">
-                Menampilkan {filteredPayments.length} dari {payments.length}{" "}
-                total transaksi
+                Menampilkan {sortedPayments.length} dari {payments.length} total
+                transaksi
               </p>
             </div>
 
@@ -641,77 +830,153 @@ function FinanceAnalyticsContent() {
                   placeholder="Cari Ref TRX / Nominal..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 py-1.5 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-1.5 pl-9 pr-8 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    aria-label="Hapus pencarian"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-700"
+                  >
+                    <FiX className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* Filter Metode */}
               <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
                 <FiFilter className="ml-1.5 h-3.5 w-3.5 text-slate-400" />
-                {(["ALL", "QRIS", "CASH"] as const).map((method) => (
-                  <button
-                    key={method}
-                    onClick={() => setMethodFilter(method)}
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
-                      methodFilter === method
-                        ? "bg-white text-blue-700 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    {method}
-                  </button>
-                ))}
+                {(["ALL", "QRIS", "CASH"] as const).map((method) => {
+                  const count =
+                    method === "ALL"
+                      ? payments.length
+                      : method === "QRIS"
+                        ? stats.qrisCount
+                        : stats.cashCount;
+                  return (
+                    <button
+                      key={method}
+                      onClick={() => setMethodFilter(method)}
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                        methodFilter === method
+                          ? "bg-white text-blue-700 shadow-sm"
+                          : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      {method}
+                      <span className="rounded-full bg-slate-100 px-1.5 py-px text-[9px] font-black text-slate-500">
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
 
+          {/* Chips filter aktif */}
+          {hasActiveFilter && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 sm:px-5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Filter aktif
+              </span>
+              {methodFilter !== "ALL" && (
+                <FilterChip
+                  label={`Metode: ${methodFilter}`}
+                  onRemove={() => setMethodFilter("ALL")}
+                />
+              )}
+              {activeBucket && (
+                <FilterChip
+                  label={`Waktu: ${bucketRange(activeBucket, bucketMs)}`}
+                  onRemove={() => setSelectedBucket(null)}
+                />
+              )}
+              {searchTerm.trim() !== "" && (
+                <FilterChip
+                  label={`Cari: "${searchTerm.trim()}"`}
+                  onRemove={() => setSearchTerm("")}
+                />
+              )}
+              <button
+                onClick={resetAllFilters}
+                className="ml-auto text-[11px] font-bold text-blue-700 hover:underline"
+              >
+                Reset semua
+              </button>
+            </div>
+          )}
+
           {/* Table Container */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-y border-slate-100">
+              <thead className="border-y border-slate-100 bg-slate-50/80 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-5 py-3">No</th>
-                  <th className="px-5 py-3">Waktu Transaksi</th>
+                  <SortableTh
+                    label="Waktu Transaksi"
+                    active={sortKey === "paidAt"}
+                    dir={sortDir}
+                    onClick={() => toggleSort("paidAt")}
+                  />
                   <th className="px-5 py-3">Metode</th>
-                  <th className="px-5 py-3">Nominal (Rp)</th>
+                  <SortableTh
+                    label="Nominal (Rp)"
+                    active={sortKey === "amount"}
+                    dir={sortDir}
+                    onClick={() => toggleSort("amount")}
+                  />
                   <th className="px-5 py-3">Porsi Kursi</th>
                   <th className="px-5 py-3">ID Transaksi / Ref</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredPayments.length === 0 ? (
+                {pagedPayments.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-5 py-12 text-center text-slate-400"
+                      className="px-5 py-14 text-center text-slate-400"
                     >
-                      <p className="font-bold text-xs text-slate-600">
-                        Tidak ada transaksi ditemukan
+                      <FiInbox className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                      <p className="text-xs font-bold text-slate-600">
+                        {payments.length === 0
+                          ? "Belum ada transaksi"
+                          : "Tidak ada transaksi ditemukan"}
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Coba ubah kata kunci pencarian atau filter metode
-                        pembayaran
+                      <p className="mt-0.5 text-[11px] text-slate-400">
+                        {payments.length === 0
+                          ? "Transaksi QRIS atau tunai akan muncul di sini."
+                          : "Coba ubah kata kunci pencarian atau filter yang aktif."}
                       </p>
+                      {hasActiveFilter && (
+                        <button
+                          onClick={resetAllFilters}
+                          className="mt-3 rounded-lg bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100"
+                        >
+                          Reset filter
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ) : (
-                  filteredPayments.map((p, idx) => {
+                  pagedPayments.map((p, idx) => {
                     const amountNum = Number(p.amount);
                     const seats = Math.round(amountNum / TICKET_PRICE);
                     const isQris = p.paymentMethod === "QRIS";
+                    const refValue = p.transactionId ?? "";
 
                     return (
                       <tr
                         key={p.id}
-                        className="hover:bg-slate-50/80 transition"
+                        className="transition hover:bg-slate-50/80"
                       >
                         <td className="px-5 py-3.5 font-bold text-slate-400">
-                          {idx + 1}
+                          {pageStart + idx + 1}
                         </td>
-                        <td className="px-5 py-3.5 whitespace-nowrap font-medium text-slate-800">
+                        <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-800">
                           {formatDateTime(p.paidAt)}
                         </td>
-                        <td className="px-5 py-3.5 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-5 py-3.5">
                           <span
                             className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase ${
                               isQris
@@ -727,27 +992,112 @@ function FinanceAnalyticsContent() {
                             {p.paymentMethod}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 font-black text-slate-900 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-5 py-3.5 font-black tabular-nums text-slate-900">
                           Rp {amountNum.toLocaleString("id-ID")}
                         </td>
-                        <td className="px-5 py-3.5 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-5 py-3.5">
                           <span className="font-bold text-slate-700">
                             {seats} Kursi
                           </span>
-                          <span className="text-[10px] text-slate-400 ml-1">
-                            (@ Rp 5.000)
+                          <span className="ml-1 text-[10px] text-slate-400">
+                            (@ Rp {TICKET_PRICE.toLocaleString("id-ID")})
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 font-mono text-[11px] font-bold text-slate-600 whitespace-nowrap">
-                          {p.transactionId ?? "-"}
+                        <td className="whitespace-nowrap px-5 py-3.5">
+                          {refValue ? (
+                            <button
+                              onClick={() => copyRef(refValue)}
+                              title="Salin ID transaksi"
+                              className="group inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-600 transition hover:bg-slate-100"
+                            >
+                              {refValue}
+                              {copiedId === refValue ? (
+                                <FiCheck className="h-3 w-3 text-emerald-600" />
+                              ) : (
+                                <FiCopy className="h-3 w-3 text-slate-300 transition group-hover:text-slate-500" />
+                              )}
+                            </button>
+                          ) : (
+                            <span className="font-mono text-[11px] font-bold text-slate-400">
+                              -
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
                   })
                 )}
               </tbody>
+
+              {sortedPayments.length > 0 && (
+                <tfoot className="border-t border-slate-200 bg-slate-50/80">
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                    >
+                      {hasActiveFilter ? "Subtotal tampilan" : "Total"} (
+                      {sortedPayments.length} trx)
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-3 font-black tabular-nums text-slate-900">
+                      Rp {filteredTotal.toLocaleString("id-ID")}
+                    </td>
+                    <td className="px-5 py-3 font-bold text-slate-600">
+                      {Math.round(filteredTotal / TICKET_PRICE)} Kursi
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
+
+          {/* Pagination */}
+          {sortedPayments.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+                <span>
+                  {pageStart + 1}–
+                  {Math.min(pageStart + pageSize, sortedPayments.length)} dari{" "}
+                  {sortedPayments.length}
+                </span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-600"
+                  aria-label="Jumlah baris per halaman"
+                >
+                  {[10, 25, 50].map((n) => (
+                    <option key={n} value={n}>
+                      {n} / hal
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPage(Math.max(1, safePage - 1))}
+                  disabled={safePage <= 1}
+                  aria-label="Halaman sebelumnya"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <FiChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="min-w-[72px] text-center text-[11px] font-bold text-slate-700">
+                  Hal {safePage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(Math.min(totalPages, safePage + 1))}
+                  disabled={safePage >= totalPages}
+                  aria-label="Halaman berikutnya"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <FiChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -755,8 +1105,814 @@ function FinanceAnalyticsContent() {
 }
 
 /* =========================================================
-   5. HELPER COMPONENTS & UTILS
+   5. CHART COMPONENTS
    ========================================================= */
+
+const MIN_MS = 60_000;
+const HOUR_MS = 60 * MIN_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+interface Bucket {
+  start: number;
+  end: number;
+  qris: number;
+  cash: number;
+  total: number;
+  count: number;
+  qrisCount: number;
+  cashCount: number;
+}
+
+function buildBuckets(payments: ApiPayment[]): {
+  buckets: Bucket[];
+  bucketMs: number;
+} {
+  const times = payments
+    .map((p) => new Date(p.paidAt).getTime())
+    .filter((t) => Number.isFinite(t));
+
+  if (times.length === 0) return { buckets: [], bucketMs: 10 * MIN_MS };
+
+  const min = Math.min(...times);
+  const max = Math.max(...times);
+  const span = max - min;
+
+  let bucketMs =
+    span <= 2 * HOUR_MS
+      ? 10 * MIN_MS
+      : span <= 8 * HOUR_MS
+        ? 30 * MIN_MS
+        : span <= 2 * DAY_MS
+          ? HOUR_MS
+          : DAY_MS;
+
+  const alignStart = (ms: number) => {
+    if (bucketMs >= DAY_MS) {
+      const d = new Date(min);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
+    return Math.floor(ms / bucketMs) * bucketMs;
+  };
+
+  let start = alignStart(min);
+  let count = Math.floor((max - start) / bucketMs) + 1;
+  while (count > 48) {
+    bucketMs *= 2;
+    start = alignStart(min);
+    count = Math.floor((max - start) / bucketMs) + 1;
+  }
+
+  const buckets: Bucket[] = Array.from({ length: count }, (_, i) => ({
+    start: start + i * bucketMs,
+    end: start + (i + 1) * bucketMs,
+    qris: 0,
+    cash: 0,
+    total: 0,
+    count: 0,
+    qrisCount: 0,
+    cashCount: 0,
+  }));
+
+  for (const p of payments) {
+    const t = new Date(p.paidAt).getTime();
+    if (!Number.isFinite(t)) continue;
+    const idx = Math.min(count - 1, Math.max(0, Math.floor((t - start) / bucketMs)));
+    const amt = Number(p.amount) || 0;
+    const b = buckets[idx];
+    b.total += amt;
+    b.count += 1;
+    if (p.paymentMethod === "QRIS") {
+      b.qris += amt;
+      b.qrisCount += 1;
+    } else {
+      b.cash += amt;
+      b.cashCount += 1;
+    }
+  }
+
+  return { buckets, bucketMs };
+}
+
+function bucketLabel(b: Bucket, bucketMs: number) {
+  return bucketMs >= DAY_MS
+    ? new Date(b.start).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+      })
+    : formatHM(b.start);
+}
+
+function bucketRange(b: Bucket, bucketMs: number) {
+  return bucketMs >= DAY_MS
+    ? bucketLabel(b, bucketMs)
+    : `${formatHM(b.start)} – ${formatHM(b.end)}`;
+}
+
+function niceMax(v: number) {
+  if (v <= 0) return 10_000;
+  const pow = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / pow;
+  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+  return nice * pow;
+}
+
+function compactRp(v: number) {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace(".0", "")}jt`;
+  if (v >= 1_000) return `${Math.round(v / 1_000)}rb`;
+  return String(Math.round(v));
+}
+
+function RevenueChart({
+  buckets,
+  bucketMs,
+  selectedStart,
+  onSelect,
+  totalIncome,
+}: {
+  buckets: Bucket[];
+  bucketMs: number;
+  selectedStart: number | null;
+  onSelect: (start: number) => void;
+  totalIncome: number;
+}) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [animated, setAnimated] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnimated(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const W = 640;
+  const H = 240;
+  const padL = 48;
+  const padR = 12;
+  const padT = 16;
+  const padB = 30;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const n = buckets.length;
+
+  if (n === 0) {
+    return (
+      <div className="flex h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center">
+        <FiBarChart2 className="h-7 w-7 text-slate-300" />
+        <p className="mt-2 text-xs font-bold text-slate-600">
+          Belum ada data untuk grafik
+        </p>
+        <p className="text-[11px] text-slate-400">
+          Grafik akan muncul setelah ada transaksi.
+        </p>
+      </div>
+    );
+  }
+
+  const maxVal = niceMax(Math.max(...buckets.map((b) => b.total), 0));
+  const slot = plotW / n;
+  const barW = Math.min(slot * 0.64, 40);
+  const yOf = (v: number) => padT + plotH - (v / maxVal) * plotH;
+  const ticks = [0, 1, 2, 3, 4].map((i) => (maxVal * i) / 4);
+  const labelStep = Math.ceil(n / 8);
+
+  let running = 0;
+  const cumulative = buckets.map((b) => (running += b.total));
+  const cumY = (v: number) =>
+    padT + plotH - (totalIncome > 0 ? (v / totalIncome) * plotH : 0);
+  const centerX = (i: number) => padL + slot * (i + 0.5);
+
+  const hoveredBucket = hovered !== null ? buckets[hovered] : null;
+
+  return (
+    <div className="relative">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="h-auto w-full overflow-visible"
+        role="img"
+        aria-label="Grafik batang pendapatan per periode waktu"
+      >
+        {/* Grid & sumbu Y */}
+        {ticks.map((t) => (
+          <g key={t}>
+            <line
+              x1={padL}
+              x2={W - padR}
+              y1={yOf(t)}
+              y2={yOf(t)}
+              stroke="#E2E8F0"
+              strokeDasharray={t === 0 ? undefined : "3 4"}
+            />
+            <text
+              x={padL - 8}
+              y={yOf(t) + 3}
+              textAnchor="end"
+              fontSize="9"
+              fontWeight="600"
+              fill="#94A3B8"
+            >
+              {compactRp(t)}
+            </text>
+          </g>
+        ))}
+
+        {/* Batang bertumpuk: QRIS (bawah) + Cash (atas) */}
+        {buckets.map((b, i) => {
+          const x = padL + slot * i + (slot - barW) / 2;
+          const hq = (b.qris / maxVal) * plotH;
+          const hc = (b.cash / maxVal) * plotH;
+          const isSelected = selectedStart === b.start;
+          const isDimmed =
+            (selectedStart !== null && !isSelected) ||
+            (hovered !== null && hovered !== i);
+
+          return (
+            <g
+              key={b.start}
+              style={{
+                transformBox: "fill-box",
+                transformOrigin: "bottom",
+                transform: animated ? "scaleY(1)" : "scaleY(0)",
+                transition: `transform 650ms cubic-bezier(0.22, 1, 0.36, 1) ${i * 30}ms, opacity 160ms ease`,
+                opacity: isDimmed ? 0.4 : 1,
+              }}
+            >
+              {b.qris > 0 && (
+                <rect
+                  x={x}
+                  y={yOf(0) - hq}
+                  width={barW}
+                  height={hq}
+                  fill={QRIS_COLOR}
+                  rx={2}
+                />
+              )}
+              {b.cash > 0 && (
+                <rect
+                  x={x}
+                  y={yOf(0) - hq - hc}
+                  width={barW}
+                  height={hc}
+                  fill={CASH_COLOR}
+                  rx={2}
+                />
+              )}
+              {isSelected && (
+                <rect
+                  x={x - 2}
+                  y={yOf(b.total) - 2}
+                  width={barW + 4}
+                  height={(b.total / maxVal) * plotH + 4}
+                  fill="none"
+                  stroke="#0F172A"
+                  strokeWidth={1.5}
+                  rx={4}
+                />
+              )}
+            </g>
+          );
+        })}
+
+        {/* Garis akumulasi */}
+        {n > 1 && (
+          <polyline
+            points={buckets
+              .map((_, i) => `${centerX(i)},${cumY(cumulative[i])}`)
+              .join(" ")}
+            fill="none"
+            stroke="#10B981"
+            strokeWidth={2}
+            strokeDasharray="5 4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              opacity: animated ? 1 : 0,
+              transition: "opacity 600ms ease 400ms",
+            }}
+            pointerEvents="none"
+          />
+        )}
+        {hovered !== null && (
+          <circle
+            cx={centerX(hovered)}
+            cy={cumY(cumulative[hovered])}
+            r={4}
+            fill="#10B981"
+            stroke="#fff"
+            strokeWidth={2}
+            pointerEvents="none"
+          />
+        )}
+
+        {/* Label sumbu X */}
+        {buckets.map((b, i) =>
+          i % labelStep === 0 ? (
+            <text
+              key={b.start}
+              x={centerX(i)}
+              y={H - 10}
+              textAnchor="middle"
+              fontSize="9"
+              fontWeight={hovered === i || selectedStart === b.start ? 800 : 600}
+              fill={hovered === i || selectedStart === b.start ? "#0F172A" : "#94A3B8"}
+            >
+              {bucketLabel(b, bucketMs)}
+            </text>
+          ) : null,
+        )}
+
+        {/* Area interaksi (hover/klik/keyboard) */}
+        {buckets.map((b, i) => (
+          <rect
+            key={`hit-${b.start}`}
+            x={padL + slot * i}
+            y={padT}
+            width={slot}
+            height={plotH}
+            fill="transparent"
+            tabIndex={0}
+            role="button"
+            aria-label={`${bucketRange(b, bucketMs)}: Rp ${b.total.toLocaleString("id-ID")}, ${b.count} transaksi`}
+            aria-pressed={selectedStart === b.start}
+            style={{ cursor: "pointer", outline: "none" }}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+            onFocus={() => setHovered(i)}
+            onBlur={() => setHovered(null)}
+            onClick={() => onSelect(b.start)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(b.start);
+              }
+            }}
+          />
+        ))}
+      </svg>
+
+      {/* Tooltip */}
+      {hoveredBucket && hovered !== null && (
+        <div
+          className="pointer-events-none absolute top-1 z-10 w-44 rounded-xl border border-slate-200 bg-white/95 p-2.5 text-[11px] shadow-xl backdrop-blur"
+          style={{
+            left: `${Math.min(80, Math.max(20, (centerX(hovered) / W) * 100))}%`,
+            transform: "translateX(-50%)",
+          }}
+        >
+          <p className="font-black text-slate-900">
+            {bucketRange(hoveredBucket, bucketMs)}
+          </p>
+          <p className="text-sm font-black tabular-nums text-slate-900">
+            Rp {hoveredBucket.total.toLocaleString("id-ID")}
+          </p>
+          <div className="mt-1.5 space-y-0.5 font-semibold text-slate-600">
+            <p className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-sm"
+                  style={{ backgroundColor: QRIS_COLOR }}
+                />
+                QRIS ({hoveredBucket.qrisCount})
+              </span>
+              <span className="tabular-nums">
+                {hoveredBucket.qris.toLocaleString("id-ID")}
+              </span>
+            </p>
+            <p className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-sm"
+                  style={{ backgroundColor: CASH_COLOR }}
+                />
+                Cash ({hoveredBucket.cashCount})
+              </span>
+              <span className="tabular-nums">
+                {hoveredBucket.cash.toLocaleString("id-ID")}
+              </span>
+            </p>
+            <p className="flex items-center justify-between gap-2 border-t border-slate-100 pt-1 text-emerald-700">
+              <span>Akumulasi</span>
+              <span className="tabular-nums">
+                {cumulative[hovered].toLocaleString("id-ID")}
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MethodDonut({
+  qris,
+  cash,
+  qrisCount,
+  cashCount,
+  selected,
+  onToggle,
+}: {
+  qris: number;
+  cash: number;
+  qrisCount: number;
+  cashCount: number;
+  selected: "ALL" | PaymentMethod;
+  onToggle: (m: PaymentMethod) => void;
+}) {
+  const [hovered, setHovered] = useState<PaymentMethod | null>(null);
+  const [animated, setAnimated] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnimated(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const circumference = 251.327; // 2 * PI * 40
+  const total = qris + cash;
+  const gap = qris > 0 && cash > 0 ? 2 : 0;
+
+  const segments = (() => {
+    let offset = 0;
+    return (
+      [
+        {
+          method: "QRIS" as const,
+          label: "QRIS",
+          amount: qris,
+          count: qrisCount,
+          color: QRIS_COLOR,
+          bar: "bg-blue-600",
+        },
+        {
+          method: "CASH" as const,
+          label: "Cash (Tunai)",
+          amount: cash,
+          count: cashCount,
+          color: CASH_COLOR,
+          bar: "bg-amber-500",
+        },
+      ] as const
+    ).map((s) => {
+      const pct = total > 0 ? s.amount / total : 0;
+      const seg = pct * circumference;
+      const out = {
+        ...s,
+        pct,
+        length: Math.max(0, seg - gap),
+        offset: -offset,
+      };
+      offset += seg;
+      return out;
+    });
+  })();
+
+  const activeMethod = hovered ?? (selected !== "ALL" ? selected : null);
+  const active = segments.find((s) => s.method === activeMethod) ?? null;
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-4">
+      <div className="relative h-40 w-40 shrink-0">
+        <svg
+          className="h-full w-full -rotate-90 overflow-visible"
+          viewBox="0 0 100 100"
+          role="img"
+          aria-label="Donut rasio metode pembayaran"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="40"
+            fill="none"
+            stroke="#F1F5F9"
+            strokeWidth="14"
+          />
+          {[...segments]
+            .filter((s) => s.amount > 0)
+            .sort(
+              (a, b) =>
+                Number(a.method === activeMethod) -
+                Number(b.method === activeMethod),
+            )
+            .map((s) => {
+              const isActive = activeMethod === s.method;
+              const isDimmed = activeMethod !== null && !isActive;
+              return (
+                <circle
+                  key={s.method}
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth={isActive ? 19 : 14}
+                  strokeDasharray={`${animated ? s.length : 0} ${circumference}`}
+                  strokeDashoffset={s.offset}
+                  pointerEvents="stroke"
+                  tabIndex={0}
+                  role="button"
+                  aria-pressed={selected === s.method}
+                  aria-label={`${s.label}: Rp ${s.amount.toLocaleString("id-ID")} (${Math.round(s.pct * 100)}%)`}
+                  opacity={isDimmed ? 0.3 : 1}
+                  onMouseEnter={() => setHovered(s.method)}
+                  onMouseLeave={() => setHovered(null)}
+                  onFocus={() => setHovered(s.method)}
+                  onBlur={() => setHovered(null)}
+                  onClick={() => onToggle(s.method)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onToggle(s.method);
+                    }
+                  }}
+                  style={{
+                    cursor: "pointer",
+                    outline: "none",
+                    transition:
+                      "stroke-dasharray 800ms cubic-bezier(0.22, 1, 0.36, 1), stroke-width 180ms ease, opacity 180ms ease",
+                  }}
+                />
+              );
+            })}
+        </svg>
+
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+          {total === 0 ? (
+            <span className="text-[10px] font-bold text-slate-400">
+              Belum ada transaksi
+            </span>
+          ) : active ? (
+            <>
+              <span
+                className="text-[11px] font-black uppercase tracking-wider"
+                style={{ color: active.color }}
+              >
+                {active.method}
+              </span>
+              <span className="text-sm font-black tabular-nums text-slate-900">
+                Rp {compactRp(active.amount)}
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">
+                {Math.round(active.pct * 100)}% • {active.count} trx
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-[9px] font-bold uppercase text-slate-400">
+                Total
+              </span>
+              <span className="text-base font-black tabular-nums text-slate-900">
+                Rp {compactRp(total)}
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">
+                {qrisCount + cashCount} trx
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Legend interaktif dengan progress bar */}
+      <div className="w-full space-y-2">
+        {segments.map((s) => {
+          const isActive = activeMethod === s.method;
+          const isDimmed = activeMethod !== null && !isActive;
+          return (
+            <button
+              key={s.method}
+              type="button"
+              onMouseEnter={() => setHovered(s.method)}
+              onMouseLeave={() => setHovered(null)}
+              onFocus={() => setHovered(s.method)}
+              onBlur={() => setHovered(null)}
+              onClick={() => onToggle(s.method)}
+              aria-pressed={selected === s.method}
+              className={`w-full rounded-xl border p-2.5 text-left transition active:scale-[0.98] ${
+                isActive
+                  ? "border-slate-300 bg-slate-50 shadow-sm"
+                  : "border-slate-100 hover:bg-slate-50"
+              } ${isDimmed ? "opacity-50" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-2 font-bold text-slate-700">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: s.color }}
+                  />
+                  {s.label}
+                </span>
+                <span className="font-black tabular-nums text-slate-900">
+                  {Math.round(s.pct * 100)}%
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full rounded-full ${s.bar} transition-all duration-700`}
+                  style={{ width: animated ? `${s.pct * 100}%` : "0%" }}
+                />
+              </div>
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                Rp {s.amount.toLocaleString("id-ID")} • {s.count} transaksi
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   6. HELPER COMPONENTS & UTILS
+   ========================================================= */
+
+function useCountUp(target: number, duration = 700) {
+  const [value, setValue] = useState(0);
+  const fromRef = useRef(0);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    const startTime = performance.now();
+    let raf = 0;
+
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - startTime) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const v = from + (target - from) * eased;
+      fromRef.current = v;
+      setValue(v);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+
+  return value;
+}
+
+function AnimatedNumber({
+  value,
+  prefix = "",
+}: {
+  value: number;
+  prefix?: string;
+}) {
+  const v = useCountUp(value);
+  return (
+    <>
+      {prefix}
+      {Math.round(v).toLocaleString("id-ID")}
+    </>
+  );
+}
+
+function MethodCard({
+  title,
+  amount,
+  percentage,
+  count,
+  color,
+  icon,
+  iconClass,
+  percentClass,
+  active,
+  onClick,
+}: {
+  title: string;
+  amount: number;
+  percentage: number;
+  count: number;
+  color: string;
+  icon: React.ReactNode;
+  iconClass: string;
+  percentClass: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      title="Klik untuk memfilter tabel"
+      className={`group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${
+        active ? "border-transparent ring-2" : "border-slate-200/80"
+      }`}
+      style={active ? ({ "--tw-ring-color": color } as React.CSSProperties) : undefined}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          {title}
+        </p>
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconClass}`}
+        >
+          {icon}
+        </div>
+      </div>
+      <h3 className="mt-2 text-2xl font-black tabular-nums text-slate-900">
+        <AnimatedNumber value={amount} prefix="Rp " />
+      </h3>
+      <div className="mt-2 flex items-center justify-between text-[11px]">
+        <span className={`font-bold ${percentClass}`}>
+          {percentage}% dari Total
+        </span>
+        <span className="font-semibold text-slate-400">{count} Transaksi</span>
+      </div>
+      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${percentage}%`, backgroundColor: color }}
+        />
+      </div>
+    </button>
+  );
+}
+
+function InsightItem({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-black tabular-nums text-slate-900">
+        {value}
+      </p>
+      {hint && (
+        <p className="truncate text-[11px] font-medium text-slate-500">
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FilterChip({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 py-0.5 pl-2.5 pr-1 text-[11px] font-bold text-blue-700">
+      {label}
+      <button
+        onClick={onRemove}
+        aria-label={`Hapus filter ${label}`}
+        className="rounded p-0.5 text-blue-500 transition hover:bg-blue-100 hover:text-blue-800"
+      >
+        <FiX className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+function SortableTh({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  onClick: () => void;
+}) {
+  return (
+    <th
+      className="px-5 py-3"
+      aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <button
+        onClick={onClick}
+        className={`inline-flex items-center gap-1 font-bold uppercase tracking-wider transition hover:text-slate-800 ${
+          active ? "text-blue-700" : ""
+        }`}
+      >
+        {label}
+        {active ? (
+          dir === "asc" ? (
+            <FiChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <FiChevronDown className="h-3.5 w-3.5" />
+          )
+        ) : (
+          <FiChevronDown className="h-3.5 w-3.5 opacity-30" />
+        )}
+      </button>
+    </th>
+  );
+}
 
 function MetaItem({
   icon,
@@ -769,13 +1925,61 @@ function MetaItem({
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
         {icon}
         <span>{label}</span>
       </div>
-      <div className="text-xs font-black text-slate-800 truncate">{value}</div>
+      <div className="truncate text-xs font-black text-slate-800">{value}</div>
     </div>
   );
+}
+
+function PageSkeleton() {
+  return (
+    <div className="min-h-screen w-full bg-slate-50/60 pb-12 font-sans">
+      <div className="h-[65px] border-b border-slate-200/80 bg-white/90" />
+      <div className="mx-auto max-w-7xl space-y-6 px-4 pt-6 sm:px-6">
+        <div className="h-20 animate-pulse rounded-2xl bg-slate-200/70" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div
+              key={i}
+              className="h-32 animate-pulse rounded-2xl bg-slate-200/70"
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="h-80 animate-pulse rounded-2xl bg-slate-200/70 lg:col-span-2" />
+          <div className="h-80 animate-pulse rounded-2xl bg-slate-200/70" />
+        </div>
+        <div className="h-72 animate-pulse rounded-2xl bg-slate-200/70" />
+      </div>
+    </div>
+  );
+}
+
+function csvCell(v: string | number) {
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function formatHM(ms: number) {
+  return new Date(ms).toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatClock(input: string | number) {
+  try {
+    return new Date(input).toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return String(input);
+  }
 }
 
 function formatDate(isoDate: string) {

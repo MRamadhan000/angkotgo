@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   QueryClient,
@@ -23,6 +23,8 @@ import {
   FiUserCheck,
   FiTruck,
   FiCompass,
+  FiXCircle,
+  FiPieChart,
 } from "react-icons/fi";
 
 /* =========================================================
@@ -44,7 +46,7 @@ export interface ApiResponse<T> {
 }
 
 /* =========================================================
-   2. CATEGORIZED TAG DEFINITIONS (KATEGORI OFFICIAL)
+   2. CATEGORIZED TAG DEFINITIONS (12 TAG RESMI)
    ========================================================= */
 
 const TAG_CATEGORIES = {
@@ -71,7 +73,6 @@ const TAG_CATEGORIES = {
   },
 };
 
-// Helper untuk mengetahui kategori dari sebuah tag
 function getTagCategoryKey(
   tag: string,
 ): "DRIVER" | "VEHICLE" | "TRIP" | "OTHER" {
@@ -145,6 +146,16 @@ function FeedbackAnalyticsContent() {
   const [ratingFilter, setRatingFilter] = useState<number | "ALL">("ALL");
   const [selectedTag, setSelectedTag] = useState<string | "ALL">("ALL");
 
+  // ADD: state donut interaktif
+  const [hoveredStar, setHoveredStar] = useState<number | null>(null);
+  const [donutAnimated, setDonutAnimated] = useState(false);
+
+  // ADD: animasi "menggambar" donut saat pertama tampil
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setDonutAnimated(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   // TanStack Query
   const {
     data: feedbacks = [],
@@ -171,6 +182,7 @@ function FeedbackAnalyticsContent() {
         distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
         positiveCount: 0,
         negativeCount: 0,
+        neutralCount: 0,
         tagCounts: {} as Record<string, number>,
       };
     }
@@ -179,6 +191,7 @@ function FeedbackAnalyticsContent() {
     const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
     let positiveCount = 0;
     let negativeCount = 0;
+    let neutralCount = 0;
     const tagCounts: Record<string, number> = {};
 
     for (const f of feedbacks) {
@@ -187,7 +200,8 @@ function FeedbackAnalyticsContent() {
         dist[f.rating as keyof typeof dist] += 1;
       }
       if (f.rating >= 4) positiveCount += 1;
-      if (f.rating <= 2) negativeCount += 1;
+      else if (f.rating <= 2) negativeCount += 1;
+      else neutralCount += 1;
 
       for (const tag of f.tags || []) {
         tagCounts[tag] = (tagCounts[tag] || 0) + 1;
@@ -202,6 +216,7 @@ function FeedbackAnalyticsContent() {
       distribution: dist,
       positiveCount,
       negativeCount,
+      neutralCount,
       tagCounts,
     };
   }, [feedbacks]);
@@ -220,6 +235,69 @@ function FeedbackAnalyticsContent() {
       return matchesRating && matchesTag && matchesSearch;
     });
   }, [feedbacks, ratingFilter, selectedTag, searchTerm]);
+
+  // Calculations for Donut SVG
+  const donutSegments = useMemo(() => {
+    if (analytics.total === 0) return [];
+
+    // Total perimeter for r=40 is 2 * PI * 40 ≈ 251.327
+    const circumference = 251.327;
+    let currentOffset = 0;
+
+    const colors = {
+      5: "#10B981", // Emerald
+      4: "#3B82F6", // Blue
+      3: "#F59E0B", // Amber
+      2: "#F97316", // Orange
+      1: "#EF4444", // Red
+    };
+
+    const labels = {
+      5: "Sangat puas",
+      4: "Puas",
+      3: "Biasa",
+      2: "Kurang puas",
+      1: "Tidak puas",
+    };
+
+    // ADD: celah kecil antar segmen jika ada lebih dari satu segmen terisi
+    const nonZero = [5, 4, 3, 2, 1].filter(
+      (s) =>
+        analytics.distribution[s as keyof typeof analytics.distribution] > 0,
+    ).length;
+    const gap = nonZero > 1 ? 2 : 0;
+
+    return [5, 4, 3, 2, 1].map((star) => {
+      const count =
+        analytics.distribution[star as keyof typeof analytics.distribution];
+      const pct = count / analytics.total;
+      const segLength = pct * circumference;
+      const strokeDashoffset = -currentOffset;
+      currentOffset += segLength;
+
+      return {
+        star,
+        count,
+        pct: Math.round(pct * 100),
+        color: colors[star as keyof typeof colors],
+        label: labels[star as keyof typeof labels],
+        length: Math.max(0, segLength - gap),
+        circumference,
+        strokeDashoffset,
+      };
+    });
+  }, [analytics]);
+
+  // ADD: segmen yang sedang aktif (hover > filter rating terpilih)
+  const activeStar =
+    hoveredStar ?? (ratingFilter !== "ALL" ? ratingFilter : null);
+  const activeSegment =
+    donutSegments.find((s) => s.star === activeStar) ?? null;
+
+  // ADD: klik segmen / legend = filter rating (klik lagi untuk reset)
+  const toggleRatingFilter = (star: number) => {
+    setRatingFilter((prev) => (prev === star ? "ALL" : star));
+  };
 
   // CSV Export
   const exportToCSV = () => {
@@ -323,8 +401,11 @@ function FeedbackAnalyticsContent() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-black tracking-tight text-slate-900 sm:text-lg">
-                  Ulasan & Rating Penugasan
+                  Ulasan & Rating Penugasan #{assignmentId}
                 </h1>
+                <span className="flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
+                  <FiActivity className="h-3 w-3" /> Live Feedbacks
+                </span>
               </div>
               <p className="text-xs font-medium text-slate-500">
                 Analisis kepuasan & catatan pengalaman penumpang
@@ -358,10 +439,10 @@ function FeedbackAnalyticsContent() {
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 pt-6 sm:px-6">
         {/* ---------------------------------------------------------
-            EXECUTIVE RATING OVERVIEW SECTION
+            EXECUTIVE RATING OVERVIEW SECTION (2 COLUMN BALANCED LAYOUT)
         --------------------------------------------------------- */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* Main Average Rating Card */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* Card 1: Main Average Rating Card */}
           <div className="flex flex-col justify-between rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-500 to-amber-600 p-6 text-white shadow-lg shadow-amber-500/20">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
@@ -390,87 +471,170 @@ function FeedbackAnalyticsContent() {
                 </div>
               </div>
             </div>
-
-            <div className="mt-6 flex items-center justify-between border-t border-white/20 pt-3 text-xs font-bold text-amber-50">
-              <span>Puas (★4-5): {analytics.positiveCount}</span>
-              <span>Keluhan (★1-2): {analytics.negativeCount}</span>
-            </div>
           </div>
 
-          {/* Rating Breakdown Bars */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <FiStar className="text-amber-500" /> Distribusi Bintang
-            </h3>
-            <div className="space-y-2">
-              {[5, 4, 3, 2, 1].map((star) => {
-                const count =
-                  analytics.distribution[
-                    star as keyof typeof analytics.distribution
-                  ];
-                const pct =
-                  analytics.total > 0
-                    ? Math.round((count / analytics.total) * 100)
-                    : 0;
+          {/* Card 2: Donut Chart Interaktif & Proporsi Rating */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3 flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <FiPieChart className="text-blue-600" /> Donut Proporsi Rating
+              </h3>
 
-                return (
-                  <div key={star} className="flex items-center gap-3 text-xs">
-                    <span className="flex w-10 shrink-0 items-center gap-1 font-bold text-slate-700">
-                      {star}{" "}
-                      <FiStar className="h-3 w-3 fill-amber-400 text-amber-400" />
-                    </span>
-                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 flex-1">
-                      <div
-                        style={{ width: `${pct}%` }}
-                        className={`h-full transition-all duration-500 ${
-                          star >= 4
-                            ? "bg-emerald-500"
-                            : star === 3
-                              ? "bg-amber-500"
-                              : "bg-rose-500"
-                        }`}
-                      />
-                    </div>
-                    <span className="w-12 text-right font-bold text-slate-500">
-                      {count} ({pct}%)
-                    </span>
-                  </div>
-                );
-              })}
+              {ratingFilter !== "ALL" ? (
+                <button
+                  onClick={() => setRatingFilter("ALL")}
+                  className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 transition hover:bg-blue-100 active:scale-95"
+                >
+                  <span>Filter ★{ratingFilter}</span>
+                  <FiXCircle className="h-3.5 w-3.5 text-blue-600" />
+                </button>
+              ) : (
+                <span className="text-[10px] font-semibold text-slate-400">
+                  Klik segmen untuk memfilter ulasan
+                </span>
+              )}
             </div>
-          </div>
 
-          {/* Tag Quick Filter Helper */}
-          <div className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <FiTag className="text-blue-600" /> Mode Filter Tag
-                </h3>
-                {selectedTag !== "ALL" && (
-                  <button
-                    onClick={() => setSelectedTag("ALL")}
-                    className="text-[11px] font-bold text-blue-600 hover:underline"
-                  >
-                    Reset Filter
-                  </button>
-                )}
+            <div className="flex items-center justify-around gap-4 my-auto">
+              {/* Donut SVG Chart */}
+              <div className="relative h-36 w-36 shrink-0">
+                <svg
+                  className="h-full w-full -rotate-90 overflow-visible"
+                  viewBox="0 0 100 100"
+                  role="img"
+                  aria-label="Donut proporsi rating ulasan"
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke="#F1F5F9"
+                    strokeWidth="14"
+                  />
+                  {/* segmen aktif digambar terakhir agar tampil di atas */}
+                  {[...donutSegments]
+                    .filter((seg) => seg.count > 0)
+                    .sort(
+                      (a, b) =>
+                        Number(a.star === activeStar) -
+                        Number(b.star === activeStar),
+                    )
+                    .map((seg, idx) => {
+                      const isActive = activeStar === seg.star;
+                      const isDimmed = activeStar !== null && !isActive;
+                      return (
+                        <circle
+                          key={seg.star}
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke={seg.color}
+                          strokeWidth={isActive ? 19 : 14}
+                          strokeDasharray={`${donutAnimated ? seg.length : 0} ${seg.circumference}`}
+                          strokeDashoffset={seg.strokeDashoffset}
+                          pointerEvents="stroke"
+                          tabIndex={0}
+                          role="button"
+                          aria-pressed={ratingFilter === seg.star}
+                          aria-label={`Bintang ${seg.star}: ${seg.count} ulasan (${seg.pct}%)`}
+                          opacity={isDimmed ? 0.3 : 1}
+                          onMouseEnter={() => setHoveredStar(seg.star)}
+                          onMouseLeave={() => setHoveredStar(null)}
+                          onFocus={() => setHoveredStar(seg.star)}
+                          onBlur={() => setHoveredStar(null)}
+                          onClick={() => toggleRatingFilter(seg.star)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              toggleRatingFilter(seg.star);
+                            }
+                          }}
+                          style={{
+                            cursor: "pointer",
+                            outline: "none",
+                            transition:
+                              "stroke-dasharray 800ms cubic-bezier(0.22, 1, 0.36, 1), stroke-width 180ms ease, opacity 180ms ease",
+                            transitionDelay: donutAnimated
+                              ? `${idx * 60}ms, 0ms, 0ms`
+                              : "0ms",
+                          }}
+                        />
+                      );
+                    })}
+                </svg>
+
+                {/* Teks tengah: berubah sesuai segmen aktif */}
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                  {activeSegment ? (
+                    <>
+                      <span
+                        className="text-xl font-black leading-none"
+                        style={{ color: activeSegment.color }}
+                      >
+                        ★{activeSegment.star}
+                      </span>
+                      <span className="mt-1 text-sm font-black text-slate-900">
+                        {activeSegment.count} ulasan
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {activeSegment.pct}% • {activeSegment.label}
+                      </span>
+                    </>
+                  ) : analytics.total === 0 ? (
+                    <span className="px-4 text-[10px] font-bold text-slate-400">
+                      Belum ada ulasan
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-xl font-black text-slate-900">
+                        {analytics.total}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">
+                        Ulasan
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
-              <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                {selectedTag === "ALL" ? (
-                  "Klik salah satu tag pada kategori di bawah ini untuk menyaring daftar ulasan spesifik."
-                ) : (
-                  <span>
-                    Menampilkan ulasan dengan tag:{" "}
-                    <strong className="text-blue-600">"{selectedTag}"</strong>
-                  </span>
-                )}
-              </p>
-            </div>
 
-            <div className="rounded-xl bg-slate-50 p-3 text-[11px] font-semibold text-slate-600 flex items-center gap-2 border border-slate-100">
-              <FiTag className="text-slate-400 shrink-0" />
-              <span>Total 12 tag resmi terbagi dalam 3 kategori utama</span>
+              {/* Legend Items (sinkron dengan donut) */}
+              <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 sm:gap-x-3">
+                {donutSegments.map((seg) => {
+                  const isActive = activeStar === seg.star;
+                  const isDimmed = activeStar !== null && !isActive;
+                  return (
+                    <button
+                      key={seg.star}
+                      type="button"
+                      disabled={seg.count === 0}
+                      onMouseEnter={() => setHoveredStar(seg.star)}
+                      onMouseLeave={() => setHoveredStar(null)}
+                      onFocus={() => setHoveredStar(seg.star)}
+                      onBlur={() => setHoveredStar(null)}
+                      onClick={() => toggleRatingFilter(seg.star)}
+                      aria-pressed={ratingFilter === seg.star}
+                      className={`flex items-center gap-2 rounded-lg border px-2 py-1 text-left transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
+                        isActive
+                          ? "border-slate-300 bg-slate-50 shadow-sm"
+                          : "border-transparent hover:bg-slate-50"
+                      } ${isDimmed ? "opacity-50" : ""}`}
+                    >
+                      <span
+                        className="h-2.5 w-2.5 rounded-full inline-block shrink-0"
+                        style={{ backgroundColor: seg.color }}
+                      />
+                      <span className="font-bold text-slate-700 w-7">
+                        ★{seg.star}
+                      </span>
+                      <span className="font-semibold text-slate-500">
+                        {seg.count} ({seg.pct}%)
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -479,9 +643,23 @@ function FeedbackAnalyticsContent() {
             CATEGORIZED TAG ANALYTICS & FILTER BAR
         --------------------------------------------------------- */}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <FiTag className="text-blue-600" /> Analisis & Filter Tag Kategori
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <FiTag className="text-blue-600" /> Filter Berdasarkan Tag
+              Kategori
+            </h3>
+
+            {/* Indicator / Reset Tag Active */}
+            {selectedTag !== "ALL" && (
+              <button
+                onClick={() => setSelectedTag("ALL")}
+                className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 transition hover:bg-blue-100 active:scale-95"
+              >
+                <span>Filter Active: "{selectedTag}"</span>
+                <FiXCircle className="h-3.5 w-3.5 text-blue-600" />
+              </button>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Object.entries(TAG_CATEGORIES).map(([key, cat]) => {
@@ -670,11 +848,6 @@ function FeedbackAnalyticsContent() {
                             })}
                           </div>
                         )}
-                      </div>
-
-                      {/* Card Bottom Meta */}
-                      <div className="mt-4 border-t border-slate-100 pt-2.5 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                        <span>Assignment #{item.vehicleAssignmentId}</span>
                       </div>
                     </div>
                   );
