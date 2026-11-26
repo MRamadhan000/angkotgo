@@ -28,7 +28,7 @@ import {
 } from "react-icons/fi";
 
 /* =========================================================
-   1. TYPES (MATCHING BACKEND API RESPONSE)
+1. TYPES (MATCHING BACKEND API RESPONSE)
    ========================================================= */
 
 export interface ApiFeedback {
@@ -46,7 +46,7 @@ export interface ApiResponse<T> {
 }
 
 /* =========================================================
-   2. CATEGORIZED TAG DEFINITIONS (12 TAG RESMI)
+2. CATEGORIZED TAG DEFINITIONS (12 TAG RESMI)
    ========================================================= */
 
 const TAG_CATEGORIES = {
@@ -83,7 +83,7 @@ function getTagCategoryKey(
 }
 
 /* =========================================================
-   3. API LAYER & CONFIG
+3. API LAYER & CONFIG
    ========================================================= */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -109,7 +109,7 @@ async function fetchAssignmentFeedbacks(
 }
 
 /* =========================================================
-   4. ENTRY POINT WITH PROVIDER
+4. ENTRY POINT WITH PROVIDER
    ========================================================= */
 
 export default function AssignmentFeedbackAnalyticsPage() {
@@ -133,30 +133,36 @@ export default function AssignmentFeedbackAnalyticsPage() {
 }
 
 /* =========================================================
-   5. MAIN DASHBOARD CONTENT
+5. MAIN DASHBOARD CONTENT
    ========================================================= */
 
 function FeedbackAnalyticsContent() {
   const router = useRouter();
-  const params = useParams<{ id?: string }>();
-  const assignmentId = Number(params?.id ?? 10);
+  const params = useParams();
+
+  // BACA SLUG / PARAMETER SECARA DINAMIS
+  const rawId = params?.id ?? params?.assignmentId ?? params?.slug;
+  const assignmentId = useMemo(() => {
+    if (!rawId) return NaN;
+    const parsed = Number(Array.isArray(rawId) ? rawId[0] : rawId);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }, [rawId]);
 
   // Filter & Search States
   const [searchTerm, setSearchTerm] = useState("");
   const [ratingFilter, setRatingFilter] = useState<number | "ALL">("ALL");
   const [selectedTag, setSelectedTag] = useState<string | "ALL">("ALL");
 
-  // ADD: state donut interaktif
+  // State Donut Interaktif
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
   const [donutAnimated, setDonutAnimated] = useState(false);
 
-  // ADD: animasi "menggambar" donut saat pertama tampil
   useEffect(() => {
     const id = requestAnimationFrame(() => setDonutAnimated(true));
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // TanStack Query
+  // TanStack Query (Hanya aktif jika assignmentId valid)
   const {
     data: feedbacks = [],
     isLoading,
@@ -167,7 +173,7 @@ function FeedbackAnalyticsContent() {
   } = useQuery({
     queryKey: ["assignment-feedbacks", assignmentId],
     queryFn: () => fetchAssignmentFeedbacks(assignmentId),
-    enabled: Number.isFinite(assignmentId),
+    enabled: Number.isFinite(assignmentId) && assignmentId > 0,
   });
 
   /* ---------------------------------------------------------
@@ -240,7 +246,6 @@ function FeedbackAnalyticsContent() {
   const donutSegments = useMemo(() => {
     if (analytics.total === 0) return [];
 
-    // Total perimeter for r=40 is 2 * PI * 40 ≈ 251.327
     const circumference = 251.327;
     let currentOffset = 0;
 
@@ -260,7 +265,6 @@ function FeedbackAnalyticsContent() {
       1: "Tidak puas",
     };
 
-    // ADD: celah kecil antar segmen jika ada lebih dari satu segmen terisi
     const nonZero = [5, 4, 3, 2, 1].filter(
       (s) =>
         analytics.distribution[s as keyof typeof analytics.distribution] > 0,
@@ -288,13 +292,11 @@ function FeedbackAnalyticsContent() {
     });
   }, [analytics]);
 
-  // ADD: segmen yang sedang aktif (hover > filter rating terpilih)
   const activeStar =
     hoveredStar ?? (ratingFilter !== "ALL" ? ratingFilter : null);
   const activeSegment =
     donutSegments.find((s) => s.star === activeStar) ?? null;
 
-  // ADD: klik segmen / legend = filter rating (klik lagi untuk reset)
   const toggleRatingFilter = (star: number) => {
     setRatingFilter((prev) => (prev === star ? "ALL" : star));
   };
@@ -338,43 +340,72 @@ function FeedbackAnalyticsContent() {
   };
 
   /* ---------------------------------------------------------
+     INVALID SLUG / PARAMETER STATE
+  --------------------------------------------------------- */
+  if (Number.isNaN(assignmentId) || assignmentId <= 0) {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center font-sans select-none">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
+          <FiAlertTriangle size={24} />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-base font-bold text-slate-900">
+            ID Penugasan Tidak Valid
+          </h2>
+          <p className="max-w-xs text-xs text-slate-500">
+            Parameter rute ID penugasan tidak ditemukan atau formatnya salah.
+          </p>
+        </div>
+        <button
+          onClick={() => router.back()}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 active:scale-95 transition"
+        >
+          Kembali
+        </button>
+      </div>
+    );
+  }
+
+  /* ---------------------------------------------------------
      LOADING & ERROR STATES
   --------------------------------------------------------- */
   if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-slate-50 text-slate-500 font-sans">
-        <FiRefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-        <p className="text-sm font-semibold">Memuat Ulasan Penumpang...</p>
+      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-slate-50 text-slate-500 font-sans select-none">
+        <FiRefreshCw className="h-7 w-7 animate-spin text-slate-700" />
+        <p className="text-xs font-semibold text-slate-600">
+          Memuat Ulasan Penugasan #{assignmentId}...
+        </p>
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center font-sans">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 shadow-sm">
-          <FiAlertTriangle size={28} />
+      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center font-sans select-none">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-200">
+          <FiAlertTriangle size={24} />
         </div>
         <div className="space-y-1">
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-base font-bold text-slate-900">
             Gagal Memuat Laporan Ulasan
           </h2>
           <p className="max-w-md text-xs text-slate-500">
             {error instanceof Error
               ? error.message
-              : "Terjadi kesalahan sistem."}
+              : "Terjadi kesalahan sistem saat mengambil data."}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             onClick={() => router.back()}
-            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 active:scale-95 transition"
           >
             Kembali
           </button>
           <button
             onClick={() => refetch()}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-600/30 hover:bg-blue-700 active:scale-95 transition"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 active:scale-95 transition"
           >
             Coba Lagi
           </button>
@@ -384,40 +415,41 @@ function FeedbackAnalyticsContent() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50/60 font-sans text-slate-900 antialiased pb-12">
+    <div className="min-h-screen w-full bg-slate-100 font-sans text-slate-900 antialiased pb-12 select-none">
       {/* ---------------------------------------------------------
           HEADER & TOOLBAR
       --------------------------------------------------------- */}
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition active:bg-slate-100"
               title="Kembali"
             >
               <FiArrowLeft size={18} />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-black tracking-tight text-slate-900 sm:text-lg">
+                <h1 className="text-base font-extrabold tracking-tight text-slate-900">
                   Ulasan & Rating Penugasan #{assignmentId}
                 </h1>
-                <span className="flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
-                  <FiActivity className="h-3 w-3" /> Live Feedbacks
+                <span className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 border border-slate-200">
+                  <FiActivity className="h-3 w-3 text-blue-600" /> Live
+                  Feedbacks
                 </span>
               </div>
-              <p className="text-xs font-medium text-slate-500">
+              <p className="text-xs font-semibold text-slate-500">
                 Analisis kepuasan & catatan pengalaman penumpang
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:opacity-60"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition active:bg-slate-100 disabled:opacity-50"
             >
               <FiRefreshCw
                 className={`h-3.5 w-3.5 ${isFetching ? "animate-spin text-blue-600" : ""}`}
@@ -428,7 +460,7 @@ function FeedbackAnalyticsContent() {
             <button
               onClick={exportToCSV}
               disabled={feedbacks.length === 0}
-              className="flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-xs font-bold text-white transition active:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <FiDownload className="h-3.5 w-3.5" />
               <span>Ekspor CSV</span>
@@ -437,35 +469,35 @@ function FeedbackAnalyticsContent() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 pt-6 sm:px-6">
+      <main className="mx-auto max-w-6xl space-y-4 px-4 pt-4">
         {/* ---------------------------------------------------------
-            EXECUTIVE RATING OVERVIEW SECTION (2 COLUMN BALANCED LAYOUT)
+            EXECUTIVE RATING OVERVIEW SECTION
         --------------------------------------------------------- */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Card 1: Main Average Rating Card */}
-          <div className="flex flex-col justify-between rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-500 to-amber-600 p-6 text-white shadow-lg shadow-amber-500/20">
+          <div className="flex flex-col justify-between rounded-xl border border-slate-300 bg-white p-5">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
+              <span className="inline-flex items-center gap-1.5 rounded bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 border border-amber-200">
                 <FiAward size={14} /> Skor Kepuasan Rata-rata
               </span>
               <div className="mt-4 flex items-baseline gap-3">
-                <h2 className="text-5xl font-black tracking-tight">
+                <h2 className="text-4xl font-black tracking-tight text-slate-900">
                   {analytics.averageRating}
                 </h2>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-amber-200 text-lg">
+                  <div className="flex items-center gap-1 text-amber-500 text-base">
                     {Array.from({ length: 5 }, (_, i) => (
                       <FiStar
                         key={i}
                         className={
                           i < Math.round(analytics.averageRating)
-                            ? "fill-white text-white"
-                            : "text-white/40"
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-slate-300"
                         }
                       />
                     ))}
                   </div>
-                  <p className="text-xs font-medium text-amber-100">
+                  <p className="text-xs font-medium text-slate-500">
                     Berdasarkan {analytics.total} total ulasan
                   </p>
                 </div>
@@ -474,30 +506,30 @@ function FeedbackAnalyticsContent() {
           </div>
 
           {/* Card 2: Donut Chart Interaktif & Proporsi Rating */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3 flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                <FiPieChart className="text-blue-600" /> Donut Proporsi Rating
+          <div className="rounded-xl border border-slate-300 bg-white p-4 space-y-3 flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                <FiPieChart className="text-slate-700" /> Proporsi Rating
               </h3>
 
               {ratingFilter !== "ALL" ? (
                 <button
                   onClick={() => setRatingFilter("ALL")}
-                  className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 transition hover:bg-blue-100 active:scale-95"
+                  className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-800 border border-slate-300 transition active:bg-slate-200"
                 >
                   <span>Filter ★{ratingFilter}</span>
-                  <FiXCircle className="h-3.5 w-3.5 text-blue-600" />
+                  <FiXCircle className="h-3.5 w-3.5 text-slate-600" />
                 </button>
               ) : (
                 <span className="text-[10px] font-semibold text-slate-400">
-                  Klik segmen untuk memfilter ulasan
+                  Klik segmen untuk filter
                 </span>
               )}
             </div>
 
             <div className="flex items-center justify-around gap-4 my-auto">
               {/* Donut SVG Chart */}
-              <div className="relative h-36 w-36 shrink-0">
+              <div className="relative h-32 w-32 shrink-0">
                 <svg
                   className="h-full w-full -rotate-90 overflow-visible"
                   viewBox="0 0 100 100"
@@ -509,10 +541,9 @@ function FeedbackAnalyticsContent() {
                     cy="50"
                     r="40"
                     fill="none"
-                    stroke="#F1F5F9"
+                    stroke="#E2E8F0"
                     strokeWidth="14"
                   />
-                  {/* segmen aktif digambar terakhir agar tampil di atas */}
                   {[...donutSegments]
                     .filter((seg) => seg.count > 0)
                     .sort(
@@ -531,7 +562,7 @@ function FeedbackAnalyticsContent() {
                           r="40"
                           fill="none"
                           stroke={seg.color}
-                          strokeWidth={isActive ? 19 : 14}
+                          strokeWidth={isActive ? 18 : 14}
                           strokeDasharray={`${donutAnimated ? seg.length : 0} ${seg.circumference}`}
                           strokeDashoffset={seg.strokeDashoffset}
                           pointerEvents="stroke"
@@ -555,9 +586,9 @@ function FeedbackAnalyticsContent() {
                             cursor: "pointer",
                             outline: "none",
                             transition:
-                              "stroke-dasharray 800ms cubic-bezier(0.22, 1, 0.36, 1), stroke-width 180ms ease, opacity 180ms ease",
+                              "stroke-dasharray 600ms cubic-bezier(0.22, 1, 0.36, 1), stroke-width 150ms ease, opacity 150ms ease",
                             transitionDelay: donutAnimated
-                              ? `${idx * 60}ms, 0ms, 0ms`
+                              ? `${idx * 50}ms, 0ms, 0ms`
                               : "0ms",
                           }}
                         />
@@ -565,33 +596,33 @@ function FeedbackAnalyticsContent() {
                     })}
                 </svg>
 
-                {/* Teks tengah: berubah sesuai segmen aktif */}
+                {/* Teks tengah */}
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
                   {activeSegment ? (
                     <>
                       <span
-                        className="text-xl font-black leading-none"
+                        className="text-lg font-black leading-none"
                         style={{ color: activeSegment.color }}
                       >
                         ★{activeSegment.star}
                       </span>
-                      <span className="mt-1 text-sm font-black text-slate-900">
+                      <span className="mt-1 text-xs font-extrabold text-slate-900">
                         {activeSegment.count} ulasan
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {activeSegment.pct}% • {activeSegment.label}
+                      <span className="text-[9px] font-bold text-slate-500">
+                        {activeSegment.pct}%
                       </span>
                     </>
                   ) : analytics.total === 0 ? (
-                    <span className="px-4 text-[10px] font-bold text-slate-400">
-                      Belum ada ulasan
+                    <span className="px-2 text-[10px] font-bold text-slate-400">
+                      Kosong
                     </span>
                   ) : (
                     <>
-                      <span className="text-xl font-black text-slate-900">
+                      <span className="text-lg font-black text-slate-900">
                         {analytics.total}
                       </span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase">
                         Ulasan
                       </span>
                     </>
@@ -599,8 +630,8 @@ function FeedbackAnalyticsContent() {
                 </div>
               </div>
 
-              {/* Legend Items (sinkron dengan donut) */}
-              <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 sm:gap-x-3">
+              {/* Legend Items */}
+              <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 sm:gap-x-2">
                 {donutSegments.map((seg) => {
                   const isActive = activeStar === seg.star;
                   const isDimmed = activeStar !== null && !isActive;
@@ -615,20 +646,20 @@ function FeedbackAnalyticsContent() {
                       onBlur={() => setHoveredStar(null)}
                       onClick={() => toggleRatingFilter(seg.star)}
                       aria-pressed={ratingFilter === seg.star}
-                      className={`flex items-center gap-2 rounded-lg border px-2 py-1 text-left transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
+                      className={`flex items-center gap-1.5 rounded px-2 py-1 text-left border transition active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 ${
                         isActive
-                          ? "border-slate-300 bg-slate-50 shadow-sm"
+                          ? "border-slate-400 bg-slate-50"
                           : "border-transparent hover:bg-slate-50"
-                      } ${isDimmed ? "opacity-50" : ""}`}
+                      } ${isDimmed ? "opacity-40" : ""}`}
                     >
                       <span
-                        className="h-2.5 w-2.5 rounded-full inline-block shrink-0"
+                        className="h-2 w-2 rounded-full inline-block shrink-0"
                         style={{ backgroundColor: seg.color }}
                       />
-                      <span className="font-bold text-slate-700 w-7">
+                      <span className="font-bold text-slate-800 w-6">
                         ★{seg.star}
                       </span>
-                      <span className="font-semibold text-slate-500">
+                      <span className="font-semibold text-slate-600">
                         {seg.count} ({seg.pct}%)
                       </span>
                     </button>
@@ -642,40 +673,39 @@ function FeedbackAnalyticsContent() {
         {/* ---------------------------------------------------------
             CATEGORIZED TAG ANALYTICS & FILTER BAR
         --------------------------------------------------------- */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <FiTag className="text-blue-600" /> Filter Berdasarkan Tag
+        <div className="rounded-xl border border-slate-300 bg-white p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <FiTag className="text-slate-700" /> Filter Berdasarkan Tag
               Kategori
             </h3>
 
-            {/* Indicator / Reset Tag Active */}
             {selectedTag !== "ALL" && (
               <button
                 onClick={() => setSelectedTag("ALL")}
-                className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 transition hover:bg-blue-100 active:scale-95"
+                className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-800 border border-slate-300 active:bg-slate-200"
               >
-                <span>Filter Active: "{selectedTag}"</span>
-                <FiXCircle className="h-3.5 w-3.5 text-blue-600" />
+                <span>Filter: "{selectedTag}"</span>
+                <FiXCircle className="h-3.5 w-3.5 text-slate-600" />
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {Object.entries(TAG_CATEGORIES).map(([key, cat]) => {
               const IconComp = cat.icon;
 
               return (
                 <div
                   key={key}
-                  className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 space-y-2.5"
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2"
                 >
-                  <div className="flex items-center gap-2 text-xs font-black text-slate-800 border-b border-slate-200/60 pb-2">
-                    <IconComp className="text-slate-600" size={15} />
+                  <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800 border-b border-slate-200 pb-1.5">
+                    <IconComp className="text-slate-700" size={14} />
                     <span>{cat.label}</span>
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {cat.tags.map((tag) => {
                       const count = analytics.tagCounts[tag] || 0;
                       const isSelected = selectedTag === tag;
@@ -688,18 +718,18 @@ function FeedbackAnalyticsContent() {
                               prev === tag ? "ALL" : tag,
                             )
                           }
-                          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition active:scale-95 ${
+                          className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-bold transition active:scale-95 ${
                             isSelected
-                              ? cat.activeColor
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                              ? "border-slate-800 bg-slate-900 text-white"
+                              : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
                           }`}
                         >
                           <span>{tag}</span>
                           <span
-                            className={`rounded-full px-1.5 py-px text-[9px] font-black ${
+                            className={`rounded px-1 py-px text-[9px] font-black ${
                               isSelected
                                 ? "bg-white/20 text-white"
-                                : "bg-slate-100 text-slate-600"
+                                : "bg-slate-100 text-slate-600 border border-slate-200"
                             }`}
                           >
                             {count}
@@ -717,43 +747,46 @@ function FeedbackAnalyticsContent() {
         {/* ---------------------------------------------------------
             FEEDBACK LIST & SEARCH/FILTERS
         --------------------------------------------------------- */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden space-y-4">
+        <div className="rounded-xl border border-slate-300 bg-white overflow-hidden space-y-3">
           {/* Header Controls */}
-          <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="flex flex-col gap-3 border-b border-slate-200 p-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-sm font-black text-slate-900">
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                 Riwayat Ulasan Penumpang
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] text-slate-500">
                 Menampilkan {filteredFeedbacks.length} dari {feedbacks.length}{" "}
                 total ulasan
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Search Box */}
-              <div className="relative min-w-[200px]">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div className="relative min-w-[180px]">
+                <FiSearch
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={13}
+                />
                 <input
                   type="text"
-                  placeholder="Cari kata kunci pengalaman..."
+                  placeholder="Cari kata kunci..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 py-1.5 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-600 focus:bg-white focus:ring-1 focus:ring-blue-600"
+                  className="w-full rounded-lg border border-slate-300 bg-white pl-8 pr-2.5 py-1 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none focus:border-slate-800"
                 />
               </div>
 
               {/* Filter Rating Buttons */}
-              <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
-                <FiFilter className="ml-1.5 h-3.5 w-3.5 text-slate-400" />
+              <div className="flex items-center gap-0.5 rounded-lg border border-slate-300 bg-slate-100 p-0.5">
+                <FiFilter className="ml-1 h-3 w-3 text-slate-500" />
                 {(["ALL", 5, 4, 3, 2, 1] as const).map((r) => (
                   <button
                     key={String(r)}
                     onClick={() => setRatingFilter(r)}
-                    className={`rounded-lg px-2 py-1 text-[11px] font-bold transition ${
+                    className={`rounded px-2 py-1 text-[10px] font-bold transition ${
                       ratingFilter === r
-                        ? "bg-white text-blue-700 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800"
+                        ? "bg-white text-slate-900 border border-slate-200 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     {r === "ALL" ? "Semua" : `★${r}`}
@@ -764,82 +797,73 @@ function FeedbackAnalyticsContent() {
           </div>
 
           {/* Feedbacks Grid / Cards */}
-          <div className="p-4 sm:p-5">
+          <div className="p-3.5">
             {filteredFeedbacks.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center">
-                <FiMessageSquare className="mx-auto h-8 w-8 text-slate-300" />
-                <p className="mt-2 text-xs font-bold text-slate-600">
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center">
+                <FiMessageSquare className="mx-auto h-7 w-7 text-slate-400" />
+                <p className="mt-2 text-xs font-bold text-slate-700">
                   Tidak Ada Ulasan Ditemukan
                 </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Coba sesuaikan pencarian atau filter Anda.
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Sesuaikan kata kunci atau opsi filter Anda.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {filteredFeedbacks.map((item) => {
-                  const isGood = item.rating >= 4;
-                  const isBad = item.rating <= 2;
-
                   return (
                     <div
                       key={item.id}
-                      className={`flex flex-col justify-between rounded-2xl border p-4.5 transition-all hover:shadow-md ${
-                        isGood
-                          ? "border-emerald-100 bg-emerald-50/20"
-                          : isBad
-                            ? "border-rose-100 bg-rose-50/20"
-                            : "border-slate-200 bg-white"
-                      }`}
+                      className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-3.5 space-y-2 hover:border-slate-300"
                     >
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         {/* Card Top Header */}
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <div className="flex items-center gap-1 text-amber-500">
                             {Array.from({ length: 5 }, (_, i) => (
                               <FiStar
                                 key={i}
-                                className={`h-4 w-4 ${
+                                className={`h-3.5 w-3.5 ${
                                   i < item.rating
                                     ? "fill-amber-400 text-amber-400"
                                     : "text-slate-200"
                                 }`}
                               />
                             ))}
-                            <span className="ml-1.5 text-xs font-black text-slate-900">
+                            <span className="ml-1 text-xs font-black text-slate-900">
                               {item.rating}.0
                             </span>
                           </div>
 
-                          <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                          <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1">
                             <FiClock className="h-3 w-3" />
                             {formatDateTime(item.createdAt)}
                           </span>
                         </div>
 
                         {/* Experience Text */}
-                        <p className="text-xs leading-relaxed text-slate-800 font-medium">
+                        <p className="text-xs leading-relaxed text-slate-800 font-semibold">
                           {item.experience || "Tidak ada catatan pengalaman."}
                         </p>
 
                         {/* Categorized Tags Badges */}
                         {item.tags && item.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-1">
+                          <div className="flex flex-wrap gap-1 pt-1">
                             {item.tags.map((tag) => {
                               const catKey = getTagCategoryKey(tag);
                               const catStyle =
                                 catKey === "DRIVER"
-                                  ? "bg-blue-100 text-blue-800"
+                                  ? "bg-blue-50 text-blue-900 border-blue-200"
                                   : catKey === "VEHICLE"
-                                    ? "bg-purple-100 text-purple-800"
+                                    ? "bg-purple-50 text-purple-900 border-purple-200"
                                     : catKey === "TRIP"
-                                      ? "bg-amber-100 text-amber-800"
-                                      : "bg-slate-100 text-slate-800";
+                                      ? "bg-amber-50 text-amber-900 border-amber-200"
+                                      : "bg-slate-100 text-slate-800 border-slate-200";
 
                               return (
                                 <span
                                   key={tag}
-                                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${catStyle}`}
+                                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-bold ${catStyle}`}
                                 >
                                   <FiTag className="h-2.5 w-2.5 opacity-70" />
                                   {tag}
@@ -862,7 +886,7 @@ function FeedbackAnalyticsContent() {
 }
 
 /* =========================================================
-   6. HELPER UTILS
+6. HELPER UTILS
    ========================================================= */
 
 function formatDateTime(iso: string) {
