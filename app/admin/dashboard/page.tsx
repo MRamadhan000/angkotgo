@@ -27,6 +27,8 @@ import { useVehicleAssignments } from "@/hooks/vehicles/useVehicleAssignments";
 import { useDrivers } from "@/hooks/useDrivers";
 import { useAllReviews } from "@/hooks/useReview";
 import { useRouteStops } from "@/hooks/routes/useRouteStops";
+import { useRoutes } from "@/hooks/routes/useRoutes";
+import { paymentService } from "@/services/payments/payment.service";
 import { Tariff } from "@/types/stats.type";
 import { Payment } from "@/types/payments/payment.type";
 import { RouteStopType } from "@/types/routes/route-stop.type";
@@ -59,8 +61,29 @@ export default function AdminDashboardPage() {
     assignmentDate: selectedDate,
   });
   const { data: drivers = [], isLoading: driversLoading } = useDrivers();
-  const { data: reviewsResponse, isLoading: reviewsLoading } = useAllReviews(3);
+  const { data: reviewsResponse, isLoading: reviewsLoading, refetch: refetchReviews } = useAllReviews(3);
   const { data: rawRouteStops = [], isLoading: stopsLoading } = useRouteStops();
+  const { data: routesData = [] } = useRoutes();
+
+  // State seluruh pembayaran riil dari endpoint GET /payments
+  const [allPayments, setAllPayments] = useState<any[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  const fetchPaymentsData = React.useCallback(async () => {
+    setPaymentsLoading(true);
+    try {
+      const data = await paymentService.getAll();
+      setAllPayments(data);
+    } catch {
+      setAllPayments([]);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchPaymentsData();
+  }, [fetchPaymentsData]);
 
   // States untuk Pop-up Modals
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
@@ -104,79 +127,58 @@ export default function AdminDashboardPage() {
   }, [selectedDate]);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 1. Data Agregasi "Statistik Operasional & Transaksi per Trayek" (Hapus AL/AG & Satukan Arah Pergi/Pulang)
+  // 1. Data Agregasi "Statistik Operasional & Transaksi per Trayek" (Dinamis Sesuai Master Rute Riil)
   // ─────────────────────────────────────────────────────────────────────────────
   const trayekStats = useMemo(() => {
-    // Definisi trayek operasional utama (BB, BGTU, BS, BK)
-    const defaultTemplates: Record<string, TrayekStat> = {
-      "BB": {
-        key: "BB",
-        routeCode: "BB",
-        direction: "ALL",
-        origin: "Begawan",
-        destination: "Universitas Brawijaya (UB)",
-        scheduledCount: 0,
-        totalPassengers: 0,
-        totalRevenue: 0,
-        qrisRevenue: 0,
-        qrisTrxCount: 0,
-        cashRevenue: 0,
-        cashTrxCount: 0,
-      },
-      "BGTU": {
-        key: "BGTU",
-        routeCode: "BGTU",
-        direction: "ALL",
-        origin: "Begawan",
-        destination: "Batu",
-        scheduledCount: 0,
-        totalPassengers: 0,
-        totalRevenue: 0,
-        qrisRevenue: 0,
-        qrisTrxCount: 0,
-        cashRevenue: 0,
-        cashTrxCount: 0,
-      },
-      "BS": {
-        key: "BS",
-        routeCode: "BS",
-        direction: "ALL",
-        origin: "Begawan",
-        destination: "Soekarno Hatta (Suhat)",
-        scheduledCount: 0,
-        totalPassengers: 0,
-        totalRevenue: 0,
-        qrisRevenue: 0,
-        qrisTrxCount: 0,
-        cashRevenue: 0,
-        cashTrxCount: 0,
-      },
-      "BK": {
-        key: "BK",
-        routeCode: "BK",
-        direction: "ALL",
-        origin: "Begawan",
-        destination: "Karya",
-        scheduledCount: 0,
-        totalPassengers: 0,
-        totalRevenue: 0,
-        qrisRevenue: 0,
-        qrisTrxCount: 0,
-        cashRevenue: 0,
-        cashTrxCount: 0,
-      },
-    };
+    const routeList = Array.isArray(routesData)
+      ? routesData
+      : (routesData as any)?.data || [];
 
-    // Agregasi dari live assignments (Digabung per Trayek tanpa pemisah Pergi-Pulang)
-    assignments.forEach((assignment) => {
-      const code = assignment.route?.routeCode || "BB";
-      // Hapus / abaikan rute AL dan AG sesuai permintaan
-      if (code === "AL" || code === "AG") return;
+    const defaultTemplates: Record<string, TrayekStat> = {};
+
+    // Inisialisasi kartu berdasarkan rute resmi riil dari backend (AL, AG, AG2, dll)
+    routeList.forEach((r: any) => {
+      const code = r.routeCode || r.code;
+      if (!code) return;
+      const parts = (r.routeName || r.name || code).split("-");
+      defaultTemplates[code] = {
+        key: code,
+        routeCode: code,
+        direction: "ALL",
+        origin: parts[0]?.trim() || code,
+        destination: parts[1]?.trim() || code,
+        scheduledCount: 0,
+        totalPassengers: 0,
+        totalRevenue: 0,
+        qrisRevenue: 0,
+        qrisTrxCount: 0,
+        cashRevenue: 0,
+        cashTrxCount: 0,
+      };
+    });
+
+    // Peta pembayaran terindeks berdasarkan vehicleAssignmentId
+    const paymentsByAssignment: Record<number, any[]> = {};
+    allPayments.forEach((p) => {
+      const aId = Number(p.vehicleAssignmentId || p.vehicle_assignment_id);
+      if (aId) {
+        if (!paymentsByAssignment[aId]) paymentsByAssignment[aId] = [];
+        paymentsByAssignment[aId].push(p);
+      }
+    });
+
+    // Agregasi dari live assignments tanggal terpilih
+    assignments.forEach((assignment: any) => {
+      const code =
+        assignment.route?.routeCode ||
+        assignment.route?.code ||
+        routeList.find((r: any) => r.id === assignment.routeId)?.routeCode ||
+        "AL";
 
       const key = code;
 
       if (!defaultTemplates[key]) {
-        const parts = assignment.route?.routeName?.split("-") || [code, code];
+        const parts = (assignment.route?.routeName || assignment.route?.name || code).split("-");
         defaultTemplates[key] = {
           key,
           routeCode: code,
@@ -196,27 +198,28 @@ export default function AdminDashboardPage() {
       defaultTemplates[key].scheduledCount += 1;
       defaultTemplates[key].totalPassengers += assignment.currentPassengers || 0;
 
-      // Hitung dari relasi payments jika ada
-      if (assignment.payments && Array.isArray(assignment.payments)) {
-        assignment.payments.forEach((payment: Payment) => {
-          if (payment.status === "PAID") {
-            const amount = Number(payment.amount) || 0;
-            defaultTemplates[key].totalRevenue += amount;
-            const pType = (payment as any).paymentType || payment.payment_type;
-            if (pType === "ONLINE") {
-              defaultTemplates[key].qrisRevenue += amount;
-              defaultTemplates[key].qrisTrxCount += 1;
-            } else {
-              defaultTemplates[key].cashRevenue += amount;
-              defaultTemplates[key].cashTrxCount += 1;
-            }
-          }
-        });
-      }
+      // Hitung dari pembayaran riil (baik dari relasi assignment.payments maupun dari GET /payments)
+      const assignmentPayments =
+        assignment.payments && Array.isArray(assignment.payments) && assignment.payments.length > 0
+          ? assignment.payments
+          : paymentsByAssignment[assignment.id] || [];
+
+      assignmentPayments.forEach((payment: any) => {
+        const amount = Number(payment.amount) || 0;
+        defaultTemplates[key].totalRevenue += amount;
+        const method = (payment.paymentMethod || payment.payment_type || payment.paymentType || "CASH").toUpperCase();
+        if (method === "QRIS" || method === "ONLINE") {
+          defaultTemplates[key].qrisRevenue += amount;
+          defaultTemplates[key].qrisTrxCount += 1;
+        } else {
+          defaultTemplates[key].cashRevenue += amount;
+          defaultTemplates[key].cashTrxCount += 1;
+        }
+      });
     });
 
     return Object.values(defaultTemplates);
-  }, [assignments]);
+  }, [routesData, assignments, allPayments]);
 
   // Total akumulasi hari ini
   const totalAkumulasiHariIni = useMemo(() => {
@@ -267,7 +270,7 @@ export default function AdminDashboardPage() {
   }, [rawRouteStops, assignments]);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 3. Data Ulasan Rendah
+  // 3. Data Ulasan Rendah (★ 1–3)
   // ─────────────────────────────────────────────────────────────────────────────
   const lowReviews = useMemo(() => {
     return reviews.filter((r) => r.rating <= 3);
@@ -286,7 +289,10 @@ export default function AdminDashboardPage() {
     const counts: Record<string, { label: string; count: number }> = {};
 
     lowReviews.forEach((rev) => {
-      const routeCode = rev.vehicleAssignment?.route?.routeCode || "BB";
+      const routeCode =
+        rev.vehicleAssignment?.route?.routeCode ||
+        rev.vehicleAssignment?.route?.code ||
+        "AG";
       const dir = rev.vehicleAssignment?.direction === "FORWARD" ? "Pergi" : "Balik";
       const key = `${routeCode} - ${dir}`;
       if (!counts[key]) {
@@ -301,9 +307,9 @@ export default function AdminDashboardPage() {
     // Jika belum ada ulasan sama sekali, tampilkan default placeholder trayek resmi
     if (list.length === 0) {
       return [
-        { label: "BB - Begawan ⇄ UB", count: 0 },
-        { label: "BGTU - Begawan ⇄ Batu", count: 0 },
-        { label: "BS - Begawan ⇄ Suhat", count: 0 },
+        { label: "AG - Arjosari ⇄ Gadang", count: 0 },
+        { label: "AL - Arjosari ⇄ Landungsari", count: 0 },
+        { label: "AG2 - Arjosari ⇄ Gadang New", count: 0 },
       ];
     }
 
@@ -313,6 +319,8 @@ export default function AdminDashboardPage() {
   const handleRefresh = () => {
     refetchStats();
     fetchAssignments();
+    fetchPaymentsData();
+    refetchReviews();
   };
 
   return (

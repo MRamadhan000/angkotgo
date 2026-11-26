@@ -137,6 +137,19 @@ export const paymentService = {
     return Array.isArray(result) ? result : result.data;
   },
 
+  async getAll(): Promise<any[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/payments`, {
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const result = await response.json();
+      return Array.isArray(result) ? result : result.data || [];
+    } catch {
+      return [];
+    }
+  },
+
   async updatePaymentStatusToSucceeded(xenditPaymentRequestId: string) {
     console.log("Updating payment status to SUCCEEDED for:", xenditPaymentRequestId);
     const response = await fetch(`${API_BASE_URL}/payments/webhook/xendit`, {
