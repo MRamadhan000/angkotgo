@@ -237,7 +237,7 @@ export default function DriverDashboardPage() {
   const openMap = (key: string) => {
     if (navigatingKey) return;
     setNavigatingKey(key);
-    router.push(`/driver/now?assignmentId=${key}`);
+    router.push(`/driver/now/${key}`);
   };
 
   const handleLogout = async () => {
