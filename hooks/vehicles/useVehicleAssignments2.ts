@@ -73,7 +73,7 @@ export const vehicleAssignmentKeys = {
 export function useVehicleAssignments() {
   return useQuery({
     queryKey: vehicleAssignmentKeys.all,
-    queryFn: vehicleAssignmentService.getAll,
+    queryFn: () => vehicleAssignmentService.getAll(),
   });
 }
 

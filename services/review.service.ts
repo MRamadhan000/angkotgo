@@ -31,8 +31,28 @@ export const createReview = async (
 };
 
 // ==========================================
-// GET REVIEW BY VEHICLE ASSIGNMENT ID
+// GET ALL REVIEWS (With Optional Filters)
 // ==========================================
+
+export const getAllReviews = async (
+  maxRating?: number,
+): Promise<ReviewsResponse> => {
+  const queryParam = maxRating !== undefined ? `?maxRating=${maxRating}` : "";
+  const response = await fetch(`${API_URL}/reviews${queryParam}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || "Gagal mengambil data review.");
+  }
+
+  return response.json();
+};
 
 export const getReviewsByVehicleAssignmentId = async (
   vehicleAssignmentId: number,

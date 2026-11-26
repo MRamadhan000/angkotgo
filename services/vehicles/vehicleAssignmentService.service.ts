@@ -9,8 +9,9 @@ import { VehicleSchedule } from "@/types/vehicles/vehicle-schedule.type";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export const vehicleAssignmentService = {
-  async getAll(): Promise<VehicleAssignment[]> {
-    const response = await fetch(`${API_URL}/vehicle-assignments`, {
+  async getAll(assignmentDate?: string): Promise<VehicleAssignment[]> {
+    const query = assignmentDate ? `?assignmentDate=${assignmentDate}` : "";
+    const response = await fetch(`${API_URL}/vehicle-assignments${query}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

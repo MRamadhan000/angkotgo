@@ -33,24 +33,24 @@ export const routeStopKeys = {
 };
 
 export function useRouteStops(
-  routeId: number,
-  direction: DirectionType,
+  routeId?: number,
+  direction?: DirectionType,
 ) {
   return useQuery({
-    queryKey: routeStopKeys.byRouteAndDirection(
+    queryKey: routeId && direction ? routeStopKeys.byRouteAndDirection(
       routeId,
       direction,
-    ),
+    ) : routeStopKeys.all,
 
-    queryFn: () =>
-      routeStopService.getRouteStopByRouteIdandDirection(
-        routeId,
-        direction,
-      ),
-
-    enabled:
-      !isNaN(routeId) &&
-      !!direction,
+    queryFn: () => {
+      if (routeId && direction) {
+        return routeStopService.getRouteStopByRouteIdandDirection(
+          routeId,
+          direction,
+        );
+      }
+      return routeStopService.getAll();
+    },
   });
 }
 

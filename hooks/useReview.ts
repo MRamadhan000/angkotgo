@@ -6,10 +6,18 @@ import {
 
 import {
   createReview,
+  getAllReviews,
   getReviewsByVehicleAssignmentId,
 } from '@/services/review.service';
 
 import { CreateReviewPayload } from '@/types/review.type';
+
+export const useAllReviews = (maxRating?: number) => {
+  return useQuery({
+    queryKey: ['reviews', 'all', maxRating],
+    queryFn: () => getAllReviews(maxRating),
+  });
+};
 
 export const useReviewsByVehicleAssignmentId = (
   vehicleAssignmentId?: number,

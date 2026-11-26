@@ -8,8 +8,8 @@ import { vehicleAssignmentService } from "@/services/vehicles/vehicleAssignmentS
 import { VehicleSchedule } from "@/types/vehicles/vehicle-schedule.type";
 import { TripHistoryItem } from "@/types/vehicles/trip-history.type";
 
-export function useVehicleAssignments(options: { fetchOnMount?: boolean } = {}) {
-  const { fetchOnMount = true } = options;
+export function useVehicleAssignments(options: { fetchOnMount?: boolean; assignmentDate?: string } = {}) {
+  const { fetchOnMount = true, assignmentDate } = options;
   const [assignments, setAssignments] = useState<VehicleAssignment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,14 +30,14 @@ export function useVehicleAssignments(options: { fetchOnMount?: boolean } = {}) 
     setLoading(true);
     setError(null);
     try {
-      const data = await vehicleAssignmentService.getAll();
+      const data = await vehicleAssignmentService.getAll(assignmentDate);
       setAssignments(data);
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan saat memuat data penugasan.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [assignmentDate]);
 
   useEffect(() => {
     if (!fetchOnMount) return;
