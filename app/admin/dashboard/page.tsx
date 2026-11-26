@@ -286,7 +286,7 @@ export default function AdminDashboardPage() {
     const counts: Record<string, { label: string; count: number }> = {};
 
     lowReviews.forEach((rev) => {
-      const routeCode = rev.vehicleAssignment?.route?.routeCode || "AL";
+      const routeCode = rev.vehicleAssignment?.route?.routeCode || "BB";
       const dir = rev.vehicleAssignment?.direction === "FORWARD" ? "Pergi" : "Balik";
       const key = `${routeCode} - ${dir}`;
       if (!counts[key]) {
@@ -298,12 +298,12 @@ export default function AdminDashboardPage() {
     // Urutkan dari jumlah ulasan terbanyak ke tersedikit
     const list = Object.values(counts).sort((a, b) => b.count - a.count);
 
-    // Jika belum ada ulasan sama sekali, tampilkan default placeholder trayek
+    // Jika belum ada ulasan sama sekali, tampilkan default placeholder trayek resmi
     if (list.length === 0) {
       return [
-        { label: "AL - Pergi", count: 0 },
-        { label: "AL - Balik", count: 0 },
-        { label: "AG - Pergi", count: 0 },
+        { label: "BB - Begawan ⇄ UB", count: 0 },
+        { label: "BGTU - Begawan ⇄ Batu", count: 0 },
+        { label: "BS - Begawan ⇄ Suhat", count: 0 },
       ];
     }
 

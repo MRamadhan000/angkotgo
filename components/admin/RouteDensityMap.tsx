@@ -61,54 +61,112 @@ const cleanMapStyles = [
   },
 ];
 
+// Definisi palet warna identitas unik untuk tiap rute resmi
+// Setiap rute punya hue warna tersendiri, dengan gradasi gelap-terang sesuai tingkat kepadatan
+export const ROUTE_COLOR_PALETTES: Record<
+  string,
+  {
+    name: string;
+    label: string;
+    dense: { color: string; border: string; label: string };     // Sangat padat (>50 pax) -> Paling Gelap & Pekat
+    stable: { color: string; border: string; label: string };    // Stabil / Sedang (15-50 pax) -> Warna Medium Alami
+    light: { color: string; border: string; label: string };     // Lengang (<15 pax) -> Warna Paling Terang / Cerah
+    inactive: { color: string; border: string; label: string };  // Belum aktif (0 pax) -> Muted / Netral
+  }
+> = {
+  BB: {
+    name: "Biru",
+    label: "Trayek BB (Begawan - UB)",
+    dense: { color: "#1e3a8a", border: "#172554", label: "Padat (Biru Tua Pekat)" },
+    stable: { color: "#2563eb", border: "#1d4ed8", label: "Stabil (Biru Royal)" },
+    light: { color: "#93c5fd", border: "#bfdbfe", label: "Lengang (Biru Cerah)" },
+    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+  },
+  BGTU: {
+    name: "Hijau",
+    label: "Trayek BGTU (Begawan - Batu)",
+    dense: { color: "#065f46", border: "#044332", label: "Padat (Hijau Hutan Pekat)" },
+    stable: { color: "#059669", border: "#047857", label: "Stabil (Hijau Zamrud)" },
+    light: { color: "#6ee7b7", border: "#a7f3d0", label: "Lengang (Hijau Mint Cerah)" },
+    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+  },
+  BS: {
+    name: "Oranye",
+    label: "Trayek BS (Begawan - Suhat)",
+    dense: { color: "#9a3412", border: "#7c2d12", label: "Padat (Cokelat Oranye Pekat)" },
+    stable: { color: "#ea580c", border: "#c2410c", label: "Stabil (Oranye Hangat)" },
+    light: { color: "#fdba74", border: "#fed7aa", label: "Lengang (Oranye Cerah)" },
+    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+  },
+  BK: {
+    name: "Ungu",
+    label: "Trayek BK (Begawan - Karya)",
+    dense: { color: "#581c87", border: "#3b0764", label: "Padat (Ungu Terong Pekat)" },
+    stable: { color: "#7c3aed", border: "#6d28d9", label: "Stabil (Ungu Violet)" },
+    light: { color: "#c4b5fd", border: "#ddd6fe", label: "Lengang (Ungu Lavender Cerah)" },
+    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+  },
+};
+
 // Helper kalkulasi warna kepadatan penumpang berbasis Rata-rata Evaluasi Mingguan (Total 7 Hari / 7)
-export function getWeeklyDensityStyle(avgDailyPax: number) {
+// Menghitung gradasi gelap (padat) ke terang (lengang) per kode rute
+export function getWeeklyDensityStyle(avgDailyPax: number, routeCode: string = "BB") {
+  const palette = ROUTE_COLOR_PALETTES[routeCode] || ROUTE_COLOR_PALETTES.BB;
+
   if (avgDailyPax > 50) {
     return {
       level: "Padat",
+      statusType: "PRIORITY" as const,
       fullLabel: "Kepadatan Tinggi (> 50 Orang/Hari)",
-      color: "#991b1b", // Merah Darah Pekat
-      borderColor: "#7f1d1d",
+      color: palette.dense.color,
+      borderColor: palette.dense.border,
       weight: 6,
       opacity: 0.95,
       badgeBg: "bg-red-600 text-white border-red-500",
       pillBg: "bg-red-50 text-red-700 border-red-200",
+      recommendationBoxBg: "bg-red-50 border-red-200 text-red-800",
       recommendation: "Prioritas: Perlu penambahan armada di jam sibuk",
     };
   } else if (avgDailyPax >= 15) {
     return {
-      level: "Sedang",
-      fullLabel: "Kepadatan Sedang (15 - 50 Orang/Hari)",
-      color: "#ea580c", // Oranye Hangat
-      borderColor: "#c2410c",
+      level: "Stabil",
+      statusType: "STABLE" as const,
+      fullLabel: "Kepadatan Stabil (15 - 50 Orang/Hari)",
+      color: palette.stable.color,
+      borderColor: palette.stable.border,
       weight: 5,
       opacity: 0.9,
-      badgeBg: "bg-amber-500 text-white border-amber-400",
-      pillBg: "bg-amber-50 text-amber-800 border-amber-200",
-      recommendation: "Optimal: Keterisian stabil, pertahankan ritase",
+      badgeBg: "bg-emerald-600 text-white border-emerald-500",
+      pillBg: "bg-emerald-50 text-emerald-800 border-emerald-200",
+      recommendationBoxBg: "bg-emerald-50 border-emerald-200 text-emerald-800",
+      recommendation: "Stabil: Keterisian optimal, pertahankan ritase",
     };
   } else if (avgDailyPax > 0) {
     return {
       level: "Lengang",
+      statusType: "LIGHT" as const,
       fullLabel: "Kepadatan Rendah (< 15 Orang/Hari)",
-      color: "#f43f5e", // Merah Muda / Soft Rose Cerah
-      borderColor: "#fda4af",
+      color: palette.light.color,
+      borderColor: palette.light.border,
       weight: 4,
       opacity: 0.85,
-      badgeBg: "bg-rose-500 text-white border-rose-400",
-      pillBg: "bg-rose-50 text-rose-700 border-rose-200",
+      badgeBg: "bg-sky-500 text-white border-sky-400",
+      pillBg: "bg-sky-50 text-sky-800 border-sky-200",
+      recommendationBoxBg: "bg-sky-50 border-sky-200 text-sky-800",
       recommendation: "Lengang: Disarankan rotasi ritase ke koridor padat",
     };
   } else {
     return {
       level: "Belum Aktif",
+      statusType: "INACTIVE" as const,
       fullLabel: "Belum Ada Penumpang (0)",
-      color: "#94a3b8", // Abu-abu Slate Netral
-      borderColor: "#cbd5e1",
+      color: palette.inactive.color,
+      borderColor: palette.inactive.border,
       weight: 3,
       opacity: 0.55,
       badgeBg: "bg-slate-400 text-white border-slate-300",
       pillBg: "bg-slate-50 text-slate-600 border-slate-200",
+      recommendationBoxBg: "bg-slate-50 border-slate-200 text-slate-600",
       recommendation: "Belum aktif: Siapkan integrasi jadwal trayek",
     };
   }
@@ -123,6 +181,8 @@ interface RouteTrack {
   avgDailyPax: number;
   total7DaysTrips: number;
   avgDailyTrips: number;
+  activeVehiclesDaily: number;
+  activeVehiclesWeekly: number;
   density: ReturnType<typeof getWeeklyDensityStyle>;
 }
 
@@ -271,6 +331,42 @@ export default function RouteDensityMap({
               : (assignments.filter((a) => a.route?.routeCode === r.routeCode).length || 1) * 7;
           const avgDailyTrips = Math.max(1, Math.round(total7Trips / 7));
 
+          // Hitung armada harian & akumulasi unit beroperasi 7 hari (H1 + H2 + ... + H7)
+          const todayMatching = assignments.filter(
+            (a: any) =>
+              a.route?.routeCode === r.routeCode || a.routeCode === r.routeCode
+          );
+          const activeVehiclesTodaySet = new Set(
+            todayMatching.map((a: any) => a.vehicleId || a.vehicle?.id || a.vehicle?.plateNumber)
+          );
+
+          // Peta unit per hari untuk menghitung total akumulasi penugasan armada (H1 + H2 + ... + H7)
+          const dailyVehiclesMap: Record<string, Set<any>> = {};
+          matchingWeekly.forEach((a: any) => {
+            const dateKey = a.assignmentDate ? String(a.assignmentDate).slice(0, 10) : "";
+            const vId = a.vehicleId || a.vehicle?.id || a.vehicle?.plateNumber;
+            if (dateKey && vId) {
+              if (!dailyVehiclesMap[dateKey]) dailyVehiclesMap[dateKey] = new Set();
+              dailyVehiclesMap[dateKey].add(vId);
+            }
+          });
+
+          let cumulative7DaysFleet = 0;
+          Object.values(dailyVehiclesMap).forEach((s) => {
+            cumulative7DaysFleet += s.size;
+          });
+
+          // Rata-rata armada aktif per hari dan total akumulasi armada seminggu
+          const activeVehiclesDaily = activeVehiclesTodaySet.size > 0
+            ? activeVehiclesTodaySet.size
+            : (Object.keys(dailyVehiclesMap).length > 0
+                ? Math.max(1, Math.round(cumulative7DaysFleet / Object.keys(dailyVehiclesMap).length))
+                : 1);
+
+          const activeVehiclesWeekly = cumulative7DaysFleet > 0
+            ? cumulative7DaysFleet
+            : activeVehiclesDaily * 7;
+
           return {
             routeId: r.id,
             routeCode: r.routeCode,
@@ -280,7 +376,9 @@ export default function RouteDensityMap({
             avgDailyPax: avgDailyPax,
             total7DaysTrips: total7Trips,
             avgDailyTrips: avgDailyTrips,
-            density: getWeeklyDensityStyle(avgDailyPax),
+            activeVehiclesDaily: activeVehiclesDaily,
+            activeVehiclesWeekly: activeVehiclesWeekly,
+            density: getWeeklyDensityStyle(avgDailyPax, r.routeCode),
           } as RouteTrack;
         } catch {
           return null;
@@ -345,14 +443,16 @@ export default function RouteDensityMap({
   }, [allRouteTracks]);
 
   // Fit-Bounds HANYA berjalan saat filter rute diubah oleh user (bukan saat kursor hover)
-  const isInitialFit = useRef(false);
+  const lastFittedFilter = useRef<string | null>(null);
   useEffect(() => {
     if (
       mapInstance &&
       visibleTracks.length > 0 &&
       typeof window !== "undefined" &&
-      (window as any).google
+      (window as any).google &&
+      lastFittedFilter.current !== selectedRouteFilter
     ) {
+      lastFittedFilter.current = selectedRouteFilter;
       const bounds = new (window as any).google.maps.LatLngBounds();
       let hasPoints = false;
       visibleTracks.forEach((track) => {
@@ -370,7 +470,7 @@ export default function RouteDensityMap({
         });
       }
     }
-  }, [mapInstance, selectedRouteFilter, visibleTracks.length]);
+  }, [mapInstance, selectedRouteFilter, visibleTracks]);
 
   const onMapLoad = useCallback((map: any) => {
     setMapInstance(map);
@@ -384,9 +484,9 @@ export default function RouteDensityMap({
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300 p-5 mb-8">
-      {/* ── Header Ringkas & Bersih Tanpa Overcrowding ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 pb-4 border-b border-slate-100">
-        {/* Kiri: Judul & Subjudul */}
+      {/* ── Header Rapih, Seimbang & Tidak Sesak (Decluttered UI) ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        {/* Kiri: Judul & Keterangan Ringkas */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center shadow-xs shrink-0">
             <FaMapMarkedAlt className="w-5 h-5" />
@@ -402,35 +502,27 @@ export default function RouteDensityMap({
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Rata-rata mingguan:{" "}
-              <strong className="text-red-700 font-bold">Merah Darah</strong> = Padat (&gt;50 orang/hari),{" "}
-              <strong className="text-amber-600 font-semibold">Oranye</strong> = Sedang,{" "}
-              <strong className="text-rose-500 font-semibold">Merah Muda</strong> = Lengang (&lt;15 orang/hari)
+              Warna per koridor: <span className="font-semibold text-blue-700">BB (Biru)</span>,{" "}
+              <span className="font-semibold text-emerald-700">BGTU (Hijau)</span>,{" "}
+              <span className="font-semibold text-amber-700">BS (Oranye)</span>,{" "}
+              <span className="font-semibold text-purple-700">BK (Ungu)</span> •{" "}
+              <span className="text-slate-700 font-bold">Warna Lebih Gelap</span> = Padat,{" "}
+              <span className="text-slate-500">Warna Lebih Terang</span> = Sepi
             </p>
           </div>
         </div>
 
-        {/* Kanan: Tombol Ekspor & Selector Trayek (Tanpa Warna Hitam, Tanpa Pergi-Pulang) */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Tombol Ekspor Laporan (Biru Cerah & Bersahabat) */}
-          <button
-            onClick={() => setIsExportModalOpen(true)}
-            type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition-colors cursor-pointer"
-          >
-            <FaFileAlt className="w-3.5 h-3.5" />
-            <span>Ekspor Analisa</span>
-          </button>
-
-          {/* Selector Jalur (Semua Jalur vs Jalur Tertentu) */}
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/80 p-1 rounded-xl">
+        {/* Kanan: Filter Jalur & Tombol Tindakan Tanpa Warna Hitam */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Selector Koridor Trayek dengan Dot Warna Rute */}
+          <div className="flex items-center bg-slate-100/80 p-1 rounded-xl gap-0.5 border border-slate-200/60">
             <button
               onClick={() => setSelectedRouteFilter("ALL")}
               type="button"
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedRouteFilter === "ALL"
-                  ? "bg-rose-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                  ? "bg-slate-800 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
               }`}
             >
               <FaLayerGroup className="w-3 h-3" />
@@ -439,32 +531,64 @@ export default function RouteDensityMap({
 
             {operationalRoutes.map((r: any) => {
               const active = selectedRouteFilter === String(r.id);
+              const dotColor =
+                r.routeCode === "BB"
+                  ? "bg-blue-600"
+                  : r.routeCode === "BGTU"
+                  ? "bg-emerald-600"
+                  : r.routeCode === "BS"
+                  ? "bg-amber-600"
+                  : "bg-purple-600";
+              const activeBg =
+                r.routeCode === "BB"
+                  ? "bg-blue-600 text-white"
+                  : r.routeCode === "BGTU"
+                  ? "bg-emerald-600 text-white"
+                  : r.routeCode === "BS"
+                  ? "bg-amber-600 text-white"
+                  : "bg-purple-600 text-white";
+
               return (
                 <button
                   key={r.id}
                   onClick={() => setSelectedRouteFilter(String(r.id))}
                   type="button"
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     active
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                      ? `${activeBg} shadow-xs`
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
                   }`}
                 >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      active ? "bg-white" : dotColor
+                    }`}
+                  />
                   {r.routeCode}
                 </button>
               );
             })}
           </div>
 
+          {/* Tombol Ekspor Laporan (Biru Cerah & Bersahabat) */}
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition-all cursor-pointer"
+          >
+            <FaFileAlt className="w-3.5 h-3.5" />
+            <span>Ekspor Analisa</span>
+          </button>
+
           {/* Refresh Data */}
           <button
             onClick={() => fetchRouteEvaluationData()}
             title="Muat Ulang Data Jalur"
-            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+            className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 transition-colors cursor-pointer"
           >
             <FaSyncAlt
               className={`w-3.5 h-3.5 ${
-                isLoadingPaths ? "animate-spin text-rose-600" : ""
+                isLoadingPaths ? "animate-spin text-blue-600" : ""
               }`}
             />
           </button>
@@ -475,7 +599,7 @@ export default function RouteDensityMap({
       <div className="mt-2.5 mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
         <div className="flex items-center gap-2 text-slate-600 flex-wrap">
           <span className="font-bold text-slate-800 flex items-center gap-1">
-            <FaCompass className="text-rose-600" />
+            <FaCompass className="text-blue-600" />
             {selectedRouteFilter === "ALL"
               ? `Jaringan Multi-Jalur (${visibleTracks.length} Trayek)`
               : `Trayek ${operationalRoutes.find((r: any) => String(r.id) === selectedRouteFilter)?.routeCode}`}
@@ -489,12 +613,25 @@ export default function RouteDensityMap({
           </span>
         </div>
 
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-rose-50 text-rose-800 border-rose-200">
-          <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse" />
-          {visibleTracks.some((t) => t.avgDailyPax > 50)
-            ? "Terdeteksi Jalur Padat (Merah Darah)"
-            : "Jalur Terkendali"}
-        </span>
+        {/* Status Badge yang Presisi (Jika Stabil = Hijau Zamrud, Jika Padat = Merah Prioritas) */}
+        {(() => {
+          const hasDenseRoute = visibleTracks.some((t) => t.avgDailyPax > 50);
+          if (hasDenseRoute) {
+            return (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-red-50 text-red-800 border-red-200">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                Terdeteksi Jalur Padat (Butuh Prioritas)
+              </span>
+            );
+          } else {
+            return (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-emerald-50 text-emerald-800 border-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                Jalur Beroperasi Stabil
+              </span>
+            );
+          }
+        })()}
       </div>
 
       {/* ── Google Maps Viewport dengan Live Floating HUD Tooltip (Bebas Kedipan) ── */}
@@ -632,50 +769,93 @@ export default function RouteDensityMap({
                     {hoveredRoute.total7DaysTrips} Putaran
                   </span>
                 </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-200/60 pt-1">
+                  <span>Armada Beroperasi:</span>
+                  <span className="font-bold text-slate-800">
+                    <span className="text-blue-700">{hoveredRoute.activeVehiclesDaily} Unit/Hari</span>
+                    {" • "}
+                    <span className="text-slate-600">{hoveredRoute.activeVehiclesWeekly} Total Unit (7 Hari)</span>
+                  </span>
+                </div>
               </div>
 
-              {/* Rekomendasi Kebijakan Armada */}
-              <div className="text-[10px] font-semibold text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-2 text-center leading-snug">
+              {/* Rekomendasi Kebijakan Armada (Hijau untuk Stabil/Optimal, Merah untuk Padat/Prioritas) */}
+              <div
+                className={`text-[10px] font-semibold rounded-xl p-2 text-center leading-snug border ${hoveredRoute.density.recommendationBoxBg}`}
+              >
                 {hoveredRoute.density.recommendation}
               </div>
             </div>
           ) : (
             <div className="bg-white/90 backdrop-blur-xs px-3 py-2 rounded-xl border border-slate-200/80 shadow-md text-[11px] text-slate-600 flex items-center gap-2">
-              <FaInfoCircle className="text-rose-500 shrink-0" />
+              <FaInfoCircle className="text-blue-500 shrink-0" />
               <span>Arahkan kursor ke garis rute untuk melihat detail evaluasi</span>
             </div>
           )}
         </div>
 
         {/* Floating Map Legend Overlay */}
-        <div className="absolute bottom-3 right-3 z-10 bg-white/95 backdrop-blur-xs p-3 rounded-xl border border-slate-200/90 shadow-md text-[11px] space-y-1.5 pointer-events-auto">
-          <p className="font-bold text-slate-800 flex items-center gap-1.5 mb-1 text-[11px]">
-            <FaInfoCircle className="text-rose-600" />
-            Legenda Evaluasi Jalur (Rolling 7-Hari)
+        <div className="absolute bottom-3 right-3 z-10 bg-white/95 backdrop-blur-xs p-3.5 rounded-2xl border border-slate-200/90 shadow-lg text-[11px] space-y-2 pointer-events-auto max-w-[270px]">
+          <p className="font-bold text-slate-800 flex items-center gap-1.5 text-[11px]">
+            <FaInfoCircle className="text-blue-600" />
+            Panduan Warna &amp; Kepadatan
           </p>
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-2 rounded bg-red-700 inline-block shadow-2xs" />
-            <span className="text-slate-800 font-bold">
-              Padat (&gt; 50 Penumpang/Hari)
+
+          {/* Warna Koridor */}
+          <div className="space-y-1 text-[10px] text-slate-600 border-b border-slate-100 pb-2">
+            <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">
+              Identitas Trayek:
             </span>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" />
+                <span className="font-semibold text-slate-700">BB (Biru)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
+                <span className="font-semibold text-slate-700">BGTU (Hijau)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-600 shrink-0" />
+                <span className="font-semibold text-slate-700">BS (Oranye)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-600 shrink-0" />
+                <span className="font-semibold text-slate-700">BK (Ungu)</span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-2 rounded bg-amber-600 inline-block" />
-            <span className="text-slate-700 font-semibold">
-              Sedang (15 - 50 Penumpang/Hari)
+
+          {/* Gradasi Kepadatan */}
+          <div className="space-y-1 text-[10px]">
+            <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">
+              Tingkat Kepadatan:
             </span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-2 rounded bg-slate-800 inline-block" />
+                <span className="text-slate-800 font-bold">Warna Gelap/Pekat</span>
+              </div>
+              <span className="text-red-700 font-bold">&gt; 50 (Padat)</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-2 rounded bg-slate-500 inline-block" />
+                <span className="text-slate-700 font-semibold">Warna Sedang</span>
+              </div>
+              <span className="text-emerald-700 font-bold">15–50 (Stabil)</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-2 rounded bg-slate-300 inline-block" />
+                <span className="text-slate-600">Warna Terang</span>
+              </div>
+              <span className="text-sky-700 font-semibold">&lt; 15 (Lengang)</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-2 rounded bg-rose-400 inline-block" />
-            <span className="text-slate-700 font-semibold">
-              Lengang (&lt; 15 Penumpang/Hari)
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-2 rounded bg-slate-400 inline-block" />
-            <span className="text-slate-500">Belum Aktif (0)</span>
-          </div>
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+
+          {/* Simpul Halte */}
+          <div className="flex items-center gap-2 pt-1.5 border-t border-slate-100 text-[10px]">
             <span className="w-2 h-2 rounded-full bg-red-700 inline-block" />
             <span className="text-slate-600">Simpul Utama</span>
             <span className="w-2 h-2 rounded-full bg-blue-600 inline-block ml-2" />
