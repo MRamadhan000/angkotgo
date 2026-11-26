@@ -178,6 +178,21 @@ const api = {
     }),
 };
 
+/* ---- ADD: kirim posisi angkot ---- */
+interface CreateVehicleLocationBody {
+  vehicleAssignmentId: number;
+  latitude: number;
+  longitude: number;
+}
+
+const postVehicleLocation = (body: CreateVehicleLocationBody) =>
+  apiFetch<ApiResponse<unknown>>(`/vehicle-locations`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+const LOCATION_POST_INTERVAL_MS = 5000;
+
 /* =========================================================
 3. HOOKS TANSTACK QUERY
    ========================================================= */
@@ -629,6 +644,149 @@ function DriverObservationContent() {
       }
     };
   }, []);
+
+  /* ---------------------------------------------------------
+     ADD: POST POSISI ANGKOT tiap 5 detik
+     Syarat: GPS aktif + mode perjalanan (ONGOING)
+  --------------------------------------------------------- */
+  const positionRef = useRef(position);
+  const isSendingLocation = useRef(false);
+  const hasLocationErrorShown = useRef(false);
+
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+
+  useEffect(() => {
+    if (!isGpsActive || !isDrivingMode || !Number.isFinite(assignmentId)) {
+      return;
+    }
+
+    const sendLocation = async () => {
+      if (isSendingLocation.current) return; // cegah request menumpuk
+      isSendingLocation.current = true;
+
+      try {
+        await postVehicleLocation({
+          vehicleAssignmentId: assignmentId,
+          latitude: positionRef.current.lat,
+          longitude: positionRef.current.lng,
+        });
+        hasLocationErrorShown.current = false;
+      } catch (err) {
+        console.warn("Gagal kirim lokasi:", err);
+        if (!hasLocationErrorShown.current) {
+          hasLocationErrorShown.current = true; // toast cukup sekali
+          showToast(
+            `Gagal kirim lokasi: ${err instanceof Error ? err.message : "error"}`,
+            "warning",
+          );
+        }
+      } finally {
+        isSendingLocation.current = false;
+      }
+    };
+
+    sendLocation(); // kirim langsung saat mulai
+    const timer = setInterval(sendLocation, LOCATION_POST_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGpsActive, isDrivingMode, assignmentId]);
+
+  /* ---------------------------------------------------------
+     ADD: VISUAL KOORDINAT DARI encodedPolyline
+     decode -> lat/lng -> marker A (awal), B (akhir), titik-titik rute
+  --------------------------------------------------------- */
+  const routeMarkers = useRef<google.maps.Marker[]>([]);
+
+  useEffect(() => {
+    if (!mapReady || !mapInstance.current || !encodedPolyline) return;
+
+    const map = mapInstance.current;
+    const decoded = google.maps.geometry.encoding.decodePath(encodedPolyline);
+    const coords = decoded.map((p) => ({ lat: p.lat(), lng: p.lng() }));
+    if (coords.length === 0) return;
+
+    const markers: google.maps.Marker[] = [];
+
+    // Titik-titik koordinat rute (disampling max ±150 titik agar ringan)
+    const step = Math.max(1, Math.ceil(coords.length / 150));
+    coords.forEach((c, i) => {
+      if (i % step !== 0 || i === 0 || i === coords.length - 1) return;
+      markers.push(
+        new google.maps.Marker({
+          map,
+          position: c,
+          clickable: true,
+          title: `${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`,
+          zIndex: 1,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 3.5,
+            fillColor: "#ffffff",
+            fillOpacity: 1,
+            strokeColor: routeColor,
+            strokeWeight: 2,
+          },
+        }),
+      );
+    });
+
+    // Marker awal (A) & akhir (B)
+    const first = coords[0];
+    const last = coords[coords.length - 1];
+
+    markers.push(
+      new google.maps.Marker({
+        map,
+        position: first,
+        title: `Awal: ${first.lat.toFixed(6)}, ${first.lng.toFixed(6)}`,
+        zIndex: 5,
+        label: {
+          text: "A",
+          color: "#ffffff",
+          fontWeight: "bold",
+          fontSize: "11px",
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 11,
+          fillColor: "#059669",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      }),
+      new google.maps.Marker({
+        map,
+        position: last,
+        title: `Akhir: ${last.lat.toFixed(6)}, ${last.lng.toFixed(6)}`,
+        zIndex: 5,
+        label: {
+          text: "B",
+          color: "#ffffff",
+          fontWeight: "bold",
+          fontSize: "11px",
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 11,
+          fillColor: "#e11d48",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      }),
+    );
+
+    routeMarkers.current = markers;
+
+    return () => {
+      markers.forEach((m) => m.setMap(null));
+      routeMarkers.current = [];
+    };
+  }, [mapReady, encodedPolyline, routeColor]);
 
   /* ---------------------------------------------------------
      STATUS CHANGE
