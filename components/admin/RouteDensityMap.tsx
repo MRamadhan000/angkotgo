@@ -10,6 +10,7 @@ import {
 import { DirectionType } from "@/types/vehicles/vehicle.type";
 import { useRoutes } from "@/hooks/routes/useRoutes";
 import { routePathService } from "@/services/routes/route-path.service";
+import { decodePolyline } from "@/utils/polyline.util";
 import { RouteStopType } from "@/types/routes/route-stop.type";
 import { VehicleAssignment } from "@/types/vehicles/vehicle-assignments.type";
 import {
@@ -74,6 +75,30 @@ export const ROUTE_COLOR_PALETTES: Record<
     inactive: { color: string; border: string; label: string };  // Belum aktif (0 pax) -> Muted / Netral
   }
 > = {
+  AL: {
+    name: "Biru",
+    label: "Trayek AL (Arjosari - Landungsari)",
+    dense: { color: "#1e3a8a", border: "#172554", label: "Padat (Biru Tua Pekat)" },
+    stable: { color: "#2563eb", border: "#1d4ed8", label: "Stabil (Biru Royal)" },
+    light: { color: "#93c5fd", border: "#bfdbfe", label: "Lengang (Biru Cerah)" },
+    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+  },
+  AG: {
+    name: "Hijau",
+    label: "Trayek AG (Arjosari - Gadang)",
+    dense: { color: "#065f46", border: "#044332", label: "Padat (Hijau Hutan Pekat)" },
+    stable: { color: "#059669", border: "#047857", label: "Stabil (Hijau Zamrud)" },
+    light: { color: "#6ee7b7", border: "#a7f3d0", label: "Lengang (Hijau Mint Cerah)" },
+    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+  },
+  AG2: {
+    name: "Oranye",
+    label: "Trayek AG2 (Arjosari - Gadang New)",
+    dense: { color: "#9a3412", border: "#7c2d12", label: "Padat (Cokelat Oranye Pekat)" },
+    stable: { color: "#ea580c", border: "#c2410c", label: "Stabil (Oranye Hangat)" },
+    light: { color: "#fdba74", border: "#fed7aa", label: "Lengang (Oranye Cerah)" },
+    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+  },
   BB: {
     name: "Biru",
     label: "Trayek BB (Begawan - UB)",
@@ -110,8 +135,8 @@ export const ROUTE_COLOR_PALETTES: Record<
 
 // Helper kalkulasi warna kepadatan penumpang berbasis Rata-rata Evaluasi Mingguan (Total 7 Hari / 7)
 // Menghitung gradasi gelap (padat) ke terang (lengang) per kode rute
-export function getWeeklyDensityStyle(avgDailyPax: number, routeCode: string = "BB") {
-  const palette = ROUTE_COLOR_PALETTES[routeCode] || ROUTE_COLOR_PALETTES.BB;
+export function getWeeklyDensityStyle(avgDailyPax: number, routeCode: string = "AL") {
+  const palette = ROUTE_COLOR_PALETTES[routeCode] || ROUTE_COLOR_PALETTES.AL || ROUTE_COLOR_PALETTES.BB;
 
   if (avgDailyPax > 50) {
     return {
@@ -215,10 +240,10 @@ export default function RouteDensityMap({
       : (routesData as any)?.data || [];
   }, [routesData]);
 
-  // Hanya rute operasional resmi (Hapus AL dan AG)
+  // Hanya rute operasional aktif
   const operationalRoutes = useMemo(() => {
     return routes.filter((r: any) =>
-      ["BB", "BGTU", "BS", "BK"].includes(r.routeCode)
+      r.isActive !== false && ["AL", "AG", "AG2", "BB", "BGTU", "BS", "BK"].includes(r.routeCode)
     );
   }, [routes]);
 
@@ -276,28 +301,33 @@ export default function RouteDensityMap({
 
       const tracksPromises = operationalRoutes.map(async (r: any) => {
         try {
-          // Ambil koordinat jalur rute (FORWARD sebagai representasi koridor utama)
-          const rawPaths = await routePathService.getRoutePathByRouteIdandDirection(
-            r.id,
-            DirectionType.FORWARD
-          );
-          const valid = (rawPaths || []).filter(
-            (p: any) =>
-              p &&
-              typeof p.latitude === "number" &&
-              typeof p.longitude === "number" &&
-              !isNaN(p.latitude) &&
-              !isNaN(p.longitude)
-          );
-          const sorted = [...valid].sort(
-            (a: any, b: any) =>
-              (a.sequenceOrder || a.stopOrder || 0) -
-              (b.sequenceOrder || b.stopOrder || 0)
-          );
-          const coords = sorted.map((p: any) => ({
-            lat: Number(p.latitude),
-            lng: Number(p.longitude),
-          }));
+          // Ambil koordinat jalur rute dari encodedPolyline atau routePathService
+          let coords: { lat: number; lng: number }[] = [];
+          if (r.encodedPolyline) {
+            coords = decodePolyline(r.encodedPolyline);
+          } else {
+            const rawPaths = await routePathService.getRoutePathByRouteIdandDirection(
+              r.id,
+              DirectionType.FORWARD
+            );
+            const valid = (rawPaths || []).filter(
+              (p: any) =>
+                p &&
+                typeof p.latitude === "number" &&
+                typeof p.longitude === "number" &&
+                !isNaN(p.latitude) &&
+                !isNaN(p.longitude)
+            );
+            const sorted = [...valid].sort(
+              (a: any, b: any) =>
+                (a.sequenceOrder || a.stopOrder || 0) -
+                (b.sequenceOrder || b.stopOrder || 0)
+            );
+            coords = sorted.map((p: any) => ({
+              lat: Number(p.latitude),
+              lng: Number(p.longitude),
+            }));
+          }
 
           // Hitung total penumpang 7 hari untuk rute ini (seluruh penugasan bolak-balik digabung)
           const matchingWeekly = weeklyAssignments.filter(
@@ -502,10 +532,9 @@ export default function RouteDensityMap({
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Warna per koridor: <span className="font-semibold text-blue-700">BB (Biru)</span>,{" "}
-              <span className="font-semibold text-emerald-700">BGTU (Hijau)</span>,{" "}
-              <span className="font-semibold text-amber-700">BS (Oranye)</span>,{" "}
-              <span className="font-semibold text-purple-700">BK (Ungu)</span> •{" "}
+              Warna per koridor: <span className="font-semibold text-blue-700">AL (Biru)</span>,{" "}
+              <span className="font-semibold text-emerald-700">AG (Hijau)</span>,{" "}
+              <span className="font-semibold text-amber-700">AG2 (Oranye)</span> •{" "}
               <span className="text-slate-700 font-bold">Warna Lebih Gelap</span> = Padat,{" "}
               <span className="text-slate-500">Warna Lebih Terang</span> = Sepi
             </p>
@@ -532,19 +561,19 @@ export default function RouteDensityMap({
             {operationalRoutes.map((r: any) => {
               const active = selectedRouteFilter === String(r.id);
               const dotColor =
-                r.routeCode === "BB"
+                r.routeCode === "AL" || r.routeCode === "BB"
                   ? "bg-blue-600"
-                  : r.routeCode === "BGTU"
+                  : r.routeCode === "AG" || r.routeCode === "BGTU"
                   ? "bg-emerald-600"
-                  : r.routeCode === "BS"
+                  : r.routeCode === "AG2" || r.routeCode === "BS"
                   ? "bg-amber-600"
                   : "bg-purple-600";
               const activeBg =
-                r.routeCode === "BB"
+                r.routeCode === "AL" || r.routeCode === "BB"
                   ? "bg-blue-600 text-white"
-                  : r.routeCode === "BGTU"
+                  : r.routeCode === "AG" || r.routeCode === "BGTU"
                   ? "bg-emerald-600 text-white"
-                  : r.routeCode === "BS"
+                  : r.routeCode === "AG2" || r.routeCode === "BS"
                   ? "bg-amber-600 text-white"
                   : "bg-purple-600 text-white";
 
@@ -809,19 +838,15 @@ export default function RouteDensityMap({
             <div className="grid grid-cols-2 gap-1.5">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" />
-                <span className="font-semibold text-slate-700">BB (Biru)</span>
+                <span className="font-semibold text-slate-700">AL (Biru)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
-                <span className="font-semibold text-slate-700">BGTU (Hijau)</span>
+                <span className="font-semibold text-slate-700">AG (Hijau)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-600 shrink-0" />
-                <span className="font-semibold text-slate-700">BS (Oranye)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-600 shrink-0" />
-                <span className="font-semibold text-slate-700">BK (Ungu)</span>
+                <span className="font-semibold text-slate-700">AG2 (Oranye)</span>
               </div>
             </div>
           </div>

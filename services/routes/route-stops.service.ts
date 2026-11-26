@@ -9,20 +9,36 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export const routeStopService = {
   async getAll(): Promise<RouteStopType[]> {
-    const response = await fetch(`${API_BASE_URL}/route-stops`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/halte`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      });
 
-    if (!response.ok) {
-      throw new Error("Gagal mengambil data seluruh halte.");
+      if (response.ok) {
+        const result = await response.json();
+        const haltes = Array.isArray(result) ? result : result.data || [];
+        return haltes.map((h: any) => ({
+          id: h.id,
+          routeId: 6, // default
+          stopName: h.name || h.stopName,
+          direction: DirectionType.FORWARD,
+          latitude: Number(h.latitude) || 0,
+          longitude: Number(h.longitude) || 0,
+          isTransit: !!h.isTransit,
+          stopOrder: h.stopSequence || 1,
+          createdAt: h.createdAt,
+          updatedAt: h.updatedAt,
+        }));
+      }
+    } catch {
+      // fallback
     }
 
-    const result = await response.json();
-    return Array.isArray(result) ? result : result.data || [];
+    return [];
   },
 
   async getRouteStopByRouteIdandDirection(

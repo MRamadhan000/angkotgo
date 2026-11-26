@@ -17,7 +17,19 @@ export const RouteService = {
     }
 
     const result = await response.json();
-    return Array.isArray(result) ? result : result.data || [];
+    const rawList = Array.isArray(result) ? result : result.data || [];
+    return rawList.map((r: any) => ({
+      id: r.id,
+      routeCode: r.routeCode || r.code || "",
+      routeName: r.routeName || r.name || "",
+      encodedPolyline: r.encodedPolyline,
+      direction: r.direction,
+      color: r.color,
+      totalDistanceMeters: r.totalDistanceMeters,
+      isActive: r.isActive,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
   },
 
   async getById(id: number): Promise<Route> {
