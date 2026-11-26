@@ -8,6 +8,7 @@ import {
   FaCalendarCheck,
   FaMoneyBillWave,
   FaChevronRight,
+  FaChevronDown,
   FaSync,
   FaCheckCircle,
   FaExclamationTriangle,
@@ -35,14 +36,26 @@ import DriverDispatchModal from "@/components/admin/DriverDispatchModal";
 import TrayekDetailModal, { TrayekStat } from "@/components/admin/TrayekDetailModal";
 import HalteSummaryModal, { HalteBoardingStat } from "@/components/admin/HalteSummaryModal";
 import LowReviewsModal from "@/components/admin/LowReviewsModal";
+import MiniCalendarPicker from "@/components/admin/MiniCalendarPicker";
 
 export default function AdminDashboardPage() {
-  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  // Tanggal default hari ini (YYYY-MM-DD)
+  const defaultToday = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
 
-  // Query Stats, Assignments (Difilter tanggal hari ini), Drivers, dan Reviews
+  // State tanggal terpilih (bisa diubah via pop-up kalender)
+  const [selectedDate, setSelectedDate] = useState<string>(defaultToday);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Query Stats, Assignments (Difilter sesuai tanggal terpilih), Drivers, dan Reviews
   const { data: stats, loading: statsLoading, refetch: refetchStats } = useStats();
   const { assignments, loading: assignmentsLoading, fetchAssignments } = useVehicleAssignments({
-    assignmentDate: todayStr,
+    assignmentDate: selectedDate,
   });
   const { data: drivers = [], isLoading: driversLoading } = useDrivers();
   const { data: reviewsResponse, isLoading: reviewsLoading } = useAllReviews(3);
@@ -56,15 +69,30 @@ export default function AdminDashboardPage() {
 
   const reviews = reviewsResponse?.data || [];
 
-  // Helper tanggal hari ini
-  const formattedDate = useMemo(() => {
-    return new Date().toLocaleDateString("id-ID", {
+  // Helper format tanggal lengkap untuk header
+  const formattedSelectedDate = useMemo(() => {
+    if (!selectedDate) return "";
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    return dateObj.toLocaleDateString("id-ID", {
       weekday: "long",
       day: "numeric",
       month: "long",
       year: "numeric",
     });
-  }, []);
+  }, [selectedDate]);
+
+  // Helper format tanggal ringkas (cth: "26 Nov 2026")
+  const shortSelectedDate = useMemo(() => {
+    if (!selectedDate) return "";
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    return dateObj.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }, [selectedDate]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 1. Data Agregasi "Statistik Operasional & Transaksi per Trayek"
@@ -295,10 +323,29 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Tanggal Picker / Info */}
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 shadow-sm">
-            <FaCalendarCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>{formattedDate}</span>
+          {/* Tanggal Picker / Info Popover */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsCalendarOpen((prev) => !prev)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 hover:bg-blue-50/70 border border-slate-200/80 hover:border-blue-300 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-700 shadow-sm transition-all group cursor-pointer"
+              title="Klik untuk memilih tanggal operasional"
+            >
+              <FaCalendarCheck className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+              <span>{formattedSelectedDate}</span>
+              <FaChevronDown className="w-2.5 h-2.5 text-slate-400 group-hover:text-blue-600 transition-colors ml-0.5" />
+            </button>
+
+            {/* Pop-up Kalender Mini */}
+            <MiniCalendarPicker
+              isOpen={isCalendarOpen}
+              onClose={() => setIsCalendarOpen(false)}
+              selectedDate={selectedDate}
+              onSelectDate={(newDate) => {
+                setSelectedDate(newDate);
+                setIsCalendarOpen(false);
+              }}
+            />
           </div>
 
           {/* Notifikasi Bell */}
@@ -419,7 +466,7 @@ export default function AdminDashboardPage() {
           <div>
             <div className="flex items-start justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Penugasan Hari Ini
+                Penugasan Armada
               </span>
               <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                 <FaCalendarCheck className="w-4 h-4" />
@@ -427,7 +474,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-slate-900">
-                {stats?.totalTodayAssignments ?? 16}
+                {assignments.length}
               </span>
               <span className="text-sm font-semibold text-slate-400">
                 Penugasan
@@ -435,10 +482,10 @@ export default function AdminDashboardPage() {
             </div>
             <div className="mt-3 flex items-center gap-2 text-xs">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                {shortSelectedDate}
               </span>
               <span className="text-slate-400">
-                • {stats?.todayAssignmentsByStatus?.SCHEDULED ?? stats?.totalTodayAssignments ?? 16} Terjadwal
+                • {assignments.length} Terjadwal
               </span>
             </div>
           </div>
@@ -500,7 +547,7 @@ export default function AdminDashboardPage() {
                 Statistik Operasional & Transaksi per Trayek
               </h2>
               <span className="text-xs px-2.5 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-600">
-                {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                {shortSelectedDate}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -508,7 +555,7 @@ export default function AdminDashboardPage() {
             </p>
           </div>
           <div className="text-xs font-semibold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60">
-            Akumulasi Hari Ini:{" "}
+            {selectedDate === defaultToday ? "Akumulasi Hari Ini:" : `Akumulasi (${shortSelectedDate}):`}{" "}
             <span className="text-emerald-700 font-bold">
               Rp {totalAkumulasiHariIni.revenue.toLocaleString("id-ID")}
             </span>{" "}
