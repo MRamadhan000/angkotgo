@@ -15,6 +15,8 @@ import {
   FiEdit2,
   FiTrash2,
   FiUserPlus,
+  FiMessageSquare,
+  FiDollarSign,
 } from "react-icons/fi";
 import {
   useVehicleAssignmentsByDate,
@@ -347,7 +349,7 @@ export default function OperationalBoardPage() {
                       ))}
                   </div>
                 </th>
-                <th className="py-4 px-6 text-center">Pemasukan</th>
+                <th className="py-4 px-6 text-center">Laporan & Ulasan</th>
                 <th
                   onClick={() => handleSortChange("status")}
                   className="py-4 px-6 text-center cursor-pointer hover:bg-gray-100/60 transition-colors select-none"
@@ -495,22 +497,42 @@ export default function OperationalBoardPage() {
                       </div>
                     </td>
 
-                    {/* Income */}
+                    {/* Reports & Feedbacks Buttons */}
                     <td
                       className="px-6 py-4 text-center"
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.push(
-                            `/admin/dashboard/assignments/${item.id}?date=${encodeURIComponent(item.assignmentDate)}&vehicle=${encodeURIComponent(item.vehicle?.vehicleCode || "")}`,
-                          )
-                        }
-                        className="inline-flex items-center justify-center rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                      >
-                        Detail
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        {/* Keuangan / Pemasukan */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/admin/dashboard/assignments/${item.id}/payment`,
+                            )
+                          }
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                          title="Lihat Keuangan Penugasan"
+                        >
+                          <FiDollarSign className="w-3.5 h-3.5" />
+                          <span>Keuangan</span>
+                        </button>
+
+                        {/* Ulasan / Feedbacks */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/admin/dashboard/assignments/${item.id}/feedbacks`,
+                            )
+                          }
+                          className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                          title="Lihat Ulasan Penumpang"
+                        >
+                          <FiMessageSquare className="w-3.5 h-3.5" />
+                          <span>Ulasan</span>
+                        </button>
+                      </div>
                     </td>
 
                     {/* Status */}
