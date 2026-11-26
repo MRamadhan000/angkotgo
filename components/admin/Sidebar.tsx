@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Sidebar({
   isOpen,
@@ -11,6 +12,29 @@ export default function Sidebar({
   onClose?: () => void;
 }) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  // Dapatkan profil user jika login, atau default ke Super Administrator
+  const adminName = user?.name || "Super Admin";
+  const adminRole =
+    user?.role === "admin"
+      ? "Super Administrator"
+      : user?.role
+      ? String(user.role).toUpperCase()
+      : "Super Administrator";
+  const badgeLabel = "Administrator Pusat";
+
+  const handleLogout = () => {
+    if (logout) {
+      logout();
+    } else {
+      localStorage.removeItem("auth");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("token");
+      window.location.href = "/admin/auth/login";
+    }
+  };
+
   const navItems = [
     {
       href: "/admin/dashboard",
@@ -255,8 +279,8 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Nav Link List */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      {/* Nav Link List dengan Interactive Hover Motion */}
+      <nav className="flex-1 px-3 py-4 space-y-1.5">
         {navItems.map((item) => {
           const active =
             item.href === "/admin/dashboard"
@@ -267,54 +291,70 @@ export default function Sidebar({
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+              className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                 active
-                  ? "bg-blue-600 text-white shadow-sm shadow-blue-200"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200/60 translate-x-1"
+                  : "text-gray-600 hover:bg-blue-50/80 hover:text-blue-700 hover:translate-x-1.5 hover:shadow-xs"
               }`}
             >
-              <span className={active ? "text-white" : "text-gray-400"}>
+              <span
+                className={`transition-transform duration-200 group-hover:scale-110 ${
+                  active ? "text-white" : "text-gray-400 group-hover:text-blue-600"
+                }`}
+              >
                 {item.icon}
               </span>
-              {item.label}
+              <span className="truncate">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Driver Profile */}
-      <div className="px-4 py-5 border-t border-gray-100">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center">
-              {/* Avatar placeholder */}
-              <svg
-                className="w-8 h-8 text-blue-400"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-              </svg>
+      {/* Admin / Superadmin Profile dengan Interactive Card Hover Action */}
+      <div className="px-3 py-4 border-t border-gray-100">
+        <div className="group p-3 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/60 hover:from-blue-50/70 hover:to-indigo-50/40 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+          <div className="flex items-center gap-3 mb-2.5">
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs flex items-center justify-center font-bold text-sm tracking-wider group-hover:scale-105 group-hover:shadow transition-all duration-200">
+                {adminName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase() || "SA"}
+              </div>
+              <span
+                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full group-hover:scale-110 transition-transform"
+                title="Online / Aktif"
+              />
             </div>
-            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-gray-800 truncate group-hover:text-blue-900 transition-colors">
+                {adminName}
+              </p>
+              <p className="text-xs text-blue-600 font-semibold truncate group-hover:text-blue-700">
+                {adminRole}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-800 truncate">
-              Budi Santoso
-            </p>
-            <p className="text-xs text-gray-500">Driver Angkot</p>
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white text-blue-700 border border-blue-200/90 text-[11px] font-semibold rounded-full group-hover:border-blue-400 group-hover:bg-blue-100/60 shadow-2xs transition-all">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+              {badgeLabel}
+            </span>
           </div>
         </div>
-        <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-          AL – 23
-        </span>
       </div>
 
-      {/* Keluar */}
+      {/* Keluar dengan Hover Slide Motion */}
       <div className="px-3 pb-5">
-        <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
+        <button
+          onClick={handleLogout}
+          type="button"
+          className="group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 hover:text-red-600 hover:translate-x-1.5 hover:shadow-xs transition-all duration-200 cursor-pointer"
+        >
           <svg
-            className="w-5 h-5"
+            className="w-5 h-5 text-red-500 group-hover:scale-110 group-hover:-translate-x-0.5 transition-transform duration-200"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

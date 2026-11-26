@@ -8,6 +8,23 @@ import { DirectionType } from "@/types/vehicles/vehicle.type";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export const routeStopService = {
+  async getAll(): Promise<RouteStopType[]> {
+    const response = await fetch(`${API_BASE_URL}/route-stops`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("Gagal mengambil data seluruh halte.");
+    }
+
+    const result = await response.json();
+    return Array.isArray(result) ? result : result.data || [];
+  },
+
   async getRouteStopByRouteIdandDirection(
     routeId: number,
     direction: DirectionType,

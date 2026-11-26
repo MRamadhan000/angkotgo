@@ -1,4 +1,5 @@
 import { DirectionType } from "../vehicles/vehicle.type";
+import { Route } from "./route.type";
 
 export interface RouteStopType {
     id: number;
@@ -8,6 +9,7 @@ export interface RouteStopType {
     latitude: number;
     longitude: number;
     stopOrder: number;
+    route?: Route;
     createdAt?: string | Date;
     updatedAt?: string | Date;
 }

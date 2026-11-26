@@ -2,6 +2,7 @@ import { Route } from "@/types/routes/route.type";
 import { DirectionType, Vehicle } from "./vehicle.type";
 import { Driver } from "../driver.type";
 import { Conductor } from "../conductor.type";
+import { Payment } from "../payments/payment.type";
 
 export enum AssignmentStatus {
   SCHEDULED = "SCHEDULED",
@@ -36,6 +37,7 @@ export interface VehicleAssignment {
   status: AssignmentStatus;
   conductorId?: number;
   conductor?: Conductor;
+  payments?: Payment[];
   createdAt: string;
   updatedAt: string;
 }

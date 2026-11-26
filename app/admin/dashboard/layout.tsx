@@ -7,7 +7,7 @@ import TopBar from "@/components/admin/TopBar";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export default function DriverLayout({
+export default function AdminDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
