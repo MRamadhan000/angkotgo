@@ -1178,12 +1178,9 @@ function DriverObservationContent() {
     map.setOptions({ draggableCursor: isSimMode ? "crosshair" : null });
     if (!isSimMode) return;
 
-    const listener = map.addListener(
-      "click",
-      (e: google.maps.MapMouseEvent) => {
-        if (e.latLng) applySimPosition(e.latLng.lat(), e.latLng.lng());
-      },
-    );
+    const listener = map.addListener("click", (e: google.maps.MapMouseEvent) => {
+      if (e.latLng) applySimPosition(e.latLng.lat(), e.latLng.lng());
+    });
     return () => listener.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, isSimMode]);
@@ -1542,6 +1539,54 @@ function DriverObservationContent() {
         </button>
       )}
 
+      {/* ADD: HEADER MINI MODE FOKUS — halte berikutnya */}
+      {isFocusActive && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 mx-auto w-full max-w-md px-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] pr-14">
+          <div className="pointer-events-auto flex items-center gap-2.5 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-lg backdrop-blur-xl">
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black text-white shadow-md ${
+                nextHalte
+                  ? "bg-amber-500 shadow-amber-500/30"
+                  : "bg-emerald-600 shadow-emerald-600/30"
+              }`}
+            >
+              {nextHalte ? nextHalte.seq : <FiCheckCircle size={16} />}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold text-slate-500">
+                {nextHalte
+                  ? `Halte berikutnya (${nextHalte.seq}/${haltes.length})`
+                  : haltes.length > 0
+                    ? "Semua halte terlewati"
+                    : "Sedang jalan"}
+              </p>
+              <p className="truncate text-xs font-black text-slate-900">
+                {nextHalte
+                  ? nextHalte.name
+                  : haltes.length > 0
+                    ? "Menuju titik akhir rute"
+                    : data.route.name}
+              </p>
+            </div>
+
+            {nextHalte && (
+              <span className="shrink-0 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-800">
+                {(() => {
+                  const d = distanceMeters(position, {
+                    lat: nextHalte.lat,
+                    lng: nextHalte.lng,
+                  });
+                  return d >= 1000
+                    ? `${(d / 1000).toFixed(1)} km`
+                    : `${Math.round(d / 10) * 10} m`;
+                })()}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ADD: TOGGLE MODE FOKUS (hanya saat mode perjalanan) */}
       {isDrivingMode && !isSheetFull && (
         <button
@@ -1783,9 +1828,7 @@ function DriverObservationContent() {
                           {!isLast && (
                             <span
                               className={`absolute left-[13px] top-7 h-[calc(100%-1.25rem)] w-0.5 ${
-                                s === "passed"
-                                  ? "bg-slate-300"
-                                  : "bg-violet-200"
+                                s === "passed" ? "bg-slate-300" : "bg-violet-200"
                               }`}
                             />
                           )}
