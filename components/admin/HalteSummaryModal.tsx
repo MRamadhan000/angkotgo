@@ -77,7 +77,7 @@ export default function HalteSummaryModal({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Simpul halte utama dan titik penjemputan penumpang terpadat Kota Malang
+                Simpul halte utama dan titik penjemputan penumpang terpadat
               </p>
             </div>
           </div>

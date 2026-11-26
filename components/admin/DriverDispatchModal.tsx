@@ -287,7 +287,7 @@ export default function DriverDispatchModal({
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>
-              Disinkronkan dengan Satuan Pengawas Angkutan Dishub Malang
+              Disinkronkan dengan Satuan Pengawas Angkutan Kota
             </span>
           </div>
           <div className="flex items-center gap-2">

@@ -326,16 +326,16 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Pantau ketersediaan armada, supir bertugas, jadwal perjalanan, dan rekapan transaksi harian Kota Malang
+            Pantau ketersediaan armada, supir bertugas, jadwal perjalanan, dan rekapan transaksi harian operasional angkot
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Status Server Dishub */}
+          {/* Status Server Terhubung */}
           <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-600 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="hidden sm:inline text-slate-500">Koneksi:</span>
-            <span className="font-semibold text-slate-700">Server Dishub Aktif</span>
+            <span className="font-semibold text-slate-700">Server Pusat Terhubung</span>
           </div>
 
           {/* Tanggal Picker / Info Popover */}
@@ -542,11 +542,11 @@ export default function AdminDashboardPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
                 Tarif Tetap (Flat)
               </span>
-              <span className="text-purple-900/70 font-medium">Seluruh Trayek Malang</span>
+              <span className="text-purple-900/70 font-medium">Seluruh Trayek Resmi</span>
             </div>
           </div>
           <div className="mt-5 pt-3 border-t border-purple-200/80 flex items-center justify-between text-xs">
-            <span className="text-purple-900/70 font-medium">SK Resmi Dishub</span>
+            <span className="text-purple-900/70 font-medium">Regulasi Tarif Resmi</span>
             <span className="font-bold text-purple-700 group-hover:text-purple-950 flex items-center gap-1 group-hover:translate-x-1 transition-all">
               Atur Ketetapan Tarif →
             </span>
@@ -680,18 +680,18 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* ── 2 Bottom Cards Grid ────────────────────────────────────────────── */}
+      {/* ── 2 Bottom Cards Grid (Hover Action pada Card dan per Baris) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Card: Kepadatan Halte & Titik Naik Penumpang */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <div className="group relative bg-white hover:bg-slate-50/30 p-6 rounded-2xl border border-slate-100 hover:border-blue-300 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden">
           <div>
             <div className="flex items-start justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <FaMapMarkerAlt className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-2xs">
+                  <FaMapMarkerAlt className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">
+                  <h3 className="font-bold text-slate-900 text-sm group-hover:text-blue-900 transition-colors">
                     Kepadatan Halte &amp; Titik Naik Penumpang
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
@@ -699,22 +699,32 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                 {halteBoardingStats.length} Halte Terdaftar
               </span>
             </div>
 
-            {/* List 4 Halte Utama Sesuai Mockup */}
+            {/* List 4 Halte Utama (Hover Action per Baris & Clickable) */}
             <div className="mt-4 space-y-2.5">
               {halteBoardingStats.slice(0, 4).map((h) => (
                 <div
                   key={h.stopId}
-                  className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setIsHalteModalOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setIsHalteModalOpen(true);
+                    }
+                  }}
+                  className="group/item p-3 rounded-xl bg-slate-50/70 hover:bg-blue-50/80 border border-slate-100 hover:border-blue-300 flex items-center justify-between hover:translate-x-1.5 hover:shadow-sm transition-all duration-200 cursor-pointer focus:outline-none"
+                  title="Klik untuk melihat detail seluruh halte"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="w-2 h-2 rounded-full bg-blue-600" />
+                    <span className="w-2 h-2 rounded-full bg-blue-600 group-hover/item:scale-125 group-hover/item:ring-4 group-hover/item:ring-blue-200 transition-all" />
                     <div>
-                      <span className="font-semibold text-slate-800 text-xs">
+                      <span className="font-semibold text-slate-800 text-xs group-hover/item:text-blue-700 transition-colors">
                         {h.stopName}
                       </span>
                       <span className="text-[11px] text-slate-400 ml-1.5">
@@ -722,7 +732,7 @@ export default function AdminDashboardPage() {
                       </span>
                     </div>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-white text-slate-600 border border-slate-200 shadow-2xs">
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-white group-hover/item:bg-blue-600 text-slate-600 group-hover/item:text-white border border-slate-200 group-hover/item:border-blue-600 shadow-2xs transition-colors">
                     {h.boardingCount} Orang Naik
                   </span>
                 </div>
@@ -731,10 +741,10 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Peta Rute Resmi Dishub</span>
+            <span className="text-slate-400">Peta Jaringan Rute Resmi</span>
             <button
               onClick={() => setIsHalteModalOpen(true)}
-              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer group-hover:translate-x-1 transition-all"
             >
               Buka Master Halte &amp; Rute →
             </button>
@@ -742,53 +752,65 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Card: Keluhan & Ulasan Layanan (★ 1–3) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <div className="group relative bg-white hover:bg-slate-50/30 p-6 rounded-2xl border border-slate-100 hover:border-amber-300 shadow-sm hover:shadow-xl hover:shadow-amber-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden">
           <div>
             <div className="flex items-start justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <FaStar className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-2xs">
+                  <FaStar className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-sm">
+                    <h3 className="font-bold text-slate-900 text-sm group-hover:text-amber-900 transition-colors">
                       Keluhan &amp; Ulasan Layanan (★ 1–3)
                     </h3>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Laporan ketidakpuasan layanan yang membutuhkan evaluasi Dishub
+                    Laporan ketidakpuasan layanan yang membutuhkan evaluasi manajemen
                   </p>
                 </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+              <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
                 Perlu Evaluasi
               </span>
             </div>
 
-            {/* Total Ulasan Count & Badges */}
-            <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+            {/* Total Ulasan Count & Badges (Hover Action & Clickable) */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setIsReviewModalOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setIsReviewModalOpen(true);
+                }
+              }}
+              className="mt-4 p-4 bg-slate-50 hover:bg-amber-50/70 rounded-xl border border-slate-100 hover:border-amber-200 flex items-center justify-between hover:shadow-xs transition-all duration-200 cursor-pointer focus:outline-none"
+              title="Klik untuk membuka ulasan lengkap"
+            >
               <div>
                 <p className="text-2xl font-extrabold text-slate-800">
                   {lowReviews.length} Ulasan Masuk
                 </p>
                 <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
-                  <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-red-600">
+                  <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-red-600 shadow-2xs">
                     ★1: {starCounts.star1}
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-amber-600">
+                  <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-amber-600 shadow-2xs">
                     ★2: {starCounts.star2}
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-yellow-600">
+                  <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-yellow-600 shadow-2xs">
                     ★3: {starCounts.star3}
                   </span>
                 </div>
               </div>
               <span className="text-xs text-slate-400 italic">
-                {lowReviews.length === 0 ? "Belum ada laporan keluhan masuk" : "Memerlukan peninjauan Dishub"}
+                {lowReviews.length === 0 ? "Belum ada laporan keluhan masuk" : "Memerlukan peninjauan pengelola →"}
               </span>
             </div>
 
-            {/* Jalur dengan Keluhan Terbanyak */}
+            {/* Jalur dengan Keluhan Terbanyak (Hover Action per Baris) */}
             <div className="mt-4 space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
                 Jalur dengan Keluhan Terbanyak
@@ -797,10 +819,10 @@ export default function AdminDashboardPage() {
                 <div
                   key={item.label}
                   onClick={() => setIsReviewModalOpen(true)}
-                  className={`p-2.5 px-3 rounded-lg border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                  className={`group/row p-2.5 px-3 rounded-lg border flex items-center justify-between text-xs cursor-pointer hover:translate-x-1.5 hover:shadow-xs transition-all duration-200 ${
                     index === 0 && item.count > 0
-                      ? "bg-red-50/60 border-red-200/80 hover:bg-red-50 shadow-2xs"
-                      : "bg-white hover:bg-slate-50 border-slate-100"
+                      ? "bg-red-50/60 hover:bg-red-100/80 border-red-200/80 hover:border-red-300"
+                      : "bg-white hover:bg-amber-50/80 border-slate-100 hover:border-amber-200"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -816,7 +838,7 @@ export default function AdminDashboardPage() {
                       </span>
                     )}
                   </div>
-                  <span className={`font-medium flex items-center gap-1 ${index === 0 && item.count > 0 ? "text-red-700 font-bold" : "text-blue-600"}`}>
+                  <span className={`font-medium flex items-center gap-1 group-hover/row:translate-x-1 transition-transform ${index === 0 && item.count > 0 ? "text-red-700 font-bold" : "text-blue-600"}`}>
                     {item.count} ulasan →
                   </span>
                 </div>
@@ -828,7 +850,7 @@ export default function AdminDashboardPage() {
             <span className="text-slate-400">Pusat Evaluasi Pelayanan</span>
             <button
               onClick={() => setIsReviewModalOpen(true)}
-              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer group-hover:translate-x-1 transition-all"
             >
               Tinjau Semua Keluhan →
             </button>
