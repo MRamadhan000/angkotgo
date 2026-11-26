@@ -36,6 +36,7 @@ import {
   FiChevronsUp,
   FiChevronsDown,
   FiNavigation,
+  FiTarget,
 } from "react-icons/fi";
 
 /* =========================================================
@@ -193,6 +194,41 @@ const postVehicleLocation = (body: CreateVehicleLocationBody) =>
 
 const LOCATION_POST_INTERVAL_MS = 5000;
 
+/* ---- ADD: trim polyline sesuai posisi driver ---- */
+const PASS_RADIUS_M = 25; // titik dianggap terlewati jika driver <= 25 m
+const OFF_ROUTE_M = 60; // jika > 60 m dari rute, jangan trim (menyimpang / GPS noise)
+const LOOKAHEAD_POINTS = 40; // cari titik terdekat hanya beberapa titik ke depan
+
+type LatLngLit = { lat: number; lng: number };
+
+function projectOnSegment(p: LatLngLit, a: LatLngLit, b: LatLngLit) {
+  const kx = 111320 * Math.cos((a.lat * Math.PI) / 180);
+  const ky = 110540;
+  const bx = (b.lng - a.lng) * kx;
+  const by = (b.lat - a.lat) * ky;
+  const px = (p.lng - a.lng) * kx;
+  const py = (p.lat - a.lat) * ky;
+  const len2 = bx * bx + by * by;
+  const t =
+    len2 === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / len2));
+  return {
+    t,
+    dist: Math.hypot(px - t * bx, py - t * by),
+    point: {
+      lat: a.lat + t * (b.lat - a.lat),
+      lng: a.lng + t * (b.lng - a.lng),
+    },
+  };
+}
+
+function distanceMeters(a: LatLngLit, b: LatLngLit) {
+  const kx = 111320 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot((b.lng - a.lng) * kx, (b.lat - a.lat) * 110540);
+}
+
+const vertexKey = (lat: number, lng: number) =>
+  `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
 /* =========================================================
 3. HOOKS TANSTACK QUERY
    ========================================================= */
@@ -279,6 +315,8 @@ function DriverObservationContent() {
   // ✅ GPS modal muncul otomatis saat halaman dibuka
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(true);
   const [isGpsActive, setIsGpsActive] = useState(false);
+  // ADD: mode fokus (opsional) saat mode perjalanan
+  const [isFocusMode, setIsFocusMode] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [position, setPosition] = useState(DEFAULT_CENTER);
@@ -329,6 +367,14 @@ function DriverObservationContent() {
   const status = data?.status;
   const isDrivingMode = status === AssignmentStatus.ONGOING;
   const isOperationalLocked = !isDrivingMode;
+  // ADD: tampilan fokus hanya aktif saat jalan DAN user memilih fokus
+  const isFocusActive = isDrivingMode && isFocusMode;
+
+  // ADD: ref agar callback GPS (watchPosition) selalu tahu mode terbaru
+  const freeLookRef = useRef(false);
+  useEffect(() => {
+    freeLookRef.current = isDrivingMode && !isFocusMode;
+  }, [isDrivingMode, isFocusMode]);
 
   const maxCapacity = data?.vehicle.capacity ?? 0;
   const currentPassengers = data?.currentPassengers ?? 0;
@@ -475,6 +521,21 @@ function DriverObservationContent() {
     if (isSheetCollapsed) setSheetH(halfSheetH);
   };
 
+  // ADD: toggle mode fokus saat mode perjalanan
+  const toggleFocusMode = () => {
+    const next = !isFocusMode;
+    setIsFocusMode(next);
+    if (next) {
+      setSheetH(SHEET_COLLAPSED_H);
+      mapInstance.current?.setZoom(17);
+      mapInstance.current?.panTo(position);
+      showToast("Mode fokus aktif.", "info");
+    } else {
+      setSheetH(halfSheetH);
+      showToast("Mode fokus dimatikan.", "info");
+    }
+  };
+
   /* ---------------------------------------------------------
      GOOGLE MAPS: init sekali
      ✅ Perbaikan: dependensi aman + retry jika container belum siap
@@ -592,7 +653,8 @@ function DriverObservationContent() {
   const updateMapPosition = (lat: number, lng: number) => {
     const newPos = { lat, lng };
     markerInstance.current?.setPosition(newPos);
-    mapInstance.current?.panTo(newPos);
+    // ADD: jika fokus dimatikan saat jalan, peta tidak mengikuti otomatis
+    if (!freeLookRef.current) mapInstance.current?.panTo(newPos);
   };
 
   /* ---------------------------------------------------------
@@ -789,6 +851,104 @@ function DriverObservationContent() {
   }, [mapReady, encodedPolyline, routeColor]);
 
   /* ---------------------------------------------------------
+     ADD: TRIM POLYLINE — hanya tampilkan rute yang belum dilewati
+  --------------------------------------------------------- */
+  const pathRef = useRef<LatLngLit[]>([]);
+  const vertexIndexRef = useRef<Map<string, number>>(new Map());
+  const progressRef = useRef({ seg: 0, t: 0 });
+
+  // Decode sekali per rute, reset progres
+  useEffect(() => {
+    progressRef.current = { seg: 0, t: 0 };
+    if (!mapReady || !encodedPolyline) {
+      pathRef.current = [];
+      return;
+    }
+    const coords = google.maps.geometry.encoding
+      .decodePath(encodedPolyline)
+      .map((p) => ({ lat: p.lat(), lng: p.lng() }));
+    pathRef.current = coords;
+
+    const map = new Map<string, number>();
+    coords.forEach((c, i) => {
+      const k = vertexKey(c.lat, c.lng);
+      if (!map.has(k)) map.set(k, i);
+    });
+    vertexIndexRef.current = map;
+  }, [mapReady, encodedPolyline]);
+
+  // Potong rute mengikuti posisi GPS driver
+  useEffect(() => {
+    const poly = polylineInstance.current;
+    const path = pathRef.current;
+    if (!mapReady || !poly || path.length < 2) return;
+
+    const applyMarkers = (seg: number, t: number) => {
+      routeMarkers.current.forEach((m) => {
+        const pos = m.getPosition();
+        if (!pos) return;
+        const idx = vertexIndexRef.current.get(vertexKey(pos.lat(), pos.lng()));
+        if (idx === undefined) return;
+        m.setVisible(!(idx < seg || (idx === seg && t > 0)));
+      });
+    };
+
+    // Di luar mode jalan: tampilkan rute penuh lagi
+    if (!(isGpsActive && isDrivingMode)) {
+      const prog = progressRef.current;
+      if (prog.seg !== 0 || prog.t !== 0) {
+        progressRef.current = { seg: 0, t: 0 };
+        poly.setPath(path);
+        applyMarkers(0, 0);
+      }
+      return;
+    }
+
+    const prog = progressRef.current;
+    const isFirstLock = prog.seg === 0 && prog.t === 0;
+    const lastSeg = Math.min(
+      path.length - 2,
+      isFirstLock ? path.length - 2 : prog.seg + LOOKAHEAD_POINTS,
+    );
+
+    let best: {
+      i: number;
+      t: number;
+      dist: number;
+      point: LatLngLit;
+    } | null = null;
+    for (let i = prog.seg; i <= lastSeg; i++) {
+      const r = projectOnSegment(position, path[i], path[i + 1]);
+      if (!best || r.dist < best.dist) best = { ...r, i };
+    }
+    if (!best || best.dist > OFF_ROUTE_M) return;
+
+    let seg = best.i;
+    let t = best.t;
+    let snap = best.point;
+
+    // Radius: sudah dekat titik berikutnya -> anggap terlewati
+    const next = path[seg + 1];
+    if (distanceMeters(position, next) <= PASS_RADIUS_M) {
+      if (seg + 1 <= path.length - 2) {
+        seg += 1;
+        t = 0;
+      } else {
+        t = 1;
+      }
+      snap = next;
+    }
+
+    // Progres hanya boleh maju, tidak mundur
+    if (seg === prog.seg && t < prog.t) return;
+
+    progressRef.current = { seg, t };
+    poly.setPath([snap, ...path.slice(seg + 1)]);
+    applyMarkers(seg, t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [position, isGpsActive, isDrivingMode, mapReady, encodedPolyline]);
+
+  /* ---------------------------------------------------------
      STATUS CHANGE
      ✅ GPS wajib sebelum ONGOING
   --------------------------------------------------------- */
@@ -818,6 +978,7 @@ function DriverObservationContent() {
       {
         onSuccess: () => {
           if (target === AssignmentStatus.ONGOING) {
+            setIsFocusMode(true); // default fokus aktif saat mulai jalan
             setSheetH(SHEET_COLLAPSED_H);
             mapInstance.current?.setZoom(17);
             mapInstance.current?.panTo(position);
@@ -1022,11 +1183,11 @@ function DriverObservationContent() {
       {/* HEADER */}
       <header
         className={`absolute inset-x-0 top-0 z-20 mx-auto w-full max-w-md px-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] transition-all duration-300 ${
-          isDrivingMode
+          isFocusActive
             ? "pointer-events-none -translate-y-[130%] opacity-0"
             : "translate-y-0 opacity-100"
         }`}
-        aria-hidden={isDrivingMode}
+        aria-hidden={isFocusActive}
       >
         <div className="space-y-2 rounded-2xl border border-white/80 bg-white/95 p-2.5 shadow-lg backdrop-blur-xl">
           <div className="flex items-center justify-between gap-2">
@@ -1129,7 +1290,7 @@ function DriverObservationContent() {
       </header>
 
       {/* GPS BUTTON IN DRIVING MODE */}
-      {isDrivingMode && (
+      {isFocusActive && (
         <button
           onClick={() => setIsGpsModalOpen(true)}
           aria-label="Status GPS"
@@ -1138,6 +1299,29 @@ function DriverObservationContent() {
           <FiCompass
             className={`h-4 w-4 ${isGpsActive ? "text-emerald-600" : "animate-pulse text-rose-600"}`}
           />
+        </button>
+      )}
+
+      {/* ADD: TOGGLE MODE FOKUS (hanya saat mode perjalanan) */}
+      {isDrivingMode && !isSheetFull && (
+        <button
+          type="button"
+          onClick={toggleFocusMode}
+          aria-pressed={isFocusMode}
+          className={`fixed right-2.5 z-20 flex items-center gap-1.5 rounded-full border px-3 py-2 text-[11px] font-bold shadow-lg backdrop-blur-xl active:scale-95 ${
+            isFocusMode
+              ? "border-blue-700 bg-blue-700 text-white"
+              : "border-slate-200 bg-white/95 text-slate-600"
+          }`}
+          style={{
+            bottom: sheetH + 10,
+            transition: isDragging
+              ? "none"
+              : "bottom 260ms cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+        >
+          <FiTarget size={13} />
+          {isFocusMode ? "Fokus: On" : "Fokus: Off"}
         </button>
       )}
 
