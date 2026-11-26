@@ -76,7 +76,7 @@ export default function TrayekDetailModal({
             <div className="p-4 bg-blue-50/60 rounded-xl border border-blue-100">
               <span className="text-xs text-blue-600 font-medium">Total Penumpang</span>
               <p className="text-xl font-bold text-blue-900 mt-1">
-                {trayek.totalPassengers} <span className="text-xs font-normal text-blue-600">Pax</span>
+                {trayek.totalPassengers} <span className="text-xs font-normal text-blue-600">Orang</span>
               </p>
             </div>
             <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100">
@@ -128,12 +128,12 @@ export default function TrayekDetailModal({
           </div>
 
           <div className="p-3.5 bg-slate-50 rounded-xl text-xs text-slate-600 border border-slate-200/60 flex items-center justify-between">
-            <span>Rata-rata Penumpang per Ritase:</span>
+            <span>Rata-rata Penumpang per Perjalanan (Ritase):</span>
             <span className="font-bold text-slate-800">
               {trayek.scheduledCount > 0
                 ? (trayek.totalPassengers / trayek.scheduledCount).toFixed(1)
                 : 0}{" "}
-              Pax/Trip
+              Orang / Trip
             </span>
           </div>
         </div>

@@ -318,15 +318,15 @@ export default function AdminDashboardPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Informasi General
+              Status Operasional Angkot
             </h1>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Sistem Normal
+              Sistem Berjalan Normal
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Monitoring operasional armada, penugasan roster & kesiapan integrasi transaksi Kota Malang
+            Pantau ketersediaan armada, supir bertugas, jadwal perjalanan, dan rekapan transaksi harian Kota Malang
           </p>
         </div>
 
@@ -334,8 +334,8 @@ export default function AdminDashboardPage() {
           {/* Status Server Dishub */}
           <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-600 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="hidden sm:inline text-slate-500">Status:</span>
-            <span className="font-semibold text-slate-700">Server Dishub</span>
+            <span className="hidden sm:inline text-slate-500">Koneksi:</span>
+            <span className="font-semibold text-slate-700">Server Dishub Aktif</span>
           </div>
 
           {/* Tanggal Picker / Info Popover */}
@@ -374,210 +374,240 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* ── 4 Top KPI Cards ─────────────────────────────────────────────────── */}
+      {/* ── 4 Top KPI Cards (Default Berwarna Nyata, Hover Lebih Gelap & Menyala, Full-Card Clickable) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* KPI 1: Armada Operasional (Link ke /admin/dashboard/vehicle) */}
-        <div className="relative bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+        {/* KPI 1: Armada Angkot (Tema Biru - Full Clickable ke /admin/dashboard/vehicle) */}
+        <Link
+          href="/admin/dashboard/vehicle"
+          className="group relative bg-gradient-to-br from-blue-100/85 via-blue-50/90 to-sky-100/70 hover:from-blue-200/95 hover:via-blue-100/95 hover:to-sky-200/90 p-5 rounded-2xl border border-blue-200 hover:border-blue-400 shadow-sm hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden"
+        >
+          {/* Ambient Glow Corner */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-400/25 rounded-full blur-2xl group-hover:scale-125 group-hover:bg-blue-500/35 transition-all duration-300 pointer-events-none" />
+          
           <div>
             <div className="flex items-start justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Armada Operasional
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-900">
+                Armada Angkot
               </span>
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-700 transition-all duration-300">
                 <FaBus className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900">
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-blue-950 group-hover:text-blue-900 transition-colors">
                 {stats?.activeVehicles ?? 4}
               </span>
-              <span className="text-sm font-semibold text-slate-400">
+              <span className="text-sm font-semibold text-blue-800/60">
                 / {(stats?.activeVehicles ?? 4) + (stats?.inactiveVehicles ?? 2)} Unit
               </span>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                {stats?.activeVehicles ?? 4} Aktif
+            <div className="mt-3 flex items-center gap-2 text-xs flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold bg-white/95 text-emerald-800 border border-emerald-300 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                {stats?.activeVehicles ?? 4} Siap Jalan
               </span>
-              <span className="text-slate-400">
-                • {stats?.inactiveVehicles ?? 2} Tidak Aktif
+              <span className="text-blue-900/70 font-medium">
+                • {stats?.inactiveVehicles ?? 2} Perbaikan
               </span>
             </div>
           </div>
-          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Master Kendaraan</span>
-            <Link
-              href="/admin/dashboard/vehicle"
-              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
-            >
-              Kelola →
-            </Link>
+          <div className="mt-5 pt-3 border-t border-blue-200/80 flex items-center justify-between text-xs">
+            <span className="text-blue-900/70 font-medium">Master Kendaraan</span>
+            <span className="font-bold text-blue-700 group-hover:text-blue-950 flex items-center gap-1 group-hover:translate-x-1 transition-all">
+              Lihat Data Armada →
+            </span>
           </div>
-        </div>
+        </Link>
 
-        {/* KPI 2: Driver Bertugas (POP-UP MODAL Sesuai Gambar 3) */}
-        <div className="relative bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+        {/* KPI 2: Supir Bertugas (Tema Hijau Zamrud - Full Clickable membuka Modal Dispatch) */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsDriverModalOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setIsDriverModalOpen(true);
+            }
+          }}
+          className="group relative bg-gradient-to-br from-emerald-100/85 via-emerald-50/90 to-teal-100/70 hover:from-emerald-200/95 hover:via-emerald-100/95 hover:to-teal-200/90 p-5 rounded-2xl border border-emerald-200 hover:border-emerald-400 shadow-sm hover:shadow-xl hover:shadow-emerald-500/20 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden focus:outline-none"
+        >
+          {/* Ambient Glow Corner */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-400/25 rounded-full blur-2xl group-hover:scale-125 group-hover:bg-emerald-500/35 transition-all duration-300 pointer-events-none" />
+
           <div>
             <div className="flex items-start justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Driver Bertugas
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-900">
+                Supir yang Bertugas
               </span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-700 transition-all duration-300">
                 <FaUserTie className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900">
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-emerald-950 group-hover:text-emerald-900 transition-colors">
                 {stats?.activeDrivers ?? 8}
               </span>
-              <span className="text-sm font-semibold text-slate-400">
-                / {stats?.totalDrivers ?? 11} Driver
+              <span className="text-sm font-semibold text-emerald-800/60">
+                / {stats?.totalDrivers ?? 11} Supir
               </span>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {stats?.activeDrivers ?? 8} Aktif / Online
+            <div className="mt-3 flex items-center gap-2 text-xs flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold bg-white/95 text-emerald-800 border border-emerald-300 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                {stats?.activeDrivers ?? 8} Sedang Jalan
               </span>
-              <span className="text-slate-400">
-                • {Math.max(0, (stats?.totalDrivers ?? 11) - (stats?.activeDrivers ?? 8))} Off / Standby
+              <span className="text-emerald-900/70 font-medium">
+                • {Math.max(0, (stats?.totalDrivers ?? 11) - (stats?.activeDrivers ?? 8))} Siaga di Depo
               </span>
             </div>
           </div>
-          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Master Pengemudi</span>
-            <button
-              onClick={() => setIsDriverModalOpen(true)}
-              className="font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
-            >
-              Kelola (Buka Dispatch) →
-            </button>
+          <div className="mt-5 pt-3 border-t border-emerald-200/80 flex items-center justify-between text-xs">
+            <span className="text-emerald-900/70 font-medium">Jadwal Supir</span>
+            <span className="font-bold text-emerald-700 group-hover:text-emerald-950 flex items-center gap-1 group-hover:translate-x-1 transition-all">
+              Buka Pantauan Supir →
+            </span>
           </div>
         </div>
 
-        {/* KPI 3: Penugasan Hari Ini (Link ke /admin/dashboard/assignments) */}
-        <div className="relative bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+        {/* KPI 3: Jadwal & Penugasan (Tema Indigo - Full Clickable ke /admin/dashboard/assignments) */}
+        <Link
+          href="/admin/dashboard/assignments"
+          className="group relative bg-gradient-to-br from-indigo-100/85 via-indigo-50/90 to-violet-100/70 hover:from-indigo-200/95 hover:via-indigo-100/95 hover:to-violet-200/90 p-5 rounded-2xl border border-indigo-200 hover:border-indigo-400 shadow-sm hover:shadow-xl hover:shadow-indigo-500/20 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden"
+        >
+          {/* Ambient Glow Corner */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-400/25 rounded-full blur-2xl group-hover:scale-125 group-hover:bg-indigo-500/35 transition-all duration-300 pointer-events-none" />
+
           <div>
             <div className="flex items-start justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Penugasan Armada
+              <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-900">
+                Jadwal & Penugasan
               </span>
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-700 transition-all duration-300">
                 <FaCalendarCheck className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900">
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-indigo-950 group-hover:text-indigo-900 transition-colors">
                 {assignments.length}
               </span>
-              <span className="text-sm font-semibold text-slate-400">
-                Penugasan
+              <span className="text-sm font-semibold text-indigo-800/60">
+                Perjalanan
               </span>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <div className="mt-3 flex items-center gap-2 text-xs flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold bg-white/95 text-indigo-800 border border-indigo-300 shadow-2xs">
                 {shortSelectedDate}
               </span>
-              <span className="text-slate-400">
-                • {assignments.length} Terjadwal
+              <span className="text-indigo-900/70 font-medium">
+                • {assignments.length} Terjadwal Aktif
               </span>
             </div>
           </div>
-          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Jadwal & Roster</span>
-            <Link
-              href="/admin/dashboard/assignments"
-              className="font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
-            >
-              Buka Roster →
-            </Link>
+          <div className="mt-5 pt-3 border-t border-indigo-200/80 flex items-center justify-between text-xs">
+            <span className="text-indigo-900/70 font-medium">Roster Harian</span>
+            <span className="font-bold text-indigo-700 group-hover:text-indigo-950 flex items-center gap-1 group-hover:translate-x-1 transition-all">
+              Buka Jadwal Lengkap →
+            </span>
           </div>
-        </div>
+        </Link>
 
-        {/* KPI 4: Tarif Resmi Dishub (Link ke /admin/dashboard/tarif) */}
-        <div className="relative bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+        {/* KPI 4: Tarif Resmi Angkot (Tema Ungu - Full Clickable ke /admin/dashboard/tarif) */}
+        <Link
+          href="/admin/dashboard/tarif"
+          className="group relative bg-gradient-to-br from-purple-100/85 via-purple-50/90 to-fuchsia-100/70 hover:from-purple-200/95 hover:via-purple-100/95 hover:to-fuchsia-200/90 p-5 rounded-2xl border border-purple-200 hover:border-purple-400 shadow-sm hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden"
+        >
+          {/* Ambient Glow Corner */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-400/25 rounded-full blur-2xl group-hover:scale-125 group-hover:bg-purple-500/35 transition-all duration-300 pointer-events-none" />
+
           <div>
             <div className="flex items-start justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Tarif Resmi Dishub
+              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900">
+                Tarif Resmi Angkot
               </span>
-              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-purple-600 text-white shadow-md shadow-purple-600/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-700 transition-all duration-300">
                 <FaMoneyBillWave className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900">
-                Rp {(stats?.tariffs?.find((t: Tariff) => t.name.toLowerCase().includes("umum"))?.nominal ?? 5500).toLocaleString("id-ID")}
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-purple-950 group-hover:text-purple-900 transition-colors">
+                Rp {(stats?.tariffs?.find((t: Tariff) => t.name.toLowerCase().includes("umum"))?.nominal ?? 5000).toLocaleString("id-ID")}
               </span>
-              <span className="text-sm font-semibold text-slate-400">
-                / Umum
+              <span className="text-sm font-semibold text-purple-800/60">
+                / Penumpang
               </span>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-                Pelajar Rp {(stats?.tariffs?.find((t: Tariff) => t.name.toLowerCase().includes("pelajar"))?.nominal ?? 2500).toLocaleString("id-ID")}
+            <div className="mt-3 flex items-center gap-2 text-xs flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold bg-white/95 text-purple-800 border border-purple-300 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                Tarif Tetap (Flat)
               </span>
-              <span className="text-slate-400">• Flat Baku</span>
+              <span className="text-purple-900/70 font-medium">Seluruh Trayek Malang</span>
             </div>
           </div>
-          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">SK Dishub Malang</span>
-            <Link
-              href="/admin/dashboard/tarif"
-              className="font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
-            >
-              Kelola Tarif →
-            </Link>
+          <div className="mt-5 pt-3 border-t border-purple-200/80 flex items-center justify-between text-xs">
+            <span className="text-purple-900/70 font-medium">SK Resmi Dishub</span>
+            <span className="font-bold text-purple-700 group-hover:text-purple-950 flex items-center gap-1 group-hover:translate-x-1 transition-all">
+              Atur Ketetapan Tarif →
+            </span>
           </div>
-        </div>
+        </Link>
       </div>
 
-      {/* ── Card: Statistik Operasional & Transaksi per Trayek ──────────────── */}
+      {/* ── Card: Statistik Perjalanan & Pendapatan per Trayek ──────────────── */}
       <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-slate-900">
-                Statistik Operasional & Transaksi per Trayek
+                Statistik Perjalanan &amp; Pendapatan per Trayek
               </h2>
               <span className="text-xs px-2.5 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-600">
                 {shortSelectedDate}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Rangkuman ritase aktif dan akumulasi transaksi QRIS & tunai.
+              Rangkuman putaran jalan (ritase), jumlah penumpang terangkut, serta pembayaran tunai dan QRIS.
             </p>
           </div>
           <div className="text-xs font-semibold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60">
-            {selectedDate === defaultToday ? "Akumulasi Hari Ini:" : `Akumulasi (${shortSelectedDate}):`}{" "}
+            {selectedDate === defaultToday ? "Total Hari Ini:" : `Total (${shortSelectedDate}):`}{" "}
             <span className="text-emerald-700 font-bold">
               Rp {totalAkumulasiHariIni.revenue.toLocaleString("id-ID")}
             </span>{" "}
-            ({totalAkumulasiHariIni.pax} Pax)
+            ({totalAkumulasiHariIni.pax} Penumpang)
           </div>
         </div>
 
-        {/* 4 Cards Grid Sesuai Mockup Gambar 2 */}
+        {/* 4 Cards Grid Sesuai Mockup Gambar 2 (Full Clickable ke Detail Trayek) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {trayekStats.map((t) => (
             <div
               key={t.key}
-              className="p-4 rounded-xl border border-slate-200/80 hover:border-blue-300 hover:shadow-md transition-all bg-white flex flex-col justify-between"
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedTrayek(t)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedTrayek(t);
+                }
+              }}
+              className="group p-4 rounded-xl border border-slate-200/80 hover:border-blue-400 shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-200 bg-white flex flex-col justify-between cursor-pointer focus:outline-none"
             >
               <div>
                 {/* Header Trayek Card */}
                 <div className="flex items-center justify-between">
                   <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-600 text-white">
-                    {t.routeCode} - {t.direction === "FORWARD" ? "Pergi" : "Balik"}
+                    {t.routeCode} • {t.direction === "FORWARD" ? "Arah Pergi" : "Arah Pulang"}
                   </span>
                   <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                    {t.scheduledCount} Terjadwal
+                    {t.scheduledCount} Perjalanan
                   </span>
                 </div>
 
                 {/* Nama Rute */}
-                <h3 className="font-bold text-slate-800 text-sm mt-2.5">
+                <h3 className="font-bold text-slate-800 text-sm mt-2.5 group-hover:text-blue-700 transition-colors">
                   {t.origin} → {t.destination}
                 </h3>
 
@@ -588,10 +618,10 @@ export default function AdminDashboardPage() {
                       Penumpang
                     </span>
                     <p className="text-base font-extrabold text-slate-800 mt-0.5">
-                      {t.totalPassengers} Pax
+                      {t.totalPassengers} Orang
                     </p>
                     <span className="text-[10px] text-slate-400 block mt-0.5">
-                      {t.totalPassengers === 0 ? "Menunggu tap" : "Aktif di angkot"}
+                      {t.totalPassengers === 0 ? "Belum Ada Penumpang" : "Penumpang Terangkut"}
                     </span>
                   </div>
                   <div className="border-l border-slate-200">
@@ -602,7 +632,7 @@ export default function AdminDashboardPage() {
                       Rp {t.totalRevenue.toLocaleString("id-ID")}
                     </p>
                     <span className="text-[10px] text-slate-400 block mt-0.5">
-                      {t.totalRevenue === 0 ? "Belum ada bayar" : "Telah disetor"}
+                      {t.totalRevenue === 0 ? "Belum Ada Bayar" : "Telah Masuk"}
                     </span>
                   </div>
                 </div>
@@ -612,12 +642,12 @@ export default function AdminDashboardPage() {
                   <div className="flex items-center justify-between text-slate-600">
                     <span className="flex items-center gap-1.5 text-[11px]">
                       <FaQrcode className="w-3 h-3 text-indigo-500" />
-                      QRIS Gateway:
+                      QRIS (Non-Tunai):
                     </span>
                     <span className="font-semibold text-slate-800 text-[11px]">
                       Rp {t.qrisRevenue.toLocaleString("id-ID")}{" "}
                       <span className="text-slate-400 font-normal">
-                        ({t.qrisTrxCount} trx)
+                        ({t.qrisTrxCount} transaksi)
                       </span>
                     </span>
                   </div>
@@ -629,7 +659,7 @@ export default function AdminDashboardPage() {
                     <span className="font-semibold text-slate-800 text-[11px]">
                       Rp {t.cashRevenue.toLocaleString("id-ID")}{" "}
                       <span className="text-slate-400 font-normal">
-                        ({t.cashTrxCount} trx)
+                        ({t.cashTrxCount} transaksi)
                       </span>
                     </span>
                   </div>
@@ -639,14 +669,11 @@ export default function AdminDashboardPage() {
               {/* Bottom Card Action */}
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span className="text-slate-400 text-[11px]">
-                  Rincian {t.scheduledCount} Ritase
+                  Rincian {t.scheduledCount} Putaran Jalan
                 </span>
-                <button
-                  onClick={() => setSelectedTrayek(t)}
-                  className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                >
-                  Lihat Detail →
-                </button>
+                <span className="font-semibold text-blue-600 group-hover:text-blue-700 flex items-center gap-1 group-hover:translate-x-1 transition-all">
+                  Lihat Rincian →
+                </span>
               </div>
             </div>
           ))}
@@ -655,7 +682,7 @@ export default function AdminDashboardPage() {
 
       {/* ── 2 Bottom Cards Grid ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card: Ringkasan Penumpang & Halte */}
+        {/* Card: Kepadatan Halte & Titik Naik Penumpang */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between pb-4 border-b border-slate-100">
@@ -665,15 +692,15 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-sm">
-                    Ringkasan Penumpang & Halte
+                    Kepadatan Halte &amp; Titik Naik Penumpang
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Simpul halte rute aktif terdata di sistem
+                    Daftar halte utama yang dilalui armada angkot
                   </p>
                 </div>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {halteBoardingStats.length} Halte Terhubung
+                {halteBoardingStats.length} Halte Terdaftar
               </span>
             </div>
 
@@ -696,7 +723,7 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                   <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-white text-slate-600 border border-slate-200 shadow-2xs">
-                    {h.boardingCount} Boarding
+                    {h.boardingCount} Orang Naik
                   </span>
                 </div>
               ))}
@@ -704,17 +731,17 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Master Rute Resmi Dishub</span>
+            <span className="text-slate-400">Peta Rute Resmi Dishub</span>
             <button
               onClick={() => setIsHalteModalOpen(true)}
-              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
             >
-              Lihat Master Halte & Rute →
+              Buka Master Halte &amp; Rute →
             </button>
           </div>
         </div>
 
-        {/* Card: Ulasan & Rating Rendah (★ 1–3) */}
+        {/* Card: Keluhan & Ulasan Layanan (★ 1–3) */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between pb-4 border-b border-slate-100">
@@ -725,16 +752,16 @@ export default function AdminDashboardPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-slate-900 text-sm">
-                      Ulasan & Rating Rendah (★ 1–3)
+                      Keluhan &amp; Ulasan Layanan (★ 1–3)
                     </h3>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Monitoring keluhan penumpang per jalur
+                    Laporan ketidakpuasan layanan yang membutuhkan evaluasi Dishub
                   </p>
                 </div>
               </div>
               <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                Live Feedback
+                Perlu Evaluasi
               </span>
             </div>
 
@@ -742,7 +769,7 @@ export default function AdminDashboardPage() {
             <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
               <div>
                 <p className="text-2xl font-extrabold text-slate-800">
-                  {lowReviews.length} Ulasan
+                  {lowReviews.length} Ulasan Masuk
                 </p>
                 <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
                   <span className="px-2 py-0.5 rounded bg-white border border-slate-200 font-semibold text-red-600">
@@ -757,14 +784,14 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
               <span className="text-xs text-slate-400 italic">
-                {lowReviews.length === 0 ? "Belum ada data ulasan masuk" : "Memerlukan peninjauan"}
+                {lowReviews.length === 0 ? "Belum ada laporan keluhan masuk" : "Memerlukan peninjauan Dishub"}
               </span>
             </div>
 
-            {/* Jalur dengan Rating 1-3 Terbanyak */}
+            {/* Jalur dengan Keluhan Terbanyak */}
             <div className="mt-4 space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-                Jalur dengan Rating ★ 1–3 Terbanyak
+                Jalur dengan Keluhan Terbanyak
               </span>
               {sortedReviewsPerRoute.map((item, index) => (
                 <div
@@ -798,12 +825,12 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Data ulasan & rating</span>
+            <span className="text-slate-400">Pusat Evaluasi Pelayanan</span>
             <button
               onClick={() => setIsReviewModalOpen(true)}
-              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
             >
-              Lihat Detail Ulasan →
+              Tinjau Semua Keluhan →
             </button>
           </div>
         </div>
