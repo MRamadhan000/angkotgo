@@ -6,7 +6,7 @@ import { FaTimes, FaRoute, FaBus, FaMoneyBillWave, FaQrcode, FaCalendarAlt } fro
 export interface TrayekStat {
   key: string;
   routeCode: string;
-  direction: "FORWARD" | "RETURN";
+  direction?: string;
   origin: string;
   destination: string;
   scheduledCount: number;
@@ -43,10 +43,14 @@ export default function TrayekDetailModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-bold text-slate-800">
-                  {trayek.origin} → {trayek.destination}
+                  {trayek.origin} ⇄ {trayek.destination}
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                  {trayek.direction === "FORWARD" ? "Arah Pergi" : "Arah Balik"}
+                  {trayek.direction === "FORWARD"
+                    ? "Arah Pergi"
+                    : trayek.direction === "RETURN"
+                    ? "Arah Balik"
+                    : "Dua Arah (Bolak-Balik)"}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">

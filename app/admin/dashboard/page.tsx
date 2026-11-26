@@ -37,6 +37,7 @@ import TrayekDetailModal, { TrayekStat } from "@/components/admin/TrayekDetailMo
 import HalteSummaryModal, { HalteBoardingStat } from "@/components/admin/HalteSummaryModal";
 import LowReviewsModal from "@/components/admin/LowReviewsModal";
 import MiniCalendarPicker from "@/components/admin/MiniCalendarPicker";
+import RouteDensityMap from "@/components/admin/RouteDensityMap";
 
 export default function AdminDashboardPage() {
   // Tanggal default hari ini (YYYY-MM-DD)
@@ -103,18 +104,18 @@ export default function AdminDashboardPage() {
   }, [selectedDate]);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 1. Data Agregasi "Statistik Operasional & Transaksi per Trayek"
+  // 1. Data Agregasi "Statistik Operasional & Transaksi per Trayek" (Hapus AL/AG & Satukan Arah Pergi/Pulang)
   // ─────────────────────────────────────────────────────────────────────────────
   const trayekStats = useMemo(() => {
-    // Definisi trayek standar kota Malang yang beroperasi
+    // Definisi trayek operasional utama (BB, BGTU, BS, BK)
     const defaultTemplates: Record<string, TrayekStat> = {
-      "AL_FORWARD": {
-        key: "AL_FORWARD",
-        routeCode: "AL",
-        direction: "FORWARD",
-        origin: "Arjosari",
-        destination: "Landungsari",
-        scheduledCount: 4,
+      "BB": {
+        key: "BB",
+        routeCode: "BB",
+        direction: "ALL",
+        origin: "Begawan",
+        destination: "Universitas Brawijaya (UB)",
+        scheduledCount: 0,
         totalPassengers: 0,
         totalRevenue: 0,
         qrisRevenue: 0,
@@ -122,13 +123,13 @@ export default function AdminDashboardPage() {
         cashRevenue: 0,
         cashTrxCount: 0,
       },
-      "AL_RETURN": {
-        key: "AL_RETURN",
-        routeCode: "AL",
-        direction: "RETURN",
-        origin: "Landungsari",
-        destination: "Arjosari",
-        scheduledCount: 4,
+      "BGTU": {
+        key: "BGTU",
+        routeCode: "BGTU",
+        direction: "ALL",
+        origin: "Begawan",
+        destination: "Batu",
+        scheduledCount: 0,
         totalPassengers: 0,
         totalRevenue: 0,
         qrisRevenue: 0,
@@ -136,13 +137,13 @@ export default function AdminDashboardPage() {
         cashRevenue: 0,
         cashTrxCount: 0,
       },
-      "AG_FORWARD": {
-        key: "AG_FORWARD",
-        routeCode: "AG",
-        direction: "FORWARD",
-        origin: "Arjosari",
-        destination: "Gadang",
-        scheduledCount: 4,
+      "BS": {
+        key: "BS",
+        routeCode: "BS",
+        direction: "ALL",
+        origin: "Begawan",
+        destination: "Soekarno Hatta (Suhat)",
+        scheduledCount: 0,
         totalPassengers: 0,
         totalRevenue: 0,
         qrisRevenue: 0,
@@ -150,13 +151,13 @@ export default function AdminDashboardPage() {
         cashRevenue: 0,
         cashTrxCount: 0,
       },
-      "AG_RETURN": {
-        key: "AG_RETURN",
-        routeCode: "AG",
-        direction: "RETURN",
-        origin: "Gadang",
-        destination: "Arjosari",
-        scheduledCount: 4,
+      "BK": {
+        key: "BK",
+        routeCode: "BK",
+        direction: "ALL",
+        origin: "Begawan",
+        destination: "Karya",
+        scheduledCount: 0,
         totalPassengers: 0,
         totalRevenue: 0,
         qrisRevenue: 0,
@@ -166,19 +167,22 @@ export default function AdminDashboardPage() {
       },
     };
 
-    // Agregasi dari live assignments
+    // Agregasi dari live assignments (Digabung per Trayek tanpa pemisah Pergi-Pulang)
     assignments.forEach((assignment) => {
-      const code = assignment.route?.routeCode || "AL";
-      const dir = assignment.direction || "FORWARD";
-      const key = `${code}_${dir}`;
+      const code = assignment.route?.routeCode || "BB";
+      // Hapus / abaikan rute AL dan AG sesuai permintaan
+      if (code === "AL" || code === "AG") return;
+
+      const key = code;
 
       if (!defaultTemplates[key]) {
+        const parts = assignment.route?.routeName?.split("-") || [code, code];
         defaultTemplates[key] = {
           key,
           routeCode: code,
-          direction: dir,
-          origin: assignment.route?.routeName?.split("-")[0]?.trim() || code,
-          destination: assignment.route?.routeName?.split("-")[1]?.trim() || code,
+          direction: "ALL",
+          origin: parts[0]?.trim() || code,
+          destination: parts[1]?.trim() || code,
           scheduledCount: 0,
           totalPassengers: 0,
           totalRevenue: 0,
@@ -554,6 +558,13 @@ export default function AdminDashboardPage() {
         </Link>
       </div>
 
+      {/* ── Baris 2: Peta Kepadatan Jalur & Jaringan Trayek Angkot (Google Maps) ── */}
+      <RouteDensityMap
+        selectedDate={selectedDate}
+        assignments={assignments}
+        rawRouteStops={rawRouteStops as RouteStopType[]}
+      />
+
       {/* ── Card: Statistik Perjalanan & Pendapatan per Trayek ──────────────── */}
       <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
@@ -596,19 +607,19 @@ export default function AdminDashboardPage() {
               className="group p-4 rounded-xl border border-slate-200/80 hover:border-blue-400 shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-200 bg-white flex flex-col justify-between cursor-pointer focus:outline-none"
             >
               <div>
-                {/* Header Trayek Card */}
+                {/* Header Trayek Card (Tanpa Kategori Pergi-Pulang) */}
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-600 text-white">
-                    {t.routeCode} • {t.direction === "FORWARD" ? "Arah Pergi" : "Arah Pulang"}
+                  <span className="px-3 py-1 rounded-lg text-xs font-extrabold bg-blue-600 text-white shadow-2xs">
+                    TRAYEK {t.routeCode}
                   </span>
-                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
                     {t.scheduledCount} Perjalanan
                   </span>
                 </div>
 
-                {/* Nama Rute */}
-                <h3 className="font-bold text-slate-800 text-sm mt-2.5 group-hover:text-blue-700 transition-colors">
-                  {t.origin} → {t.destination}
+                {/* Nama Koridor Trayek (Dua Arah / Terintegrasi) */}
+                <h3 className="font-bold text-slate-800 text-sm mt-2.5 group-hover:text-blue-700 transition-colors truncate">
+                  {t.origin} ⇄ {t.destination}
                 </h3>
 
                 {/* Penumpang & Pendapatan Grid */}
