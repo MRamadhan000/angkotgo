@@ -29,8 +29,6 @@ import {
   FiBarChart2,
   FiCopy,
   FiCheck,
-  FiChevronLeft,
-  FiChevronRight,
   FiChevronUp,
   FiChevronDown,
   FiX,
@@ -185,7 +183,7 @@ function FinanceAnalyticsContent() {
   const params = useParams<{ id?: string }>();
   const assignmentId = Number(params?.id ?? 10);
 
-  // States Filter, Search, Sort & Pagination
+  // States Filter, Search & Sort
   const [searchTerm, setSearchTerm] = useState("");
   const [methodFilter, setMethodFilter] = useState<"ALL" | PaymentMethod>(
     "ALL",
@@ -193,8 +191,6 @@ function FinanceAnalyticsContent() {
   const [selectedBucket, setSelectedBucket] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("paidAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
 
   // UI States
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -329,17 +325,6 @@ function FinanceAnalyticsContent() {
     () => sortedPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0),
     [sortedPayments],
   );
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedPayments.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pageStart = (safePage - 1) * pageSize;
-  const pagedPayments = sortedPayments.slice(pageStart, pageStart + pageSize);
-
-  // Reset ke halaman 1 saat filter/sort berubah
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, methodFilter, selectedBucket, sortKey, sortDir, pageSize]);
 
   const hasActiveFilter =
     methodFilter !== "ALL" || activeBucket !== null || searchTerm.trim() !== "";
@@ -931,7 +916,7 @@ function FinanceAnalyticsContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {pagedPayments.length === 0 ? (
+                {sortedPayments.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -959,7 +944,7 @@ function FinanceAnalyticsContent() {
                     </td>
                   </tr>
                 ) : (
-                  pagedPayments.map((p, idx) => {
+                  sortedPayments.map((p, idx) => {
                     const amountNum = Number(p.amount);
                     const seats = Math.round(amountNum / TICKET_PRICE);
                     const isQris = p.paymentMethod === "QRIS";
@@ -971,7 +956,7 @@ function FinanceAnalyticsContent() {
                         className="transition hover:bg-slate-50/80"
                       >
                         <td className="px-5 py-3.5 font-bold text-slate-400">
-                          {pageStart + idx + 1}
+                          {idx + 1}
                         </td>
                         <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-800">
                           {formatDateTime(p.paidAt)}
@@ -1052,52 +1037,6 @@ function FinanceAnalyticsContent() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {sortedPayments.length > 0 && (
-            <div className="flex flex-col gap-2 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-              <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
-                <span>
-                  {pageStart + 1}–
-                  {Math.min(pageStart + pageSize, sortedPayments.length)} dari{" "}
-                  {sortedPayments.length}
-                </span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-600"
-                  aria-label="Jumlah baris per halaman"
-                >
-                  {[10, 25, 50].map((n) => (
-                    <option key={n} value={n}>
-                      {n} / hal
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setPage(Math.max(1, safePage - 1))}
-                  disabled={safePage <= 1}
-                  aria-label="Halaman sebelumnya"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <FiChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="min-w-[72px] text-center text-[11px] font-bold text-slate-700">
-                  Hal {safePage} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage(Math.min(totalPages, safePage + 1))}
-                  disabled={safePage >= totalPages}
-                  aria-label="Halaman berikutnya"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <FiChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </main>
     </div>
