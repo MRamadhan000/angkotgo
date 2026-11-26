@@ -9,11 +9,10 @@ import {
   FiMapPin,
   FiCalendar,
   FiClock,
-  FiNavigation,
   FiLoader,
 } from "react-icons/fi";
 import { VehicleAssignment } from "@/types/vehicles/vehicle-assignments.type";
-import { DirectionType, AssignmentStatus } from "@/types/vehicles/vehicle.type";
+import { AssignmentStatus } from "@/types/vehicles/vehicle.type";
 import { useVehicles } from "@/hooks/vehicles/useVehicles";
 import { useRoutes } from "@/hooks/routes/useRoutes";
 import { useDrivers } from "@/hooks/useDrivers";
@@ -46,8 +45,6 @@ export default function UpdateAssignmentModal({
     routeId: "",
     assignmentDate: "",
     startTime: "",
-    endTime: "",
-    direction: DirectionType.FORWARD,
     status: AssignmentStatus.SCHEDULED,
   });
 
@@ -69,8 +66,6 @@ export default function UpdateAssignmentModal({
         routeId: String(initialData.route?.id || initialData.routeId || ""),
         assignmentDate: initialData.assignmentDate || "",
         startTime: initialData.startTime || "",
-        endTime: initialData.endTime || "",
-        direction: initialData.direction || DirectionType.FORWARD,
         status: initialData.status || AssignmentStatus.SCHEDULED,
       });
     }
@@ -95,7 +90,7 @@ export default function UpdateAssignmentModal({
       return;
     }
 
-    // Format data payload sebelum dikirim (mengubah string kosong kondektur menjadi undefined jika diperlukan)
+    // Format data payload sebelum dikirim
     const payload = {
       ...formData,
       vehicleId: Number(formData.vehicleId),
@@ -248,29 +243,13 @@ export default function UpdateAssignmentModal({
                 {routes?.map((r: any) => (
                   <option key={r.id} value={r.id}>
                     {r.routeCode ? `${r.routeCode} - ` : ""}
-                    {r.routeName}
+                    {r.routeName || r.name || ""}
                   </option>
                 ))}
               </FieldSelect>
             </div>
 
-            {/* 5. Arah Perjalanan */}
-            <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
-                Arah (Direction)
-              </label>
-              <FieldSelect
-                icon={FiNavigation}
-                name="direction"
-                value={formData.direction}
-                onChange={handleChange}
-              >
-                <option value={DirectionType.FORWARD}>Forward (Pergi)</option>
-                <option value={DirectionType.RETURN}>Return (Pulang)</option>
-              </FieldSelect>
-            </div>
-
-            {/* 6. Tanggal Penugasan */}
+            {/* 5. Tanggal Penugasan */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Tanggal Operasional
@@ -288,7 +267,7 @@ export default function UpdateAssignmentModal({
               </div>
             </div>
 
-            {/* 7. Status Penugasan */}
+            {/* 6. Status Penugasan */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Status Penugasan
@@ -306,7 +285,7 @@ export default function UpdateAssignmentModal({
               </select>
             </div>
 
-            {/* 8. Jam Mulai */}
+            {/* 7. Jam Mulai */}
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
                 Jam Mulai (Start Time)
@@ -317,24 +296,6 @@ export default function UpdateAssignmentModal({
                   type="time"
                   name="startTime"
                   value={formData.startTime}
-                  onChange={handleChange}
-                  required
-                  className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
-                />
-              </div>
-            </div>
-
-            {/* 9. Jam Selesai */}
-            <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
-                Jam Selesai (End Time)
-              </label>
-              <div className="relative">
-                <FiClock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-                <input
-                  type="time"
-                  name="endTime"
-                  value={formData.endTime}
                   onChange={handleChange}
                   required
                   className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 rounded-2xl text-sm font-medium text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
