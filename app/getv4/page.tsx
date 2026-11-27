@@ -812,27 +812,55 @@ function makeIcon(
   return icon;
 }
 
-/** Pin berlabel: pill teks di atas, kepala pin berikon, ujung pin = titik koordinat. */
+/** Pin berlabel: pill teks di atas, kepala pin berikon, ujung pin = titik koordinat.
+ *  Origin & destination mendapat efek ring glow yang lebih mencolok. */
 function pinIcon(kind: PinKind, label: string): google.maps.Icon {
   const key = `pin-${kind}-${label}`;
   const cached = iconCache.get(key);
   if (cached) return cached;
 
   const { color, glyph } = PIN_STYLE[kind];
+
+  // Origin & destination pin lebih besar + efek glow
+  const isUserPin = kind === "origin" || kind === "destination";
   const textW = Math.round(label.length * 6.6 + 20);
-  const W = Math.max(52, textW + 4);
-  const H = 72;
+  const W = isUserPin ? Math.max(64, textW + 8) : Math.max(52, textW + 4);
+  const H = isUserPin ? 90 : 72;
   const cx = W / 2;
   const pillX = (W - textW) / 2;
   const tip = H - 3;
+  // Kepala pin lebih besar untuk user pins
+  const pinR = isUserPin ? 20 : 15;
+  const pinTop = tip - 2 * pinR - (isUserPin ? 20 : 14);
+
+  // Glow ring (hanya origin & destination): lingkaran transparan berlapis di belakang pin
+  const glowRings = isUserPin
+    ? `<circle cx="${cx}" cy="${pinTop + pinR}" r="${pinR + 10}" fill="${color}" fill-opacity="0.18" stroke="none"/>` +
+      `<circle cx="${cx}" cy="${pinTop + pinR}" r="${pinR + 5}" fill="${color}" fill-opacity="0.28" stroke="none"/>` +
+      `<circle cx="${cx}" cy="${pinTop + pinR}" r="${pinR + 2}" fill="none" stroke="${color}" stroke-width="2.5" stroke-opacity="0.55"/>`
+    : "";
+
+  const pinPath = isUserPin
+    ? `M${cx} ${tip} C${cx - 5} ${tip - 10} ${cx - pinR - 3} ${pinTop + pinR * 1.5} ${cx - pinR - 3} ${pinTop + pinR} A${pinR + 3} ${pinR + 3} 0 1 1 ${cx + pinR + 3} ${pinTop + pinR} C${cx + pinR + 3} ${pinTop + pinR * 1.5} ${cx + 5} ${tip - 10} ${cx} ${tip} Z`
+    : `M${cx} ${tip} C${cx - 4} 62 ${cx - 15} 54 ${cx - 15} 42 A15 15 0 1 1 ${cx + 15} 42 C${cx + 15} 54 ${cx + 4} 62 ${cx} ${tip} Z`;
+
+  const pinCenter = isUserPin ? pinTop + pinR : 42;
 
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
-    `<ellipse cx="${cx}" cy="${tip}" rx="7" ry="2.5" fill="rgba(0,0,0,0.25)"/>` +
-    `<rect x="${pillX}" y="1" width="${textW}" height="21" rx="10.5" fill="${color}" stroke="#ffffff" stroke-width="2"/>` +
-    `<text x="${cx}" y="15.5" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="#ffffff">${escapeXml(label)}</text>` +
-    `<path d="M${cx} ${tip} C${cx - 4} 62 ${cx - 15} 54 ${cx - 15} 42 A15 15 0 1 1 ${cx + 15} 42 C${cx + 15} 54 ${cx + 4} 62 ${cx} ${tip} Z" fill="${color}" stroke="#ffffff" stroke-width="2.5"/>` +
-    `<g transform="translate(${cx} 42)" fill="#ffffff">${glyph(color)}</g>` +
+    // Bayangan di bawah tip
+    `<ellipse cx="${cx}" cy="${tip}" rx="${isUserPin ? 9 : 7}" ry="${isUserPin ? 3.5 : 2.5}" fill="rgba(0,0,0,${isUserPin ? "0.3" : "0.25"})"/>` +
+    // Glow rings (khusus user pin)
+    glowRings +
+    // Pill label
+    `<rect x="${pillX}" y="1" width="${textW}" height="${isUserPin ? 23 : 21}" rx="${isUserPin ? 11.5 : 10.5}" fill="${color}" stroke="#ffffff" stroke-width="2"/>` +
+    `<text x="${cx}" y="${isUserPin ? 16.5 : 15.5}" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="${isUserPin ? 12 : 11}" font-weight="700" fill="#ffffff">${escapeXml(label)}</text>` +
+    // Kepala pin dengan stroke putih lebih tebal
+    `<path d="${pinPath}" fill="${color}" stroke="#ffffff" stroke-width="${isUserPin ? 3.5 : 2.5}"/>` +
+    // Kilap dalam kepala pin
+    (isUserPin ? `<ellipse cx="${cx - 5}" cy="${pinCenter - 7}" rx="6" ry="4" fill="#ffffff" fill-opacity="0.22" transform="rotate(-25,${cx - 5},${pinCenter - 7})"/>` : "") +
+    // Glyph ikon di tengah kepala
+    `<g transform="translate(${cx} ${pinCenter})" fill="#ffffff">${glyph(color)}</g>` +
     `</svg>`;
 
   return makeIcon(key, svg, W, H, cx, tip);
@@ -884,10 +912,142 @@ function Skeleton({ className = "" }: { className?: string }) {
   return <div aria-hidden className={`animate-pulse rounded-lg bg-slate-200 ${className}`} />;
 }
 
-function Sheet({ children }: { children: ReactNode }) {
+/* =========================================================
+   DRAGGABLE BOTTOM SHEET HOOK
+   Snap positions: "peek" (kecil), "half" (setengah), "full" (penuh)
+========================================================= */
+
+type SnapPoint = "peek" | "half" | "full";
+
+function useDraggableSheet(defaultSnap: SnapPoint = "half") {
+  const [snap, setSnap] = useState<SnapPoint>(defaultSnap);
+  const [dragging, setDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0); // positif = ke atas
+  const startY = useRef<number | null>(null);
+  const sheetRef = useRef<HTMLElement>(null);
+
+  const snapHeights: Record<SnapPoint, number> = {
+    peek: 0.18,  // 18% layar
+    half: 0.48,  // 48% layar
+    full: 0.88,  // 88% layar
+  };
+
+  const getHeight = () => {
+    if (typeof window === "undefined") return "48dvh";
+    const vh = window.innerHeight;
+    const base = snapHeights[snap] * vh;
+    const h = Math.min(Math.max(base - dragOffset, snapHeights.peek * vh), snapHeights.full * vh);
+    return `${Math.round(h)}px`;
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    startY.current = e.clientY;
+    setDragging(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (startY.current === null) return;
+    setDragOffset(startY.current - e.clientY);
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (startY.current === null) return;
+    const delta = startY.current - e.clientY;
+    setDragging(false);
+    setDragOffset(0);
+    startY.current = null;
+
+    const vh = window.innerHeight;
+    const threshold = vh * 0.1; // 10% layar sebagai ambang snap
+
+    setSnap((prev) => {
+      if (delta > threshold) {
+        // Drag ke atas → naik level
+        if (prev === "peek") return "half";
+        if (prev === "half") return "full";
+        return "full";
+      } else if (delta < -threshold) {
+        // Drag ke bawah → turun level
+        if (prev === "full") return "half";
+        if (prev === "half") return "peek";
+        return "peek";
+      }
+      return prev;
+    });
+  };
+
+  return { snap, setSnap, dragging, dragOffset, getHeight, sheetRef, onPointerDown, onPointerMove, onPointerUp };
+}
+
+function DragHandle(props: {
+  onPointerDown: React.PointerEventHandler;
+  onPointerMove: React.PointerEventHandler;
+  onPointerUp: React.PointerEventHandler;
+}) {
   return (
-    <section className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-h-[50dvh] w-full max-w-md flex-col sm:max-h-[62dvh] rounded-t-[28px] bg-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.18)]">
-      <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-black/15" />
+    <div
+      {...props}
+      className="mx-auto flex w-full cursor-grab touch-none select-none items-center justify-center py-2 active:cursor-grabbing"
+      aria-label="Seret untuk mengubah ukuran panel"
+    >
+      <div className="h-1 w-10 rounded-full bg-black/15 transition-colors hover:bg-black/25" />
+    </div>
+  );
+}
+
+function Sheet({ children, defaultSnap = "half" }: { children: ReactNode; defaultSnap?: SnapPoint }) {
+  const ds = useDraggableSheet(defaultSnap);
+  const height = ds.getHeight();
+
+  return (
+    <section
+      ref={ds.sheetRef as React.RefObject<HTMLElement>}
+      className="absolute inset-x-0 bottom-0 z-10 mx-auto w-full max-w-md flex-col rounded-t-[28px] bg-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.18)]"
+      style={{
+        height,
+        display: "flex",
+        transition: ds.dragging ? "none" : "height 0.28s cubic-bezier(0.32,0.72,0,1)",
+        willChange: "height",
+      }}
+    >
+      <DragHandle
+        onPointerDown={ds.onPointerDown}
+        onPointerMove={ds.onPointerMove}
+        onPointerUp={ds.onPointerUp}
+      />
+      {children}
+    </section>
+  );
+}
+
+/** Versi Sheet khusus untuk perjalanan aktif, mendukung slot footer fixed (tombol simulasi). */
+function TripSheet({ children, riding }: { children: ReactNode; riding: boolean }) {
+  const ds = useDraggableSheet(riding ? "half" : "half");
+
+  // Reset ke half saat riding berubah
+  useEffect(() => {
+    ds.setSnap("half");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [riding]);
+
+  const height = ds.getHeight();
+
+  return (
+    <section
+      className="absolute inset-x-0 bottom-0 z-10 mx-auto w-full max-w-md flex-col rounded-t-[28px] bg-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.18)]"
+      style={{
+        height,
+        display: "flex",
+        transition: ds.dragging ? "none" : "height 0.28s cubic-bezier(0.32,0.72,0,1)",
+        willChange: "height",
+      }}
+    >
+      <DragHandle
+        onPointerDown={ds.onPointerDown}
+        onPointerMove={ds.onPointerMove}
+        onPointerUp={ds.onPointerUp}
+      />
       {children}
     </section>
   );
@@ -1494,34 +1654,65 @@ function useTripOverlays(
     });
   }, [map, approach]);
 
-  // Leg berikutnya (transit): garis putus-putus dengan warna leg tersebut.
+  // Leg berikutnya (transit): titik bulat (dot) tebal + garis bayangan putih di bawahnya.
   useEffect(() => {
     if (!map) return;
 
     dashed.current.forEach((line) => line.setMap(null));
-    dashed.current = upcoming
-      .filter((path) => path.length >= 2)
-      .map(
-        (path) =>
-          new google.maps.Polyline({
-            map,
-            path,
-            strokeOpacity: 0,
-            zIndex: 3,
-            icons: [
-              {
-                icon: {
-                  path: "M 0,-1 0,1",
-                  strokeOpacity: 0.85,
-                  strokeColor: upcomingColor,
-                  scale: 3,
-                },
-                offset: "0",
-                repeat: "14px",
+
+    const lines: google.maps.Polyline[] = [];
+
+    upcoming.filter((path) => path.length >= 2).forEach((path) => {
+      // Garis "shadow" putih tipis di bawah (memberikan kesan border)
+      lines.push(
+        new google.maps.Polyline({
+          map,
+          path,
+          strokeOpacity: 0,
+          zIndex: 2,
+          icons: [
+            {
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: "#ffffff",
+                fillOpacity: 0.9,
+                strokeColor: "transparent",
+                strokeWeight: 0,
+                scale: 6.5,
               },
-            ],
-          }),
+              offset: "0",
+              repeat: "18px",
+            },
+          ],
+        }),
       );
+      // Titik berwarna (lebih besar, lebih solid)
+      lines.push(
+        new google.maps.Polyline({
+          map,
+          path,
+          strokeOpacity: 0,
+          zIndex: 3,
+          icons: [
+            {
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: upcomingColor,
+                fillOpacity: 1,
+                strokeColor: "#ffffff",
+                strokeWeight: 1.5,
+                strokeOpacity: 1,
+                scale: 4.5,
+              },
+              offset: "0",
+              repeat: "18px",
+            },
+          ],
+        }),
+      );
+    });
+
+    dashed.current = lines;
   }, [map, upcoming, upcomingColor]);
 
   // Marker halte angkot: naik / transit / turun.
@@ -2009,8 +2200,8 @@ function SearchStatusSheet({
   onRetry: () => void;
 }) {
   return (
-    <Sheet>
-      <div className="space-y-3 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4">
+    <Sheet defaultSnap="half">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-2">
         {error ? (
           <ErrorBox message={error.message} onRetry={onRetry} />
         ) : loading ? (
@@ -2631,7 +2822,7 @@ function HomePage() {
   const focusedPosition = focusedVehicle ? positionOf(focusedVehicle) : null;
   const nearestEta = (focusedVehicle ?? vehicles.find((v) => !v.passed))?.etaMinutes ?? null;
 
-  /* ----- Polyline: decode -> potong yang sudah dilewati ----- */
+  /* ----- Polyline: decode jalur leg aktif (tetap utuh saat user sudah naik) ----- */
   const ridePath = useMemo(
     () => (searchLeg ? decodePath(searchLeg.slicedPolyline) : []),
     [searchLeg],
@@ -2640,7 +2831,7 @@ function HomePage() {
   const remainingPath = useRemainingPath(
     ridePath,
     focusedPosition,
-    trip.riding,
+    false,
     `${selectedOption ? optionKey(selectedOption) : "-"}-${trip.activeLeg}`,
   );
 
@@ -2657,7 +2848,7 @@ function HomePage() {
    *   - angkot LIVE            : dipotong mengikuti posisi WebSocket (ujung garis ikut maju)
    *   - angkot ESTIMASI/fallback: tetap digambar dari titik awal estimasinya (mis. belum berangkat)
    *   - angkot sudah lewat     : tidak digambar (status PASSED atau polylineIndex > titik naik)
-   * Seluruh garis hilang saat user sudah naik.
+   * Garis tetap dipertahankan saat user sudah naik.
    */
   const legRoutePaths = useMemo(
     () => trackLegs.map((leg) => decodePath(leg.route.encodedPolyline)),
@@ -2665,8 +2856,6 @@ function HomePage() {
   );
 
   const approachLines = useMemo<ApproachLine[]>(() => {
-    if (trip.riding) return [];
-
     const lines: ApproachLine[] = [];
 
     for (const group of legGroups) {
@@ -2697,7 +2886,7 @@ function HomePage() {
     }
 
     return lines;
-  }, [trip.riding, legGroups, legRoutePaths, live.positions, focusedId, pickId]);
+  }, [legGroups, legRoutePaths, live.positions, focusedId, pickId]);
 
   /**
    * MARKER HALTE (naik / transit / turun) dari boardCoord & alightCoord hasil /routes/search.
@@ -3063,10 +3252,8 @@ function HomePage() {
             code={searchLeg.routeCode}
           />
 
-          <section className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-h-[56dvh] w-full max-w-md flex-col sm:max-h-[68dvh] rounded-t-[28px] bg-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.18)]">
-            <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-black/15" />
-
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3.5 pb-4 pt-3 sm:px-4 sm:pt-4">
+          <TripSheet riding={trip.riding}>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3.5 pb-4 pt-1 sm:px-4">
               {trip.activeLeg > 0 && !trip.riding && (
                 <TransitBanner previous={selectedOption.legs[trip.activeLeg - 1]} current={searchLeg} />
               )}
@@ -3158,7 +3345,7 @@ function HomePage() {
                 </button>
               </div>
             )}
-          </section>
+          </TripSheet>
         </>
       )}
 
