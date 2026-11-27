@@ -59,6 +59,7 @@ import {
   BusFront,
   Check,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Crosshair,
   Flag,
@@ -767,7 +768,7 @@ const PIN_STYLE: Record<PinKind, { color: string; glyph: (bg: string) => string 
   },
   // Naik angkot: bus
   board: {
-    color: "#1d4ed8",
+    color: "#f97316",
     glyph: (bg) =>
       `<rect x="-7.5" y="-8" width="15" height="13" rx="2.5"/>` +
       `<rect x="-5.5" y="-6" width="11" height="5" rx="1" fill="${bg}"/>` +
@@ -2252,6 +2253,178 @@ function TransitBanner({ previous, current }: { previous: SearchLeg; current: Se
   );
 }
 
+function RouteStopsList({ stopEstimates }: { stopEstimates: StopEstimate[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const firstUpcomingIdx = stopEstimates.findIndex((item) => !item.passed);
+  const passedCount =
+    firstUpcomingIdx === -1 ? stopEstimates.length : firstUpcomingIdx;
+  const upcomingCount = stopEstimates.length - passedCount;
+  const hasCollapsible = passedCount > 0 || upcomingCount > 4;
+
+  const visibleStops = useMemo(() => {
+    if (expanded || !hasCollapsible) return stopEstimates;
+    const start = firstUpcomingIdx === -1 ? Math.max(0, stopEstimates.length - 3) : firstUpcomingIdx;
+    return stopEstimates.slice(start, start + 4);
+  }, [expanded, hasCollapsible, stopEstimates, firstUpcomingIdx]);
+
+  const hiddenCount = stopEstimates.length - visibleStops.length;
+
+  return (
+    <div className="border-t border-slate-100 bg-gradient-to-b from-slate-50/90 to-slate-50/40 px-3.5 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-100/80 text-blue-700">
+            <MapPin size={13} />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] font-bold text-slate-800">Halte rute</p>
+              <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200/80">
+                {upcomingCount > 0
+                  ? `${upcomingCount} tersisa`
+                  : `${stopEstimates.length} halte`}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {hasCollapsible && (
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-blue-700 shadow-2xs ring-1 ring-inset ring-slate-200 transition hover:bg-blue-50 active:scale-95"
+          >
+            {expanded ? "Ringkas" : `Semua (${stopEstimates.length})`}
+            <ChevronDown
+              size={12}
+              className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+            />
+          </button>
+        )}
+      </div>
+
+      <ol className="mt-2.5">
+        {visibleStops.map(({ stop, etaMinutes, passed }, idx) => {
+          const isFirst = idx === 0;
+          const isLast = idx === visibleStops.length - 1;
+          const isNext =
+            !passed &&
+            firstUpcomingIdx !== -1 &&
+            stopEstimates[firstUpcomingIdx]?.stop.halteId === stop.halteId &&
+            stopEstimates[firstUpcomingIdx]?.stop.stopSequence === stop.stopSequence;
+          const isFinalStop =
+            stopEstimates[stopEstimates.length - 1]?.stop.halteId === stop.halteId &&
+            stopEstimates[stopEstimates.length - 1]?.stop.stopSequence === stop.stopSequence;
+
+          return (
+            <li
+              key={`${stop.halteId}-${stop.stopSequence}`}
+              className={`group relative flex items-stretch gap-2.5 rounded-xl px-2 transition ${
+                isNext
+                  ? "my-0.5 bg-blue-50/90 py-2 ring-1 ring-inset ring-blue-200/80"
+                  : "py-1.5"
+              }`}
+            >
+              {/* Timeline track */}
+              <div className="relative flex w-4 shrink-0 flex-col items-center justify-center">
+                {!isFirst && (
+                  <span
+                    aria-hidden
+                    className={`absolute top-0 h-1/2 w-[2px] -translate-y-1.5 ${
+                      passed ? "bg-slate-200" : "bg-blue-200"
+                    }`}
+                  />
+                )}
+                {!isLast && (
+                  <span
+                    aria-hidden
+                    className={`absolute bottom-0 h-1/2 w-[2px] translate-y-1.5 ${
+                      passed ? "bg-slate-200" : "bg-blue-200"
+                    }`}
+                  />
+                )}
+
+                {passed ? (
+                  <span className="relative z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+                    <Check size={9} strokeWidth={3} />
+                  </span>
+                ) : isNext ? (
+                  <span className="relative z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-600 ring-4 ring-blue-200/80">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                  </span>
+                ) : isFinalStop ? (
+                  <span className="relative z-10 h-3 w-3 rounded-full border-2 border-emerald-500 bg-emerald-50" />
+                ) : (
+                  <span className="relative z-10 h-2.5 w-2.5 rounded-full border-2 border-blue-400 bg-white" />
+                )}
+              </div>
+
+              {/* Stop name */}
+              <div className="min-w-0 flex-1 self-center">
+                <p
+                  className={`truncate leading-4 ${
+                    passed
+                      ? "text-[11px] font-medium text-slate-400 line-through"
+                      : isNext
+                        ? "text-[12px] font-bold text-slate-900"
+                        : "text-[11.5px] font-medium text-slate-700"
+                  }`}
+                >
+                  {stop.name}
+                </p>
+                {isNext && (
+                  <p className="mt-0.5 text-[10px] font-semibold text-blue-600">
+                    {etaMinutes === 0 ? "Angkot sedang di halte ini" : "Halte berikutnya"}
+                  </p>
+                )}
+              </div>
+
+              {/* ETA badge */}
+              <span
+                className={`shrink-0 self-center rounded-lg px-2 py-1 text-[10px] font-semibold ${
+                  passed
+                    ? "bg-slate-100 text-slate-400"
+                    : etaMinutes === 0
+                      ? "inline-flex items-center gap-1 bg-emerald-600 text-white shadow-2xs"
+                      : isNext && etaMinutes !== null
+                        ? "bg-blue-600 font-bold text-white shadow-2xs"
+                        : etaMinutes === null
+                          ? "bg-white text-slate-400 ring-1 ring-inset ring-slate-200"
+                          : "bg-white text-blue-700 ring-1 ring-inset ring-blue-200/70"
+                }`}
+              >
+                {passed ? (
+                  "Lewat"
+                ) : etaMinutes === null ? (
+                  "—"
+                ) : etaMinutes === 0 ? (
+                  <>
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                    Di sini
+                  </>
+                ) : (
+                  `±${etaMinutes} mnt`
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      {!expanded && hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-1.5 w-full rounded-lg py-1 text-center text-[10px] font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-blue-700"
+        >
+          +{hiddenCount} halte lainnya (ketuk untuk lihat)
+        </button>
+      )}
+    </div>
+  );
+}
+
 function VehicleRow({
   vehicle,
   code,
@@ -2372,51 +2545,7 @@ function VehicleRow({
       </button>
 
       {stopEstimates.length > 0 && (
-        <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-bold text-slate-700">Halte rute</p>
-              <p className="mt-0.5 text-[10px] text-slate-500">
-                Estimasi waktu dari posisi angkot
-              </p>
-            </div>
-            <MapPin size={15} className="shrink-0 text-slate-400" />
-          </div>
-          <ol className="relative mt-3 space-y-2.5 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-slate-200">
-            {stopEstimates.map(({ stop, etaMinutes, passed }) => (
-              <li
-                key={`${stop.halteId}-${stop.stopSequence}`}
-                className="relative grid grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-2.5"
-              >
-                <span
-                  className={`z-10 h-2.5 w-2.5 rounded-full border-2 border-white ${
-                    passed ? "bg-slate-300" : "bg-blue-600"
-                  }`}
-                />
-                <span className="min-w-0 text-[11px] font-medium leading-4 text-slate-700">
-                  {stop.name}
-                </span>
-                <span
-                  className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold ${
-                    passed
-                      ? "bg-slate-100 text-slate-400"
-                      : etaMinutes === null
-                        ? "bg-white text-slate-400 ring-1 ring-inset ring-slate-200"
-                        : "bg-white text-blue-700 ring-1 ring-inset ring-blue-100"
-                  }`}
-                >
-                  {passed
-                    ? "Terlewati"
-                    : etaMinutes === null
-                      ? "—"
-                      : etaMinutes === 0
-                        ? "Di sini"
-                        : `±${etaMinutes} menit`}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
+        <RouteStopsList stopEstimates={stopEstimates} />
       )}
       {!riding && (
         <div className="border-t border-slate-100 p-3">
