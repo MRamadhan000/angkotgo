@@ -44,7 +44,7 @@ export default function HeroSection() {
             {/* Buttons */}
             <div className="flex flex-wrap gap-4 pt-2">
               <Link
-                href="/getv2"
+                href="/getv4"
                 className="group flex items-center gap-2.5 rounded-full px-8 py-[15px] text-white transition hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   backgroundColor: COLORS.accent,
