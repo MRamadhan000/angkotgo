@@ -5,13 +5,8 @@ export enum DirectionType {
 
 export interface Route {
   id: number;
-  code: string;
-  name: string;
-  direction: DirectionType | string;
-  color: string;
-  encodedPolyline: string;
-  totalDistanceMeters: number;
-  isActive: boolean;
+  routeCode: string;
+  routeName: string;
   createdAt: string | Date;
   updatedAt: string | Date;
 }

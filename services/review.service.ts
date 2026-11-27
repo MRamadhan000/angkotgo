@@ -1,5 +1,6 @@
 import {
   CreateReviewPayload,
+  Review,
   ReviewResponse,
   ReviewsResponse,
 } from "@/types/review.type";
@@ -37,21 +38,73 @@ export const createReview = async (
 export const getAllReviews = async (
   maxRating?: number,
 ): Promise<ReviewsResponse> => {
-  const queryParam = maxRating !== undefined ? `?maxRating=${maxRating}` : "";
-  const response = await fetch(`${API_URL}/reviews${queryParam}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
+  // mainv4 backend exposes GET /feedbacks/assignment/:assignmentId
+  // We fetch assignments first, then collect all feedbacks from each assignment
+  try {
+    const assignRes = await fetch(`${API_URL}/vehicle-assignments`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new Error(errorData?.message || "Gagal mengambil data review.");
+    if (assignRes.ok) {
+      const assignJson = await assignRes.json();
+      const assignments: any[] = Array.isArray(assignJson)
+        ? assignJson
+        : assignJson.data || [];
+
+      const allFeedbacks: Review[] = [];
+      const promises = assignments.map(async (a) => {
+        try {
+          const fbRes = await fetch(`${API_URL}/feedbacks/assignment/${a.id}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          });
+          if (fbRes.ok) {
+            const fbJson = await fbRes.json();
+            const list: any[] = Array.isArray(fbJson)
+              ? fbJson
+              : fbJson.data || [];
+            list.forEach((item) => {
+              allFeedbacks.push({
+                id: item.id,
+                userId: 0,
+                vehicleAssignmentId: a.id,
+                rating: Number(item.rating) || 5,
+                description:
+                  item.experience ||
+                  (Array.isArray(item.tags) ? item.tags.join(", ") : "") ||
+                  "Layanan memuaskan",
+                createdAt: item.createdAt || new Date().toISOString(),
+                updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+                deletedAt: null,
+                vehicleAssignment: a,
+              });
+            });
+          }
+        } catch {
+          // ignore single assignment error
+        }
+      });
+
+      await Promise.all(promises);
+
+      const filtered =
+        maxRating !== undefined
+          ? allFeedbacks.filter((r) => r.rating <= maxRating)
+          : allFeedbacks;
+
+      return {
+        message: "Successfully fetched all feedbacks",
+        data: filtered,
+      };
+    }
+  } catch {
+    // fallback below
   }
 
-  return response.json();
+  return { message: "No reviews", data: [] };
 };
 
 export const getReviewsByVehicleAssignmentId = async (

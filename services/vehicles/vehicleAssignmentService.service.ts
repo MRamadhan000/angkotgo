@@ -12,8 +12,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export const vehicleAssignmentService = {
   async getAll(assignmentDate?: string): Promise<VehicleAssignment[]> {
-    const query = assignmentDate ? `?date=${assignmentDate}&assignmentDate=${assignmentDate}` : "";
-    const response = await fetch(`${API_URL}/vehicle-assignments${query}`, {
+    const endpoint = assignmentDate
+      ? `${API_URL}/vehicle-assignments/date/${assignmentDate}`
+      : `${API_URL}/vehicle-assignments`;
+    const response = await fetch(endpoint, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
