@@ -470,11 +470,13 @@ export default function OperationalBoardPage() {
 
                         <div className="min-w-0 text-center">
                           <p className="truncate font-medium text-gray-800">
-                            {item.route?.name || "Rute Perjalanan"}
+                            {item.route?.name ||
+                              item.route?.routeName ||
+                              "Rute Perjalanan"}
                           </p>
 
                           <p className="text-xs text-gray-500">
-                            {item.route?.code || "-"}
+                            {item.route?.code || item.route?.routeCode || "-"}
                           </p>
                         </div>
                       </div>

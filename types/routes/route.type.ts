@@ -7,6 +7,9 @@ export interface Route {
   id: number;
   routeCode: string;
   routeName: string;
+  code?: string;
+  name?: string;
+  direction?: DirectionType;
   createdAt: string | Date;
   updatedAt: string | Date;
 }

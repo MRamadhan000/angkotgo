@@ -240,10 +240,11 @@ export default function UpdateAssignmentModal({
                 <option value="" disabled>
                   {loadingRoutes ? "Memuat rute..." : "-- Pilih Rute --"}
                 </option>
-                {routes?.map((r: any) => (
+                {routes.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.routeCode ? `${r.routeCode} - ` : ""}
-                    {r.routeName || r.name || ""}
+                    {r.routeName}
+                    {r.direction ? ` (${r.direction})` : ""}
                   </option>
                 ))}
               </FieldSelect>

@@ -246,9 +246,11 @@ export default function CreateAssignmentModal({
                 <option value="" disabled>
                   {loadingRoutes ? "Memuat rute..." : "-- Pilih Rute --"}
                 </option>
-                {routes?.map((r: any) => (
+                {routes.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.direction || ""} {r.name || ""}
+                    {r.routeCode ? `${r.routeCode} - ` : ""}
+                    {r.routeName}
+                    {r.direction ? ` (${r.direction})` : ""}
                   </option>
                 ))}
               </FieldSelect>
