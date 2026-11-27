@@ -738,7 +738,7 @@ function FinanceAnalyticsContent() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-0 w-4 border-t-2 border-dashed border-emerald-600" />
-                  Akumulasi
+                  Total per Periode
                 </span>
               </div>
             </div>
@@ -750,7 +750,6 @@ function FinanceAnalyticsContent() {
               onSelect={(start) =>
                 setSelectedBucket((prev) => (prev === start ? null : start))
               }
-              totalIncome={stats.totalIncome}
             />
 
             {insights && (
@@ -1184,13 +1183,11 @@ function RevenueChart({
   bucketMs,
   selectedStart,
   onSelect,
-  totalIncome,
 }: {
   buckets: Bucket[];
   bucketMs: number;
   selectedStart: number | null;
   onSelect: (start: number) => void;
-  totalIncome: number;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const [animated, setAnimated] = useState(false);
@@ -1231,10 +1228,6 @@ function RevenueChart({
   const ticks = [0, 1, 2, 3, 4].map((i) => (maxVal * i) / 4);
   const labelStep = Math.ceil(n / 8);
 
-  let running = 0;
-  const cumulative = buckets.map((b) => (running += b.total));
-  const cumY = (v: number) =>
-    padT + plotH - (totalIncome > 0 ? (v / totalIncome) * plotH : 0);
   const centerX = (i: number) => padL + slot * (i + 0.5);
 
   const hoveredBucket = hovered !== null ? buckets[hovered] : null;
@@ -1329,7 +1322,7 @@ function RevenueChart({
         {n > 1 && (
           <polyline
             points={buckets
-              .map((_, i) => `${centerX(i)},${cumY(cumulative[i])}`)
+              .map((bucket, i) => `${centerX(i)},${yOf(bucket.total)}`)
               .join(" ")}
             fill="none"
             stroke="#059669"
@@ -1347,7 +1340,7 @@ function RevenueChart({
         {hovered !== null && (
           <circle
             cx={centerX(hovered)}
-            cy={cumY(cumulative[hovered])}
+            cy={yOf(buckets[hovered].total)}
             r={4}
             fill="#059669"
             stroke="#fff"
@@ -1443,12 +1436,6 @@ function RevenueChart({
               </span>
               <span className="tabular-nums">
                 {hoveredBucket.cash.toLocaleString("id-ID")}
-              </span>
-            </p>
-            <p className="flex items-center justify-between gap-2 border-t border-slate-200 pt-1 text-emerald-800">
-              <span>Akumulasi</span>
-              <span className="tabular-nums">
-                {cumulative[hovered].toLocaleString("id-ID")}
               </span>
             </p>
           </div>

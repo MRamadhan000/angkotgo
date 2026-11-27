@@ -46,7 +46,7 @@ export interface ApiResponse<T> {
 }
 
 /* =========================================================
-2. CATEGORIZED TAG DEFINITIONS (12 TAG RESMI)
+2. CATEGORIZED TAG DEFINITIONS (10 TAG RESMI)
    ========================================================= */
 
 const TAG_CATEGORIES = {
@@ -55,21 +55,27 @@ const TAG_CATEGORIES = {
     icon: FiUserCheck,
     color: "text-blue-600 bg-blue-50 border-blue-200",
     activeColor: "bg-blue-600 text-white border-blue-600",
-    tags: ["Ramah dan sopan", "Berkendara aman", "Ugal-ugalan", "Kurang ramah"],
+    tags: ["Pengemudi Ramah", "Ugal-ugalan", "Kurang ramah"],
   },
   VEHICLE: {
     label: "Kondisi Angkot",
     icon: FiTruck,
     color: "text-purple-600 bg-purple-50 border-purple-200",
     activeColor: "bg-purple-600 text-white border-purple-600",
-    tags: ["Angkot bersih", "Nyaman", "Angkot kotor", "Kurang terawat"],
+    tags: ["Mobil Bersih", "Angkot kotor"],
   },
   TRIP: {
     label: "Pengalaman Perjalanan",
     icon: FiCompass,
     color: "text-amber-600 bg-amber-50 border-amber-200",
     activeColor: "bg-amber-600 text-white border-amber-600",
-    tags: ["Tepat waktu", "Tarif sesuai", "Terlalu penuh", "Menunggu lama"],
+    tags: [
+      "Perjalanan Nyaman",
+      "Tepat Waktu",
+      "Ongkos Sesuai",
+      "Terlalu penuh",
+      "Menunggu lama",
+    ],
   },
 };
 
