@@ -10,19 +10,20 @@ import {
 import { DirectionType } from "@/types/vehicles/vehicle.type";
 import { useRoutes } from "@/hooks/routes/useRoutes";
 import { routePathService } from "@/services/routes/route-path.service";
+import { routeStopService } from "@/services/routes/route-stops.service";
+import { vehicleAssignmentService } from "@/services/vehicles/vehicleAssignmentService.service";
 import { decodePolyline } from "@/utils/polyline.util";
 import { RouteStopType } from "@/types/routes/route-stop.type";
 import { VehicleAssignment } from "@/types/vehicles/vehicle-assignments.type";
 import {
   FaMapMarkedAlt,
-  FaUsers,
   FaInfoCircle,
   FaSyncAlt,
   FaLayerGroup,
   FaFileAlt,
   FaCalculator,
-  FaRoute,
   FaCompass,
+  FaTimes,
 } from "react-icons/fa";
 import RouteEvaluationReportModal, {
   RouteEvaluationItem,
@@ -62,82 +63,88 @@ const cleanMapStyles = [
   },
 ];
 
-// Definisi palet warna identitas unik untuk tiap rute resmi
-// Setiap rute punya hue warna tersendiri, dengan gradasi gelap-terang sesuai tingkat kepadatan
-export const ROUTE_COLOR_PALETTES: Record<
-  string,
+// Palet warna identitas unik per koridor trayek.
+// Setiap koridor mendapat hue berbeda dengan gradasi gelap (padat) -> terang (lengang).
+export interface CorridorPalette {
+  name: string;
+  dotClass: string;
+  activeClass: string;
+  textClass: string;
+  dense: { color: string; border: string };    // > 50 pax/hari -> Gelap & Pekat
+  stable: { color: string; border: string };   // 15-50 pax/hari -> Medium Alami
+  light: { color: string; border: string };    // 1-14 pax/hari -> Terang / Cerah
+  inactive: { color: string; border: string }; // 0 pax -> Tint lembut (tetap beda warna antar rute)
+}
+
+export const CORRIDOR_PALETTES: CorridorPalette[] = [
   {
-    name: string;
-    label: string;
-    dense: { color: string; border: string; label: string };     // Sangat padat (>50 pax) -> Paling Gelap & Pekat
-    stable: { color: string; border: string; label: string };    // Stabil / Sedang (15-50 pax) -> Warna Medium Alami
-    light: { color: string; border: string; label: string };     // Lengang (<15 pax) -> Warna Paling Terang / Cerah
-    inactive: { color: string; border: string; label: string };  // Belum aktif (0 pax) -> Muted / Netral
-  }
-> = {
-  AL: {
     name: "Biru",
-    label: "Trayek AL (Arjosari - Landungsari)",
-    dense: { color: "#1e3a8a", border: "#172554", label: "Padat (Biru Tua Pekat)" },
-    stable: { color: "#2563eb", border: "#1d4ed8", label: "Stabil (Biru Royal)" },
-    light: { color: "#93c5fd", border: "#bfdbfe", label: "Lengang (Biru Cerah)" },
-    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+    dotClass: "bg-blue-600",
+    activeClass: "bg-blue-600 text-white",
+    textClass: "text-blue-700",
+    dense: { color: "#1e3a8a", border: "#172554" },
+    stable: { color: "#2563eb", border: "#1d4ed8" },
+    light: { color: "#60a5fa", border: "#93c5fd" },
+    inactive: { color: "#93c5fd", border: "#bfdbfe" },
   },
-  AG: {
+  {
     name: "Hijau",
-    label: "Trayek AG (Arjosari - Gadang)",
-    dense: { color: "#065f46", border: "#044332", label: "Padat (Hijau Hutan Pekat)" },
-    stable: { color: "#059669", border: "#047857", label: "Stabil (Hijau Zamrud)" },
-    light: { color: "#6ee7b7", border: "#a7f3d0", label: "Lengang (Hijau Mint Cerah)" },
-    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+    dotClass: "bg-emerald-600",
+    activeClass: "bg-emerald-600 text-white",
+    textClass: "text-emerald-700",
+    dense: { color: "#065f46", border: "#044332" },
+    stable: { color: "#059669", border: "#047857" },
+    light: { color: "#34d399", border: "#6ee7b7" },
+    inactive: { color: "#6ee7b7", border: "#a7f3d0" },
   },
-  AG2: {
+  {
     name: "Oranye",
-    label: "Trayek AG2 (Arjosari - Gadang New)",
-    dense: { color: "#9a3412", border: "#7c2d12", label: "Padat (Cokelat Oranye Pekat)" },
-    stable: { color: "#ea580c", border: "#c2410c", label: "Stabil (Oranye Hangat)" },
-    light: { color: "#fdba74", border: "#fed7aa", label: "Lengang (Oranye Cerah)" },
-    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+    dotClass: "bg-orange-600",
+    activeClass: "bg-orange-600 text-white",
+    textClass: "text-orange-700",
+    dense: { color: "#9a3412", border: "#7c2d12" },
+    stable: { color: "#ea580c", border: "#c2410c" },
+    light: { color: "#fb923c", border: "#fdba74" },
+    inactive: { color: "#fdba74", border: "#fed7aa" },
   },
-  BB: {
-    name: "Biru",
-    label: "Trayek BB (Begawan - UB)",
-    dense: { color: "#1e3a8a", border: "#172554", label: "Padat (Biru Tua Pekat)" },
-    stable: { color: "#2563eb", border: "#1d4ed8", label: "Stabil (Biru Royal)" },
-    light: { color: "#93c5fd", border: "#bfdbfe", label: "Lengang (Biru Cerah)" },
-    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
-  },
-  BGTU: {
-    name: "Hijau",
-    label: "Trayek BGTU (Begawan - Batu)",
-    dense: { color: "#065f46", border: "#044332", label: "Padat (Hijau Hutan Pekat)" },
-    stable: { color: "#059669", border: "#047857", label: "Stabil (Hijau Zamrud)" },
-    light: { color: "#6ee7b7", border: "#a7f3d0", label: "Lengang (Hijau Mint Cerah)" },
-    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
-  },
-  BS: {
-    name: "Oranye",
-    label: "Trayek BS (Begawan - Suhat)",
-    dense: { color: "#9a3412", border: "#7c2d12", label: "Padat (Cokelat Oranye Pekat)" },
-    stable: { color: "#ea580c", border: "#c2410c", label: "Stabil (Oranye Hangat)" },
-    light: { color: "#fdba74", border: "#fed7aa", label: "Lengang (Oranye Cerah)" },
-    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
-  },
-  BK: {
+  {
     name: "Ungu",
-    label: "Trayek BK (Begawan - Karya)",
-    dense: { color: "#581c87", border: "#3b0764", label: "Padat (Ungu Terong Pekat)" },
-    stable: { color: "#7c3aed", border: "#6d28d9", label: "Stabil (Ungu Violet)" },
-    light: { color: "#c4b5fd", border: "#ddd6fe", label: "Lengang (Ungu Lavender Cerah)" },
-    inactive: { color: "#cbd5e1", border: "#e2e8f0", label: "Belum Aktif" },
+    dotClass: "bg-violet-600",
+    activeClass: "bg-violet-600 text-white",
+    textClass: "text-violet-700",
+    dense: { color: "#581c87", border: "#3b0764" },
+    stable: { color: "#7c3aed", border: "#6d28d9" },
+    light: { color: "#a78bfa", border: "#c4b5fd" },
+    inactive: { color: "#c4b5fd", border: "#ddd6fe" },
   },
-};
+  {
+    name: "Teal",
+    dotClass: "bg-teal-600",
+    activeClass: "bg-teal-600 text-white",
+    textClass: "text-teal-700",
+    dense: { color: "#134e4a", border: "#0f3f3c" },
+    stable: { color: "#0d9488", border: "#0f766e" },
+    light: { color: "#2dd4bf", border: "#5eead4" },
+    inactive: { color: "#5eead4", border: "#99f6e4" },
+  },
+  {
+    name: "Merah Muda",
+    dotClass: "bg-rose-600",
+    activeClass: "bg-rose-600 text-white",
+    textClass: "text-rose-700",
+    dense: { color: "#881337", border: "#6b0f2b" },
+    stable: { color: "#e11d48", border: "#be123c" },
+    light: { color: "#fb7185", border: "#fda4af" },
+    inactive: { color: "#fda4af", border: "#fecdd3" },
+  },
+];
+
+export function getCorridorPalette(index: number): CorridorPalette {
+  return CORRIDOR_PALETTES[index % CORRIDOR_PALETTES.length];
+}
 
 // Helper kalkulasi warna kepadatan penumpang berbasis Rata-rata Evaluasi Mingguan (Total 7 Hari / 7)
-// Menghitung gradasi gelap (padat) ke terang (lengang) per kode rute
-export function getWeeklyDensityStyle(avgDailyPax: number, routeCode: string = "AL") {
-  const palette = ROUTE_COLOR_PALETTES[routeCode] || ROUTE_COLOR_PALETTES.AL || ROUTE_COLOR_PALETTES.BB;
-
+export function getWeeklyDensityStyle(avgDailyPax: number, palette: CorridorPalette) {
   if (avgDailyPax > 50) {
     return {
       level: "Padat",
@@ -145,8 +152,8 @@ export function getWeeklyDensityStyle(avgDailyPax: number, routeCode: string = "
       fullLabel: "Kepadatan Tinggi (> 50 Orang/Hari)",
       color: palette.dense.color,
       borderColor: palette.dense.border,
-      weight: 6,
-      opacity: 0.95,
+      weight: 7,
+      opacity: 0.96,
       badgeBg: "bg-red-600 text-white border-red-500",
       pillBg: "bg-red-50 text-red-700 border-red-200",
       recommendationBoxBg: "bg-red-50 border-red-200 text-red-800",
@@ -159,8 +166,8 @@ export function getWeeklyDensityStyle(avgDailyPax: number, routeCode: string = "
       fullLabel: "Kepadatan Stabil (15 - 50 Orang/Hari)",
       color: palette.stable.color,
       borderColor: palette.stable.border,
-      weight: 5,
-      opacity: 0.9,
+      weight: 5.5,
+      opacity: 0.92,
       badgeBg: "bg-emerald-600 text-white border-emerald-500",
       pillBg: "bg-emerald-50 text-emerald-800 border-emerald-200",
       recommendationBoxBg: "bg-emerald-50 border-emerald-200 text-emerald-800",
@@ -173,8 +180,8 @@ export function getWeeklyDensityStyle(avgDailyPax: number, routeCode: string = "
       fullLabel: "Kepadatan Rendah (< 15 Orang/Hari)",
       color: palette.light.color,
       borderColor: palette.light.border,
-      weight: 4,
-      opacity: 0.85,
+      weight: 4.5,
+      opacity: 0.88,
       badgeBg: "bg-sky-500 text-white border-sky-400",
       pillBg: "bg-sky-50 text-sky-800 border-sky-200",
       recommendationBoxBg: "bg-sky-50 border-sky-200 text-sky-800",
@@ -182,17 +189,17 @@ export function getWeeklyDensityStyle(avgDailyPax: number, routeCode: string = "
     };
   } else {
     return {
-      level: "Belum Aktif",
+      level: "Lengang (0)",
       statusType: "INACTIVE" as const,
       fullLabel: "Belum Ada Penumpang (0)",
       color: palette.inactive.color,
       borderColor: palette.inactive.border,
-      weight: 3,
-      opacity: 0.55,
-      badgeBg: "bg-slate-400 text-white border-slate-300",
+      weight: 4,
+      opacity: 0.72,
+      badgeBg: "bg-slate-500 text-white border-slate-400",
       pillBg: "bg-slate-50 text-slate-600 border-slate-200",
       recommendationBoxBg: "bg-slate-50 border-slate-200 text-slate-600",
-      recommendation: "Belum aktif: Siapkan integrasi jadwal trayek",
+      recommendation: "Belum ada penumpang tercatat pada periode ini",
     };
   }
 }
@@ -201,7 +208,9 @@ interface RouteTrack {
   routeId: number;
   routeCode: string;
   routeName: string;
+  palette: CorridorPalette;
   coordinates: { lat: number; lng: number }[];
+  stops: RouteStopType[];
   total7DaysPax: number;
   avgDailyPax: number;
   total7DaysTrips: number;
@@ -240,11 +249,9 @@ export default function RouteDensityMap({
       : (routesData as any)?.data || [];
   }, [routesData]);
 
-  // Hanya rute operasional aktif
+  // Semua rute operasional aktif dari backend (tanpa hardcode daftar kode trayek)
   const operationalRoutes = useMemo(() => {
-    return routes.filter((r: any) =>
-      r.isActive !== false && ["AL", "AG", "AG2", "BB", "BGTU", "BS", "BK"].includes(r.routeCode)
-    );
+    return routes.filter((r: any) => r.isActive !== false);
   }, [routes]);
 
   // Hitung rentang 7 Hari Terakhir (H-7 s/d H-1 dari selectedDate)
@@ -279,15 +286,7 @@ export default function RouteDensityMap({
     try {
       let allAssignmentsList: VehicleAssignment[] = [];
       try {
-        const res = await fetch("http://localhost:3001/vehicle-assignments", {
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const resJson = await res.json();
-          allAssignmentsList = Array.isArray(resJson)
-            ? resJson
-            : resJson.data || [];
-        }
+        allAssignmentsList = await vehicleAssignmentService.getAll();
       } catch {
         allAssignmentsList = assignments;
       }
@@ -299,8 +298,17 @@ export default function RouteDensityMap({
         return prev7DateStrings.includes(aDate) || prev7DateStrings.includes(a.date);
       });
 
-      const tracksPromises = operationalRoutes.map(async (r: any) => {
+      const matchesRoute = (a: any, r: any) =>
+        a.routeId === r.id ||
+        a.route?.id === r.id ||
+        a.route?.routeCode === r.routeCode ||
+        a.route?.code === r.routeCode ||
+        a.routeCode === r.routeCode;
+
+      const tracksPromises = operationalRoutes.map(async (r: any, idx: number) => {
         try {
+          const palette = getCorridorPalette(idx);
+
           // Ambil koordinat jalur rute dari encodedPolyline atau routePathService
           let coords: { lat: number; lng: number }[] = [];
           if (r.encodedPolyline) {
@@ -329,23 +337,22 @@ export default function RouteDensityMap({
             }));
           }
 
-          // Hitung total penumpang 7 hari untuk rute ini (seluruh penugasan bolak-balik digabung)
-          const matchingWeekly = weeklyAssignments.filter(
-            (a: any) =>
-              a.route?.routeCode === r.routeCode || a.routeCode === r.routeCode
-          );
+          // Ambil halte resmi rute ini dari backend
+          const routeStops = await routeStopService
+            .getRouteStopByRouteIdandDirection(r.id, DirectionType.FORWARD)
+            .catch(() => []);
+
+          // Hitung total penumpang 7 hari untuk rute ini (seluruh penugasan digabung)
+          const matchingWeekly = weeklyAssignments.filter((a: any) => matchesRoute(a, r));
 
           let total7Pax = matchingWeekly.reduce(
             (acc, curr) => acc + (curr.currentPassengers || 0),
             0
           );
 
+          const todayMatching = assignments.filter((a: any) => matchesRoute(a, r));
+
           if (total7Pax === 0) {
-            const todayMatching = assignments.filter(
-              (a: any) =>
-                a.route?.routeCode === r.routeCode ||
-                a.routeCode === r.routeCode
-            );
             const todayPax = todayMatching.reduce(
               (acc, curr) => acc + (curr.currentPassengers || 0),
               0
@@ -358,19 +365,17 @@ export default function RouteDensityMap({
           const total7Trips =
             matchingWeekly.length > 0
               ? matchingWeekly.length
-              : (assignments.filter((a) => a.route?.routeCode === r.routeCode).length || 1) * 7;
-          const avgDailyTrips = Math.max(1, Math.round(total7Trips / 7));
+              : todayMatching.length * 7;
+          const avgDailyTrips =
+            total7Trips > 0 ? Math.max(1, Math.round(total7Trips / 7)) : 0;
 
           // Hitung armada harian & akumulasi unit beroperasi 7 hari (H1 + H2 + ... + H7)
-          const todayMatching = assignments.filter(
-            (a: any) =>
-              a.route?.routeCode === r.routeCode || a.routeCode === r.routeCode
-          );
           const activeVehiclesTodaySet = new Set(
-            todayMatching.map((a: any) => a.vehicleId || a.vehicle?.id || a.vehicle?.plateNumber)
+            todayMatching
+              .map((a: any) => a.vehicleId || a.vehicle?.id || a.vehicle?.plateNumber)
+              .filter(Boolean)
           );
 
-          // Peta unit per hari untuk menghitung total akumulasi penugasan armada (H1 + H2 + ... + H7)
           const dailyVehiclesMap: Record<string, Set<any>> = {};
           matchingWeekly.forEach((a: any) => {
             const dateKey = a.assignmentDate ? String(a.assignmentDate).slice(0, 10) : "";
@@ -386,29 +391,32 @@ export default function RouteDensityMap({
             cumulative7DaysFleet += s.size;
           });
 
-          // Rata-rata armada aktif per hari dan total akumulasi armada seminggu
-          const activeVehiclesDaily = activeVehiclesTodaySet.size > 0
-            ? activeVehiclesTodaySet.size
-            : (Object.keys(dailyVehiclesMap).length > 0
+          const activeVehiclesDaily =
+            activeVehiclesTodaySet.size > 0
+              ? activeVehiclesTodaySet.size
+              : Object.keys(dailyVehiclesMap).length > 0
                 ? Math.max(1, Math.round(cumulative7DaysFleet / Object.keys(dailyVehiclesMap).length))
-                : 1);
+                : 0;
 
-          const activeVehiclesWeekly = cumulative7DaysFleet > 0
-            ? cumulative7DaysFleet
-            : activeVehiclesDaily * 7;
+          const activeVehiclesWeekly =
+            cumulative7DaysFleet > 0
+              ? cumulative7DaysFleet
+              : activeVehiclesDaily * 7;
 
           return {
             routeId: r.id,
-            routeCode: r.routeCode,
-            routeName: r.routeName || r.routeCode,
+            routeCode: r.routeCode || r.code || `R${r.id}`,
+            routeName: r.routeName || r.name || r.routeCode || `Rute #${r.id}`,
+            palette,
             coordinates: coords,
+            stops: routeStops,
             total7DaysPax: total7Pax,
-            avgDailyPax: avgDailyPax,
+            avgDailyPax,
             total7DaysTrips: total7Trips,
-            avgDailyTrips: avgDailyTrips,
-            activeVehiclesDaily: activeVehiclesDaily,
-            activeVehiclesWeekly: activeVehiclesWeekly,
-            density: getWeeklyDensityStyle(avgDailyPax, r.routeCode),
+            avgDailyTrips,
+            activeVehiclesDaily,
+            activeVehiclesWeekly,
+            density: getWeeklyDensityStyle(avgDailyPax, palette),
           } as RouteTrack;
         } catch {
           return null;
@@ -445,16 +453,24 @@ export default function RouteDensityMap({
     return visibleTracks.reduce((acc, t) => acc + t.avgDailyPax, 0);
   }, [visibleTracks]);
 
-  // Halte yang relevan
+  // Halte yang relevan dari routeStopService per rute (atau fallback ke rawRouteStops)
   const visibleStops = useMemo(() => {
-    return rawRouteStops.filter((stop: any) => {
-      if (selectedRouteFilter === "ALL") {
+    const trackStops = visibleTracks.flatMap((t) => t.stops);
+    if (trackStops.length > 0) {
+      // Deduplikasi halte berdasarkan id atau koordinat
+      const seen = new Set<string>();
+      return trackStops.filter((s: any) => {
+        const key = s.id ? `id-${s.id}` : `${s.latitude}-${s.longitude}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
-      }
-      const targetId = Number(selectedRouteFilter);
-      return stop.routeId === targetId;
+      });
+    }
+    return rawRouteStops.filter((stop: any) => {
+      if (selectedRouteFilter === "ALL") return true;
+      return stop.routeId === Number(selectedRouteFilter);
     });
-  }, [rawRouteStops, selectedRouteFilter]);
+  }, [visibleTracks, rawRouteStops, selectedRouteFilter]);
 
   // Data Dokumen Ekspor Laporan
   const reportEvaluationItems: RouteEvaluationItem[] = useMemo(() => {
@@ -531,10 +547,18 @@ export default function RouteDensityMap({
                 Rolling 7-Hari (Total ÷ 7)
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Warna per koridor: <span className="font-semibold text-blue-700">AL (Biru)</span>,{" "}
-              <span className="font-semibold text-emerald-700">AG (Hijau)</span>,{" "}
-              <span className="font-semibold text-amber-700">AG2 (Oranye)</span> •{" "}
+            <p className="text-[11px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <span>Warna per koridor:</span>
+              {allRouteTracks.length > 0 ? (
+                allRouteTracks.map((t, i) => (
+                  <span key={t.routeId} className={`font-semibold ${t.palette.textClass}`}>
+                    {t.routeCode} ({t.palette.name}){i < allRouteTracks.length - 1 ? "," : ""}
+                  </span>
+                ))
+              ) : (
+                <span className="italic text-slate-400">memuat rute...</span>
+              )}
+              <span>•</span>
               <span className="text-slate-700 font-bold">Warna Lebih Gelap</span> = Padat,{" "}
               <span className="text-slate-500">Warna Lebih Terang</span> = Sepi
             </p>
@@ -544,9 +568,12 @@ export default function RouteDensityMap({
         {/* Kanan: Filter Jalur & Tombol Tindakan Tanpa Warna Hitam */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {/* Selector Koridor Trayek dengan Dot Warna Rute */}
-          <div className="flex items-center bg-slate-100/80 p-1 rounded-xl gap-0.5 border border-slate-200/60">
+          <div className="flex flex-wrap items-center bg-slate-100/80 p-1 rounded-xl gap-0.5 border border-slate-200/60">
             <button
-              onClick={() => setSelectedRouteFilter("ALL")}
+              onClick={() => {
+                setSelectedRouteFilter("ALL");
+                setHoveredRoute(null);
+              }}
               type="button"
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedRouteFilter === "ALL"
@@ -555,45 +582,35 @@ export default function RouteDensityMap({
               }`}
             >
               <FaLayerGroup className="w-3 h-3" />
-              Semua ({visibleTracks.length})
+              Semua ({allRouteTracks.length})
             </button>
 
-            {operationalRoutes.map((r: any) => {
+            {operationalRoutes.map((r: any, idx: number) => {
               const active = selectedRouteFilter === String(r.id);
-              const dotColor =
-                r.routeCode === "AL" || r.routeCode === "BB"
-                  ? "bg-blue-600"
-                  : r.routeCode === "AG" || r.routeCode === "BGTU"
-                  ? "bg-emerald-600"
-                  : r.routeCode === "AG2" || r.routeCode === "BS"
-                  ? "bg-amber-600"
-                  : "bg-purple-600";
-              const activeBg =
-                r.routeCode === "AL" || r.routeCode === "BB"
-                  ? "bg-blue-600 text-white"
-                  : r.routeCode === "AG" || r.routeCode === "BGTU"
-                  ? "bg-emerald-600 text-white"
-                  : r.routeCode === "AG2" || r.routeCode === "BS"
-                  ? "bg-amber-600 text-white"
-                  : "bg-purple-600 text-white";
+              const palette = getCorridorPalette(idx);
+              const code = r.routeCode || r.code || `R${r.id}`;
 
               return (
                 <button
                   key={r.id}
-                  onClick={() => setSelectedRouteFilter(String(r.id))}
+                  onClick={() => {
+                    setSelectedRouteFilter(String(r.id));
+                    const found = allRouteTracks.find((t) => t.routeId === r.id) ?? null;
+                    setHoveredRoute(found);
+                  }}
                   type="button"
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     active
-                      ? `${activeBg} shadow-xs`
+                      ? `${palette.activeClass} shadow-xs`
                       : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
                   }`}
                 >
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      active ? "bg-white" : dotColor
+                      active ? "bg-white" : palette.dotClass
                     }`}
                   />
-                  {r.routeCode}
+                  {code}
                 </button>
               );
             })}
@@ -762,15 +779,28 @@ export default function RouteDensityMap({
             <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-slate-200/90 shadow-xl space-y-2 animate-in fade-in zoom-in-95 duration-150">
               {/* Header Badges */}
               <div className="flex items-center justify-between gap-2">
-                <span className="px-2.5 py-0.5 rounded-lg bg-blue-600 text-white font-extrabold text-[10px] uppercase tracking-wider shadow-2xs">
-                  TRAYEK {hoveredRoute.routeCode}
-                </span>
-                <span
-                  className="px-2.5 py-0.5 rounded-lg text-white font-bold text-[10px] shadow-2xs"
-                  style={{ backgroundColor: hoveredRoute.density.color }}
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="px-2.5 py-0.5 rounded-lg text-white font-extrabold text-[10px] uppercase tracking-wider shadow-2xs"
+                    style={{ backgroundColor: hoveredRoute.palette.stable.color }}
+                  >
+                    TRAYEK {hoveredRoute.routeCode}
+                  </span>
+                  <span
+                    className="px-2 py-0.5 rounded-lg text-white font-bold text-[10px] shadow-2xs"
+                    style={{ backgroundColor: hoveredRoute.density.color }}
+                  >
+                    {hoveredRoute.density.level}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHoveredRoute(null)}
+                  aria-label="Tutup detail trayek"
+                  className="p-1 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
                 >
-                  {hoveredRoute.density.level}
-                </span>
+                  <FaTimes className="w-3 h-3" />
+                </button>
               </div>
 
               {/* Koridor Trayek */}
@@ -836,18 +866,14 @@ export default function RouteDensityMap({
               Identitas Trayek:
             </span>
             <div className="grid grid-cols-2 gap-1.5">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" />
-                <span className="font-semibold text-slate-700">AL (Biru)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
-                <span className="font-semibold text-slate-700">AG (Hijau)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-600 shrink-0" />
-                <span className="font-semibold text-slate-700">AG2 (Oranye)</span>
-              </div>
+              {allRouteTracks.map((t) => (
+                <div key={`legend-${t.routeId}`} className="flex items-center gap-1.5">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${t.palette.dotClass}`} />
+                  <span className="font-semibold text-slate-700 truncate">
+                    {t.routeCode} ({t.palette.name})
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
