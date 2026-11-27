@@ -11,6 +11,10 @@ import {
   FiUnlock,
   FiX,
   FiCheck,
+  FiStar,
+  FiCreditCard,
+  FiInfo,
+  FiShield,
 } from "react-icons/fi";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -27,7 +31,8 @@ const PRICE_TABLE = [
   { seats: 6, amount: 30000 },
 ];
 
-const DEFAULT_PIN = "1234"; // PIN bawaan untuk membuka kunci
+const DEFAULT_PIN = "1234";
+const VEHICLE_ASSIGNMENT_ID = 16;
 const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
 
 export default function DriverQrisDisplayPage() {
@@ -40,7 +45,6 @@ export default function DriverQrisDisplayPage() {
   const [inputPin, setInputPin] = useState("");
   const [pinError, setPinError] = useState(false);
 
-  // Sync state dengan Fullscreen API browser
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -52,7 +56,6 @@ export default function DriverQrisDisplayPage() {
     };
   }, []);
 
-  // Toggle Fullscreen Web API
   const toggleFullscreen = async () => {
     if (isLocked) return;
 
@@ -69,7 +72,6 @@ export default function DriverQrisDisplayPage() {
     }
   };
 
-  // Lock & Unlock Handler
   const handleLockToggle = () => {
     if (!isLocked) {
       setIsLocked(true);
@@ -80,7 +82,6 @@ export default function DriverQrisDisplayPage() {
     }
   };
 
-  // Navigasi Kembali (Meminta PIN jika terkunci)
   const handleBackNavigation = () => {
     if (isLocked) {
       setInputPin("");
@@ -91,14 +92,12 @@ export default function DriverQrisDisplayPage() {
     }
   };
 
-  // Input Keypad Handler
   const handleKeyPress = (num: string) => {
     if (inputPin.length < 4) {
       const newPin = inputPin + num;
       setInputPin(newPin);
       setPinError(false);
 
-      // Verifikasi otomatis jika sudah 4 digit
       if (newPin.length === 4) {
         if (newPin === DEFAULT_PIN) {
           setIsLocked(false);
@@ -119,6 +118,11 @@ export default function DriverQrisDisplayPage() {
     setInputPin((prev) => prev.slice(0, -1));
     setPinError(false);
   };
+
+  const feedbackUrl = `http://localhost:3000/passenger/feedback?vehicleAssignmentId=${VEHICLE_ASSIGNMENT_ID}`;
+  const feedbackQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+    feedbackUrl
+  )}`;
 
   return (
     <div
@@ -148,7 +152,6 @@ export default function DriverQrisDisplayPage() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Tombol Fullscreen */}
           <button
             onClick={toggleFullscreen}
             disabled={isLocked}
@@ -161,7 +164,6 @@ export default function DriverQrisDisplayPage() {
             </span>
           </button>
 
-          {/* Tombol Kunci / Buka Kunci dengan PIN */}
           <button
             onClick={handleLockToggle}
             className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-bold transition active:scale-95 ${
@@ -176,65 +178,129 @@ export default function DriverQrisDisplayPage() {
         </div>
       </header>
 
-      {/* Content */}
-      <main className="mx-auto grid w-full max-w-4xl flex-1 grid-cols-1 items-center gap-6 px-4 py-6 sm:px-6 lg:grid-cols-2 lg:gap-10">
-        {/* QR */}
-        <section className="mx-auto w-full max-w-sm rounded-2xl bg-white p-5 shadow-[0_8px_30px_rgba(15,42,74,0.10)] sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-xl font-extrabold tracking-tight text-rose-600">
-              QRIS
-            </span>
-            <span className="text-xs font-semibold text-slate-400">
-              AngkotGo
-            </span>
-          </div>
-
-          <img
-            src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=ANGKOTGO-PAY-AL04-STATIONARY"
-            alt="Kode QRIS AngkotGo"
-            className="mx-auto aspect-square w-full max-w-72 object-contain"
-          />
-
-          <p className="mt-4 text-center text-xs font-medium text-slate-500">
-            NMID: ID1020261125018
-          </p>
-        </section>
-
-        {/* Tarif */}
-        <section>
-          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-            Bayar dengan QRIS
-          </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
-            Scan kode, lalu masukkan nominal sesuai jumlah penumpang.
-          </p>
-
-          <ul className="mt-5 divide-y divide-slate-200 overflow-hidden rounded-2xl bg-white shadow-[0_8px_30px_rgba(15,42,74,0.06)]">
-            {PRICE_TABLE.map((row) => (
-              <li
-                key={row.seats}
-                className="flex items-center justify-between px-5 py-3.5"
-              >
-                <span className="text-sm font-semibold text-slate-600 sm:text-base">
-                  {row.seats} penumpang
+      {/* Content Layout */}
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center justify-center gap-6 px-4 py-6 sm:px-6">
+        <div className="grid w-full grid-cols-1 items-stretch gap-6 lg:grid-cols-12">
+          
+          {/* LANGKAH 1 (KIRI): TABEL TARIF (3 Cols) */}
+          <section className="flex flex-col justify-between rounded-3xl bg-white p-5 shadow-[0_8px_30px_rgba(15,42,74,0.08)] sm:p-6 lg:col-span-3">
+            <div>
+              {/* STEP BADGE */}
+              <div className="mb-3 flex items-center justify-between">
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-extrabold text-blue-800">
+                  LANGKAH 1
                 </span>
-                <span className="text-lg font-extrabold tabular-nums sm:text-xl">
-                  {rupiah(row.amount)}
+                <span className="text-[10px] font-semibold text-slate-400">Pilih Tarif</span>
+              </div>
+
+              <div className="mb-3 flex items-center gap-2 text-[#0f2a4a]">
+                <FiInfo size={18} className="text-blue-600" />
+                <div>
+                  <h2 className="text-base font-extrabold leading-tight">Cek Jumlah Ongkos</h2>
+                  <p className="text-[11px] font-medium text-slate-400">Tarif per penumpang</p>
+                </div>
+              </div>
+
+              <ul className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-slate-50/70">
+                {PRICE_TABLE.map((row) => (
+                  <li
+                    key={row.seats}
+                    className="flex items-center justify-between px-3 py-2 text-xs"
+                  >
+                    <span className="font-semibold text-slate-600">
+                      {row.seats} Penumpang
+                    </span>
+                    <span className="font-extrabold tabular-nums text-[#0f2a4a]">
+                      {rupiah(row.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          {/* LANGKAH 2 (TENGAH): SCAN BAYAR QRIS (4 Cols) */}
+          <section className="flex flex-col justify-between rounded-3xl border-2 border-rose-200/80 bg-gradient-to-b from-rose-50/30 via-white to-white p-5 shadow-[0_8px_30px_rgba(15,42,74,0.08)] sm:p-6 lg:col-span-4">
+            <div>
+              {/* STEP BADGE */}
+              <div className="mb-3 flex items-center justify-between">
+                <span className="rounded-full bg-rose-100 px-3 py-1 text-[11px] font-extrabold text-rose-800">
+                  LANGKAH 2
                 </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                  <FiShield size={13} />
+                </span>
+              </div>
+
+              <div className="mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xl font-extrabold tracking-tight text-rose-600">
+                  <FiCreditCard size={20} />
+                  QRIS PEMBAYARAN
+                </span>
+              </div>
+
+              <div className="relative mx-auto aspect-square w-full max-w-64 rounded-2xl border border-slate-100 bg-slate-50 p-2">
+                <img
+                  src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=ANGKOTGO-PAY-AL04-STATIONARY"
+                  alt="Kode QRIS AngkotGo"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 text-center">
+              <p className="text-xs font-bold text-[#0f2a4a]">Scan untuk Lakukan Pembayaran</p>
+              <p className="text-[11px] font-medium text-slate-400">NMID: ID1020261125018</p>
+            </div>
+          </section>
+
+          {/* LANGKAH 3 (KANAN): QR ULASAN PENUMPANG (5 Cols) */}
+          <section className="flex flex-col justify-between rounded-3xl border-2 border-amber-200/80 bg-gradient-to-b from-amber-50/30 via-white to-white p-6 shadow-[0_8px_30px_rgba(15,42,74,0.08)] lg:col-span-5">
+            <div>
+              {/* STEP BADGE */}
+              <div className="mb-3 flex items-center justify-between">
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-extrabold text-amber-800">
+                  LANGKAH 3
+                </span>
+                
+              </div>
+
+              <div className="mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xl font-black tracking-tight text-amber-500">
+                  <FiStar className="fill-amber-400 text-amber-400" size={24} />
+                  ULASAN PENUMPANG
+                </span>
+              </div>
+
+              {/* QR CODE CONTAINER UKURAN BESAR */}
+              <div className="relative mx-auto my-2 aspect-square w-full max-w-72 rounded-2xl border-2 border-dashed border-amber-300 bg-white p-3 shadow-inner">
+                <img
+                  src={feedbackQrCodeUrl}
+                  alt="Kode QR Ulasan Penumpang AngkotGo"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            </div>
+
+            <div className="mt-2 text-center">
+              <p className="text-sm font-black text-[#0f2a4a]">
+                Scan untuk Beri Ulasan & Rating Sopir
+              </p>
+              <p className="mt-0.5 text-xs font-semibold text-slate-400">
+                Arahkan Kamera Smartphone ke Kode QR Di Atas
+              </p>
+            </div>
+          </section>
+
+        </div>
       </main>
 
       {/* Footer */}
       <footer className="pb-4 text-center text-xs font-medium text-slate-500">
-        {isLocked ? "Layar terkunci · Masukkan PIN untuk keluar" : "Bebas biaya admin"}
+        {isLocked ? "Layar terkunci · Masukkan PIN untuk keluar" : "AngkotGo Display System v1.2"}
       </footer>
 
-      {/* ---------------------------------------------------------
-         MODAL PIN PAD UNTUK UNLOCK / KELUAR
-      --------------------------------------------------------- */}
+      {/* MODAL PIN PAD UNTUK UNLOCK */}
       {isPinModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f2a4a]/70 p-4 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="w-full max-w-xs space-y-5 rounded-3xl bg-white p-6 text-center shadow-2xl animate-in zoom-in-95 duration-150">
@@ -259,7 +325,6 @@ export default function DriverQrisDisplayPage() {
               </p>
             </div>
 
-            {/* Indikator Dots PIN */}
             <div className="flex justify-center gap-3 py-1">
               {[0, 1, 2, 3].map((idx) => {
                 const filled = inputPin.length > idx;
@@ -284,7 +349,6 @@ export default function DriverQrisDisplayPage() {
               </p>
             )}
 
-            {/* KEYPAD NUMERIK */}
             <div className="grid grid-cols-3 gap-2 pt-2">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
                 <button
